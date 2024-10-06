@@ -1,4 +1,5 @@
 import pandas as pd
+import re
 from discord import app_commands, Interaction, Role, ui, SelectOption, ButtonStyle, Member
 from discord.ext import commands
 
@@ -19,6 +20,10 @@ class Common(commands.Cog):
     @app_commands.describe(member='Le profil du membre à afficher', register='Inscrire un profil LinkedIn.')
     async def linkedin(self, ctx: Interaction, member: Member = None, register: str = ''):
         if register:
+            pattern = r'https?://([a-z]{2,3}\.)?linkedin\.com/in/[^/]+/?'
+            if not re.match(pattern, register):
+                await ctx.response.send_message('Le lien LinkedIn doit commencer par "https://www.linkedin.com/in/".', ephemeral=True)
+                return
             user = {'linkedin': register}
             if member and ctx.user.guild_permissions.manage_roles:
                 user['id'] = member.id
