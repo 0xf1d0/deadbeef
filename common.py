@@ -101,7 +101,7 @@ class ConfirmButton(ui.Button):
         else:
             dropdown_view.options = [option for option in dropdown_view.options if option.value != selected_value]
             dropdown_view.update_options()
-            await interaction.response.edit_message(view=self.view)
+            await interaction.response.edit_message(view=dropdown_view)
             await interaction.user.edit(nick=selected_value.title())
             await interaction.user.add_roles(interaction.guild.get_role(1289241716985040960) if selected_value.split(' ')[1] in dropdown_view.FI['Nom'].unique() else interaction.guild.get_role(1289241666871627777))
         await interaction.response.edit_message(content=f'Sélection confirmée : {selected_value}', view=None)
