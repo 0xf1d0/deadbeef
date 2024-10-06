@@ -63,35 +63,37 @@ class Common(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
         welcome = self.bot.guilds[0].get_channel(1291494038427537559)
-        if not self.bot.config.get('welcome_message_id'):
+        message_id = self.bot.config.get('welcome_message_id')
+        if not message_id:
             msg = await welcome.send(self.bot.config.get('welcome_message'), view=DropDownView())
             self.bot.config.set('welcome_message_id', msg.id)
-        self.bot.add_view(DropDownView(), message_id=self.bot.config.get('welcome_message_id'))
+        self.bot.add_view(DropDownView(), message_id=message_id)
 
 
 class DropDown(ui.Select):
     def __init__(self, options):
         super().__init__(placeholder='Se chercher', custom_id='dropdown', options=options, min_values=1, max_values=1)
     
-    async def callback(self, interaction: Interaction):
+    async def callback(self, interaction: Interaction):    
         selected_value = self.values[0]
         if selected_value in [option.value for option in self.options]:
-            view = ConfirmView(selected_value, self.view)
+            view = ConfirmView(selected_value, self.view, interaction)
             await interaction.response.send_message(f"Confirmez-vous la sélection de {selected_value} ?", view=view, ephemeral=True)
 
 
 class ConfirmView(ui.View):
-    def __init__(self, selected_value, dropdown_view):
+    def __init__(self, selected_value, dropdown_view, based_interaction):
         super().__init__(timeout=None)
         self.selected_value = selected_value
         self.dropdown_view = dropdown_view
-        self.add_item(ConfirmButton(label="Confirmer", style=ButtonStyle.success))
+        self.add_item(ConfirmButton(label="Confirmer", style=ButtonStyle.success, based_interaction=based_interaction))
         self.add_item(CancelButton(label="Annuler", style=ButtonStyle.danger))
 
 
 class ConfirmButton(ui.Button):
-    def __init__(self, label, style):
+    def __init__(self, label, style, based_interaction):
         super().__init__(label=label, style=style)
+        self.based_interaction = based_interaction
 
     async def callback(self, interaction: Interaction):
         selected_value = self.view.selected_value
@@ -101,9 +103,10 @@ class ConfirmButton(ui.Button):
         else:
             dropdown_view.options = [option for option in dropdown_view.options if option.value != selected_value]
             dropdown_view.update_options()
-            await interaction.response.edit_message(view=dropdown_view)
-            await interaction.user.edit(nick=selected_value.title())
+            #await interaction.user.edit(nick=selected_value.title())
+            await self.based_interaction.message.edit(view=dropdown_view)
             await interaction.user.add_roles(interaction.guild.get_role(1289241716985040960) if selected_value.split(' ')[1] in dropdown_view.FI['Nom'].unique() else interaction.guild.get_role(1289241666871627777))
+        
         await interaction.response.edit_message(content=f'Sélection confirmée : {selected_value}', view=None)
 
 
