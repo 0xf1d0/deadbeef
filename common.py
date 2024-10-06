@@ -22,7 +22,7 @@ class Common(commands.Cog):
         if register:
             pattern = r'https?://([a-z]{2,3}\.)?linkedin\.com/in/[^/]+/?'
             if not re.match(pattern, register):
-                await ctx.response.send_message('Le lien LinkedIn doit commencer par "https://www.linkedin.com/in/".', ephemeral=True)
+                await ctx.response.send_message('Le lien LinkedIn est invalide', ephemeral=True)
                 return
             user = {'linkedin': register}
             if member and ctx.user.guild_permissions.manage_roles:
