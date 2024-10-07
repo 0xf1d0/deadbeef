@@ -12,9 +12,12 @@ class Common(commands.Cog):
 
     @app_commands.command(description="Annonce un message pour un rôle.")
     @commands.has_role(1291503961139838987)
-    @restrict_channel(1291397502842703955)
-    async def announce(self, ctx: Interaction, message: str, role: Role):
-        await ctx.channel.send(f"Annonce: {message}\n\n{role.mention}")
+    @restrict_channel(1289257075347685519)
+    async def announce(self, ctx: Interaction, message: str, role: Role = None):
+        if role:
+            await ctx.channel.send(f"{message}\n\n{role.mention}")
+        else:
+            await ctx.channel.send(f"{message}")
 
     @app_commands.command(description="Affiche ou inscrit un profil LinkedIn.")
     @app_commands.describe(member='Le profil du membre à afficher', register='Inscrire un profil LinkedIn.')
@@ -101,9 +104,12 @@ class ConfirmButton(ui.Button):
         if selected_value == 'Invité':
             await interaction.user.add_roles(interaction.guild.get_role(1291510062753517649))
         else:
-            dropdown_view.options = [option for option in dropdown_view.options if option.value != selected_value]
+            try:
+                dropdown_view.options = [option for option in dropdown_view.options if option.value != selected_value]
+            except:
+                print('Error')
             dropdown_view.update_options()
-            #await interaction.user.edit(nick=selected_value.title())
+            # await interaction.user.edit(nick=selected_value.title())
             await self.based_interaction.message.edit(view=dropdown_view)
             await interaction.user.add_roles(interaction.guild.get_role(1289241716985040960) if selected_value.split(' ')[1] in dropdown_view.FI['Nom'].unique() else interaction.guild.get_role(1289241666871627777))
         
