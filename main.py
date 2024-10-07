@@ -17,6 +17,7 @@ class DeadBeef(commands.Bot):
     async def setup_hook(self) -> None:
         await self.load_extension('music')
         await self.load_extension('common')
+        await self.load_extension('admin')
         self.tree.copy_global_to(guild=CYBER)
         await self.tree.sync(guild=CYBER)
 

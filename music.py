@@ -7,6 +7,7 @@ from discord.ext import commands
 from discord.app_commands.errors import CommandInvokeError
 
 from utils import YTDLSource
+from admin import restrict_channel
 
 
 def ensure_voice(f):
@@ -22,17 +23,6 @@ def ensure_voice(f):
                 return await ctx.response.send_message("Tu dois être dans un salon vocal pour utiliser cette commande.")
         return await f(self, ctx, *args, **kwargs)
     return wrapper
-
-def restrict_channel(channel_id):
-    def decorator(func):
-        @functools.wraps(func)
-        async def wrapper(self, ctx: Interaction, *args, **kwargs):
-            if ctx.channel.id != channel_id:
-                await ctx.response.send_message(f"Cette commande ne peut être utilisée que dans le salon <#{channel_id}>.", ephemeral=True)
-                return
-            return await func(self, ctx, *args, **kwargs)
-        return wrapper
-    return decorator
 
 
 class Music(commands.Cog):

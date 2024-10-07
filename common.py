@@ -1,23 +1,12 @@
 import pandas as pd
 import re
-from discord import app_commands, Interaction, Role, ui, SelectOption, ButtonStyle, Member
+from discord import app_commands, Interaction, Role, ui, SelectOption, ButtonStyle, Member, Embed
 from discord.ext import commands
-
-from music import restrict_channel
 
 
 class Common(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-
-    @app_commands.command(description="Annonce un message pour un rôle.")
-    @commands.has_role(1291503961139838987)
-    @restrict_channel(1289257075347685519)
-    async def announce(self, ctx: Interaction, message: str, role: Role = None):
-        if role:
-            await ctx.channel.send(f"{message}\n\n{role.mention}")
-        else:
-            await ctx.channel.send(f"{message}")
 
     @app_commands.command(description="Affiche ou inscrit un profil LinkedIn.")
     @app_commands.describe(member='Le profil du membre à afficher', register='Inscrire un profil LinkedIn.')
@@ -47,12 +36,6 @@ class Common(commands.Cog):
             else:
                 await ctx.response.send_message('Votre profil LinkedIn non trouvé.')
 
-    @app_commands.command(description="Efface un nombre de messages.")
-    @commands.has_permissions(manage_messages=True)
-    async def purge(self, ctx: Interaction, limit: int):
-        await ctx.response.send_message(f'{limit} messages ont été effacés.', ephemeral=True)
-        await ctx.channel.purge(limit=limit)
-
     @app_commands.command(description="S'attribuer ou s'enlever le rôle de joueur.")
     async def gaming(self, ctx: Interaction):
         role = ctx.guild.get_role(1291867840067932304)
@@ -65,12 +48,13 @@ class Common(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        welcome = self.bot.guilds[0].get_channel(1291494038427537559)
+        guild = self.bot.guilds[0]
+        welcome = guild.get_channel(1291494038427537559)
         message_id = self.bot.config.get('welcome_message_id')
         if not message_id:
-            msg = await welcome.send(self.bot.config.get('welcome_message'), view=DropDownView())
+            msg = await welcome.send(self.bot.config.get('welcome_message'), view=DropDownView(guild))
             self.bot.config.set('welcome_message_id', msg.id)
-        self.bot.add_view(DropDownView(), message_id=message_id)
+        self.bot.add_view(DropDownView(guild), message_id=message_id)
 
 
 class DropDown(ui.Select):
@@ -106,7 +90,7 @@ class ConfirmButton(ui.Button):
         else:
             dropdown_view.options = [option for option in dropdown_view.options if option.value != selected_value]
             dropdown_view.update_options()
-            await interaction.user.edit(nick=selected_value.title())
+            await interaction.user.edit(nick=selected_value)
             await self.based_interaction.message.edit(view=dropdown_view)
             await interaction.user.add_roles(interaction.guild.get_role(1289241716985040960) if selected_value.split(' ')[1] in dropdown_view.FI['Nom'].unique() else interaction.guild.get_role(1289241666871627777))
         
@@ -121,7 +105,7 @@ class CancelButton(ui.Button):
         await interaction.response.edit_message(content='Sélection annulée.', view=None)
 
 class DropDownView(ui.View):
-    def __init__(self):
+    def __init__(self, guild):
         super().__init__(timeout=None)
 
         self.FI = pd.read_csv('assets/students_cyber_sante.csv').iloc[:, 1:3]
@@ -129,8 +113,9 @@ class DropDownView(ui.View):
         self.options = [SelectOption(label='Invité', value='Invité', emoji='👋')]
         
         for _, row in pd.concat([self.FI, self.FA]).iterrows():
-            name = f'{row.iloc[1]} {row.iloc[0]}'
-            self.options.append(SelectOption(label=name, value=name, emoji='🎓'))
+            name = f'{row.iloc[1]} {row.iloc[0]}'.title()
+            if name not in [member.nick for member in guild.members]:
+                self.options.append(SelectOption(label=name, value=name, emoji='🎓'))
         
         self.current_page = 1
         self.per_page = 25
