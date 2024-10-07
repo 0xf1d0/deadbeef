@@ -104,12 +104,9 @@ class ConfirmButton(ui.Button):
         if selected_value == 'Invité':
             await interaction.user.add_roles(interaction.guild.get_role(1291510062753517649))
         else:
-            try:
-                dropdown_view.options = [option for option in dropdown_view.options if option.value != selected_value]
-            except:
-                print('Error')
+            dropdown_view.options = [option for option in dropdown_view.options if option.value != selected_value]
             dropdown_view.update_options()
-            # await interaction.user.edit(nick=selected_value.title())
+            await interaction.user.edit(nick=selected_value.title())
             await self.based_interaction.message.edit(view=dropdown_view)
             await interaction.user.add_roles(interaction.guild.get_role(1289241716985040960) if selected_value.split(' ')[1] in dropdown_view.FI['Nom'].unique() else interaction.guild.get_role(1289241666871627777))
         
