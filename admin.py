@@ -21,7 +21,6 @@ class Admin(commands.Cog):
     @app_commands.command(description="Annoncer un message.")
     @app_commands.describe(title='Le titre de l\'annonce.', message='Le message à annoncer.')
     @commands.has_role(1291503961139838987)
-    @restrict_channel(1289257075347685519)
     async def announce(self, ctx: Interaction, title: str, message: str):
         embed = Embed(title=title, description=message, color=0x8B1538, timestamp=ctx.created_at)
         embed.set_footer(text=f"Annoncé par {ctx.user.nick}", icon_url=ctx.guild.icon.url)
@@ -65,7 +64,7 @@ class ConfirmButton(ui.Button):
         self.value = value
 
     async def callback(self, interaction: Interaction):
-        await interaction.response.send_message(f'||{self.value}||', embed=self.embed)
+        await interaction.guild.fetch_channel(1289257075347685519).send(f'||{self.value}||', embed=self.embed)
 
 
 async def setup(bot: commands.Bot):
