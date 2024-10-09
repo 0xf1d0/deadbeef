@@ -17,6 +17,7 @@ class Reminder(commands.Cog):
 
     @app_commands.command(description="Etablit un rappel pour un événement.")
     @app_commands.describe(course="Choisir le cours.", date="Choisir la date de l'événement.", event="Nom de l'événement", modality="Modalité de l'événement")
+    @app_commands.checks.has_role(1291503961139838987)
     @app_commands.choices(option=[
         app_commands.Choice(name="add", value="1"),
         app_commands.Choice(name="remove", value="2")
@@ -117,16 +118,16 @@ class Reminder(commands.Cog):
                 msg = await channel.send(embeds=[embed])
                 self.bot.config.set('reminders_message_id', msg.id)
 
-            if len(self.reminders) > 1:
-                embeds = []
-                for reminder in self.reminders[1:]:
-                    embed = Embed(title=reminder['name'].upper())
-                    for field in reminder['fields']:
-                        modality = field['modality']
-                        description = field['description']
-                        embed.add_field(name=field['name'], value=f"{description + '\n' if description else ""}{field['date']}R>{f'\n{modality}' if modality else ''}")
-                    embeds.append(embed)
-                await msg.edit(embeds=msg.embeds + embeds)
+                if len(self.reminders) > 1:
+                    embeds = []
+                    for reminder in self.reminders[1:]:
+                        embed = Embed(title=reminder['name'].upper())
+                        for field in reminder['fields']:
+                            modality = field['modality']
+                            description = field['description']
+                            embed.add_field(name=field['name'], value=f"{description + '\n' if description else ""}{field['date']}R>{f'\n{modality}' if modality else ''}")
+                        embeds.append(embed)
+                    await msg.edit(embeds=msg.embeds + embeds)
 
 
 async def setup(bot: commands.Bot):
