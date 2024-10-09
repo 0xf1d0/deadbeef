@@ -20,7 +20,7 @@ class Admin(commands.Cog):
     
     @app_commands.command(description="Annoncer un message.")
     @app_commands.describe(title='Le titre de l\'annonce.', message='Le message à annoncer.')
-    @app_commands.checks.has_any_role([1291503961139838987, 1293714448263024650])
+    @app_commands.checks.has_any_role(1291503961139838987, 1293714448263024650)
     async def announce(self, ctx: Interaction, title: str, message: str):
         embed = Embed(title=title, description=message, color=0x8B1538, timestamp=ctx.created_at)
         embed.set_footer(text=f"Annoncé par {ctx.user.nick}", icon_url=ctx.guild.icon.url)
