@@ -46,9 +46,24 @@ class Common(commands.Cog):
             await ctx.user.add_roles(role)
             await ctx.response.send_message('Rôle de joueur attribué.', ephemeral=True)
 
+    """async def about(self, ctx: Interaction):
+        embed = Embed(title='À propos de moi', description='Je suis un bot Discord créé par [DeadBeef]("""
+
     @commands.Cog.listener()
     async def on_ready(self):
         guild = self.bot.guilds[0]
+        welcome = guild.get_channel(1291494038427537559)
+        message_id = self.bot.config.get('welcome_message_id')
+        if not message_id:
+            msg = await welcome.send(self.bot.config.get('welcome_message'), view=DropDownView(guild))
+            self.bot.config.set('welcome_message_id', msg.id)
+        self.bot.add_view(DropDownView(guild), message_id=message_id)
+
+    @commands.Cog.listener()
+    async def on_member_remove(self, member: Member):
+        channel = member.guild.get_channel(1292059079287504930)
+        await channel.send(f'{member.display_name} ({member.mention} ; ({member.name}) ; ({member.nick}) ; ({member.roles} ; ({member.__str__}) a quitté le serveur.')
+        guild = member.guild
         welcome = guild.get_channel(1291494038427537559)
         message_id = self.bot.config.get('welcome_message_id')
         if not message_id:
