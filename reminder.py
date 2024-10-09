@@ -51,16 +51,16 @@ class Reminder(commands.Cog):
                 if msg:
                     for embed in msg.embeds:
                         if embed.title == course.name.upper():
-                            embed.add_field(name=event, value=f'{description + "\n" if description else ""}{reminder_date}R>{("\n" + modality) if modality else ""}')
+                            embed.add_field(name=event, value=(description + "\n\n" if description else "") + f'{reminder_date}R>' + ("\n\n" + modality if modality else ""))
                             await msg.edit(embeds=msg.embeds)
                             break
                     else:
                         embed = Embed(title=course.name.upper())
-                        embed.add_field(name=event, value=f'{description + "\n" if description else ""}{reminder_date}R>{("\n" + modality) if modality else ""}')
+                        embed.add_field(name=event, value=(description + "\n\n" if description else "") + f'{reminder_date}R>' + ("\n\n" + modality if modality else ""))
                         await msg.edit(embeds=msg.embeds + [embed])
                 else:
                     embed = Embed(title=course.name.upper())
-                    embed.add_field(name=event, value=f'{description + "\n" if description else ""}{reminder_date}R>{("\n" + modality) if modality else ""}')
+                    embed.add_field(name=event, value=(description + "\n\n" if description else "") + f'{reminder_date}R>' + ("\n\n" + modality if modality else ""))
                     msg = await reminders_channel.send(embeds=[embed])
                     self.bot.config.set('reminders_message_id', msg.id)
 
@@ -114,7 +114,7 @@ class Reminder(commands.Cog):
                 for field in self.reminders[0]['fields']:
                     modality = field['modality']
                     description = field['description']
-                    embed.add_field(name=field['name'], value=f'{description + "\n" if description else ""}{field['date']}R>{("\n" + modality) if modality else ""}')
+                    embed.add_field(name=field['name'], value=(description + "\n\n" if description else "") + f'{field['date']}R>' + ("\n\n" + modality if modality else ""))
                 msg = await channel.send(embeds=[embed])
                 self.bot.config.set('reminders_message_id', msg.id)
 
@@ -125,7 +125,7 @@ class Reminder(commands.Cog):
                         for field in reminder['fields']:
                             modality = field['modality']
                             description = field['description']
-                            embed.add_field(name=field['name'], value=f'{description + "\n" if description else ""}{field['date']}R>{("\n" + modality) if modality else ""}')
+                            embed.add_field(name=field['name'], value=(description + "\n\n" if description else "") + f'{field['date']}R>' + ("\n\n" + modality if modality else ""))
                         embeds.append(embed)
                     await msg.edit(embeds=msg.embeds + embeds)
 
