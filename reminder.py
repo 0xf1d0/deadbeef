@@ -65,11 +65,22 @@ class Reminder(commands.Cog):
                     msg = await reminders_channel.send(embeds=[embed])
                     self.bot.config.set('reminders_message_id', msg.id)
 
-                self.reminders.append(reminder)
+                for existing_reminder in self.reminders:
+                    if existing_reminder['name'] == course.name:
+                        existing_reminder['fields'].append({
+                            "name": event,
+                            "date": reminder_date,
+                            "description": description if description else "",
+                            "modality": modality if modality else ""
+                        })
+                        break
+                else:
+                    self.reminders.append(reminder)
+
                 self.save_reminders()
 
                 await interaction.response.send_message(f"Rappel créé pour le {reminder_date + 'D>'}", ephemeral=True)
-            
+
             elif option.value == "2":
                 if msg:
                     for embed in msg.embeds:
@@ -87,19 +98,16 @@ class Reminder(commands.Cog):
                         await interaction.response.send_message("Cours non trouvé.", ephemeral=True)
                         return
 
-                    self.reminders = [reminder for reminder in self.reminders if not (reminder['name'] == course.name and any(field['name'] == event for field in reminder['fields']))]
-                    self.reminders.append({
-                        "name": course.name,
-                        "fields": [
-                            {
-                                "name": event,
-                                "date": reminder_date,
-                                "description": description if description else "",
-                                "modality": modality if modality else ""
-                            }
-                        ]
-                    })
-                    
+                    for existing_reminder in self.reminders:
+                        if existing_reminder['name'] == course.name:
+                            for field in existing_reminder['fields']:
+                                if field['name'] == event:
+                                    field['date'] = reminder_date
+                                    field['description'] = description if description else ""
+                                    field['modality'] = modality if modality else ""
+                                    break
+                            break
+
                     self.save_reminders()
 
                     await interaction.response.send_message(f"Rappel pour l'événement '{event}' du cours '{course.name}' modifié.", ephemeral=True)
@@ -129,7 +137,13 @@ class Reminder(commands.Cog):
                         await interaction.response.send_message("Cours non trouvé.", ephemeral=True)
                         return
 
-                    self.reminders = [reminder for reminder in self.reminders if not (reminder['name'] == course.name and any(field['name'] == event for field in reminder['fields']))]
+                    for existing_reminder in self.reminders:
+                        if existing_reminder['name'] == course.name:
+                            existing_reminder['fields'] = [field for field in existing_reminder['fields'] if field['name'] != event]
+                            if not existing_reminder['fields']:
+                                self.reminders.remove(existing_reminder)
+                            break
+
                     self.save_reminders()
 
                     await interaction.response.send_message(f"Rappel pour l'événement '{event}' du cours '{course.name}' supprimé.", ephemeral=True)
@@ -138,39 +152,6 @@ class Reminder(commands.Cog):
 
         except ValueError:
             await interaction.response.send_message("Format invalide - JJ/MM/AAAA.", ephemeral=True)
-
-    @commands.Cog.listener()
-    async def on_ready(self):
-        if self.reminders:
-            channel = self.bot.get_channel(1293319532361809986)
-            reminders_message_id = self.bot.config.get('reminders_message_id')
-            msg = None
-
-            if reminders_message_id:
-                try:
-                    msg = await channel.fetch_message(reminders_message_id)
-                except NotFound:
-                    pass
-
-            if not msg:
-                embed = Embed(title=self.reminders[0]['name'].upper())
-                for field in self.reminders[0]['fields']:
-                    modality = field['modality']
-                    description = field['description']
-                    embed.add_field(name=field['name'], value=(description + "\n\n" if description else "") + f"{field['date']}R>" + ("\n\n" + modality if modality else ""))
-                msg = await channel.send(embeds=[embed])
-                self.bot.config.set('reminders_message_id', msg.id)
-
-                if len(self.reminders) > 1:
-                    embeds = []
-                    for reminder in self.reminders[1:]:
-                        embed = Embed(title=reminder['name'].upper())
-                        for field in reminder['fields']:
-                            modality = field['modality']
-                            description = field['description']
-                            embed.add_field(name=field['name'], value=(description + "\n\n" if description else "") + f"{field['date']}R>" + ("\n\n" + modality if modality else ""))
-                        embeds.append(embed)
-                    await msg.edit(embeds=msg.embeds + embeds)
 
 
 async def setup(bot: commands.Bot):
