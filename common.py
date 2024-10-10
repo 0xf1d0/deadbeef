@@ -1,6 +1,6 @@
 import pandas as pd
 import re
-from discord import app_commands, Interaction, Role, ui, SelectOption, ButtonStyle, Member, Embed
+from discord import app_commands, Interaction, ui, SelectOption, ButtonStyle, Member, Embed, File
 from discord.ext import commands
 
 
@@ -46,8 +46,27 @@ class Common(commands.Cog):
             await ctx.user.add_roles(role)
             await ctx.response.send_message('Rôle de joueur attribué.', ephemeral=True)
 
-    """async def about(self, ctx: Interaction):
-        embed = Embed(title='À propos de moi', description='Je suis un bot Discord créé par [DeadBeef]("""
+    @app_commands.command(description="Affiche les informations sur le bot.")
+    async def about(self, ctx: Interaction):
+        embed = Embed(title='À propos de moi', description='Je suis un bot Discord créé par [Vincent Cohadon](https://fr.linkedin.com/in/vincent-cohadon) pour le Master Cybersécurité de Paris Cité.')
+        file = File("assets/f1d0.png", filename="f1d0.png")
+        embed.set_image(url='attachment://f1d0.png')
+        await ctx.response.send_message(file=file, embed=embed)
+    
+    @app_commands.command(description="Liste les membres manquants.")
+    async def missing_members_list(self, ctx: Interaction):
+        missing_members = []
+        member_names = [member.display_name for member in ctx.guild.members]
+        FI = pd.read_csv('assets/students_cyber_sante.csv').iloc[:, 1:3]
+        FA = pd.read_csv('assets/students_cyber.csv').iloc[:, 1:3]
+        for _, row in pd.concat([FI, FA]).iterrows():
+            name = f'{row.iloc[1]} {row.iloc[0]}'.title()
+            if name not in member_names:
+                missing_members.append(name)
+        if missing_members:
+            await ctx.response.send_message(f'**{len(missing_members)}** Personnes manquantes:\n' + ', '.join(missing_members))
+        else:
+            await ctx.response.send_message('Tous les membres sont présents.')
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -118,6 +137,7 @@ class CancelButton(ui.Button):
 
     async def callback(self, interaction: Interaction):
         await interaction.response.edit_message(content='Sélection annulée.', view=None)
+
 
 class DropDownView(ui.View):
     def __init__(self, guild):
