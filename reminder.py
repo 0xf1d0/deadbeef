@@ -20,7 +20,8 @@ class Reminder(commands.Cog):
     @app_commands.checks.has_any_role(1291503961139838987, 1293714448263024650)
     @app_commands.choices(option=[
         app_commands.Choice(name="add", value="1"),
-        app_commands.Choice(name="remove", value="2")
+        app_commands.Choice(name="edit", value="2"),
+        app_commands.Choice(name="remove", value="3")
     ])
     async def calendar(self, interaction: Interaction, option: app_commands.Choice[str], course: TextChannel, date: str, event: str, description: str = None, modality: str = None):
         try:
@@ -68,14 +69,56 @@ class Reminder(commands.Cog):
                 self.save_reminders()
 
                 await interaction.response.send_message(f"Rappel créé pour le {reminder_date + 'D>'}", ephemeral=True)
-
+            
             elif option.value == "2":
+                if msg:
+                    for embed in msg.embeds:
+                        if embed.title == course.name.upper():
+                            for index, field in enumerate(embed.fields):
+                                if field.name == event:
+                                    embed.set_field_at(index, name=event, value=(description + "\n\n" if description else "") + f'{reminder_date}R>' + ("\n\n" + modality if modality else ""))
+                                    await msg.edit(embeds=msg.embeds)
+                                    break
+                            else:
+                                await interaction.response.send_message("Événement non trouvé.", ephemeral=True)
+                                return
+                            break
+                    else:
+                        await interaction.response.send_message("Cours non trouvé.", ephemeral=True)
+                        return
+
+                    self.reminders = [reminder for reminder in self.reminders if not (reminder['name'] == course.name and any(field['name'] == event for field in reminder['fields']))]
+                    self.reminders.append({
+                        "name": course.name,
+                        "fields": [
+                            {
+                                "name": event,
+                                "date": reminder_date,
+                                "description": description if description else "",
+                                "modality": modality if modality else ""
+                            }
+                        ]
+                    })
+                    
+                    self.save_reminders()
+
+                    await interaction.response.send_message(f"Rappel pour l'événement '{event}' du cours '{course.name}' modifié.", ephemeral=True)
+                else:
+                    await interaction.response.send_message("Aucun message de rappel trouvé.", ephemeral=True)
+
+            elif option.value == "3":
                 if msg:
                     for embed in msg.embeds:
                         if embed.title == course.name.upper():
                             for field in embed.fields:
                                 if field.name == event:
                                     embed.remove_field(embed.fields.index(field))
+                                    if not embed.fields:
+                                        msg.embeds.remove(embed)
+                                        if not msg.embeds:
+                                            await msg.delete()
+                                            self.bot.config.remove('reminders_message_id')
+                                            break
                                     await msg.edit(embeds=msg.embeds)
                                     break
                             else:
