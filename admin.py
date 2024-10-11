@@ -64,9 +64,8 @@ class ConfirmButton(ui.Button):
         self.value = value
 
     async def callback(self, interaction: Interaction):
-        channel = await interaction.guild.fetch_channel(1289257075347685519)
-        await channel.send(f'||{self.value}||', embed=self.embed)
-        await interaction.response.send_message('Annonce envoyée.', ephemeral=True)
+        await interaction.response.send_message(f'||{self.value}||', embed=self.embed)
+        await interaction.followup.send('Annonce envoyée.', ephemeral=True)
 
 
 async def setup(bot: commands.Bot):
