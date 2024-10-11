@@ -87,6 +87,8 @@ class Common(commands.Cog):
             del glossary[term]
             self.bot.config.set('glossary', glossary)
             await interaction.response.send_message(f'{term} retiré du glossaire.')
+        else:
+            await interaction.response.send_message('Paramètres invalides.', ephemeral=True)
 
 
     @commands.Cog.listener()
