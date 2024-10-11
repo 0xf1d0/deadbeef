@@ -67,7 +67,7 @@ class Common(commands.Cog):
             await ctx.response.send_message(f'**{len(missing_members)}** Personnes manquantes:\n' + ', '.join(missing_members))
         else:
             await ctx.response.send_message('Tous les membres sont présents.')
-    
+
     @app_commands.command(description="Glossaire CYBER.")
     @app_commands.choices(option=[
         app_commands.Choice(name="view", value="1"),
@@ -76,17 +76,30 @@ class Common(commands.Cog):
     ])
     @app_commands.checks.has_any_role(1289241716985040960, 1289241666871627777)
     async def glossary(self, interaction: Interaction, option: app_commands.Choice[str], term: str = '', definition: str = ''):
-        glossary = self.bot.config.get('glossary')
-        if option.value == '1' and term in glossary:
-            await interaction.response.send_message(glossary[term])
+        glossary = self.bot.config.get('glossary', {})
+        term_lower = term.lower()
+
+        if option.value == '1':
+            for key in glossary:
+                if key.lower() == term_lower:
+                    await interaction.response.send_message(glossary[key])
+                    return
+            await interaction.response.send_message('Terme non trouvé.', ephemeral=True)
+
         elif option.value == '2' and term and definition:
             glossary[term] = definition
             self.bot.config.set('glossary', glossary)
             await interaction.response.send_message(f'{term} ajouté au glossaire.')
-        elif option.value == '3' and term in glossary:
-            del glossary[term]
-            self.bot.config.set('glossary', glossary)
-            await interaction.response.send_message(f'{term} retiré du glossaire.')
+
+        elif option.value == '3':
+            for key in glossary:
+                if key.lower() == term_lower:
+                    del glossary[key]
+                    self.bot.config.set('glossary', glossary)
+                    await interaction.response.send_message(f'{term} retiré du glossaire.')
+                    return
+            await interaction.response.send_message('Terme non trouvé.', ephemeral=True)
+
         else:
             await interaction.response.send_message('Paramètres invalides.', ephemeral=True)
 
