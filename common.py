@@ -77,13 +77,13 @@ class Common(commands.Cog):
     @app_commands.checks.has_any_role(1289241716985040960, 1289241666871627777)
     async def glossary(self, interaction: Interaction, option: app_commands.Choice[str], term: str = '', definition: str = ''):
         glossary = self.bot.config.get('glossary')
-        if option.value == 1 and term in glossary:
+        if option.value == '1' and term in glossary:
             await interaction.response.send_message(glossary[term])
-        elif option.value == 2 and term and definition:
+        elif option.value == '2' and term and definition:
             glossary[term] = definition
             self.bot.config.set('glossary', glossary)
             await interaction.response.send_message(f'{term} ajouté au glossaire.')
-        elif option.value == 3 and term in glossary:
+        elif option.value == '3' and term in glossary:
             del glossary[term]
             self.bot.config.set('glossary', glossary)
             await interaction.response.send_message(f'{term} retiré du glossaire.')
