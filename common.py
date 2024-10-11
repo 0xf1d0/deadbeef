@@ -67,6 +67,21 @@ class Common(commands.Cog):
             await ctx.response.send_message(f'**{len(missing_members)}** Personnes manquantes:\n' + ', '.join(missing_members))
         else:
             await ctx.response.send_message('Tous les membres sont présents.')
+    
+    @app_commands.command(description="Glossaire CYBER.")
+    @app_commands.choices(option=[
+        app_commands.Choice(name="term", value="1"),
+        app_commands.Choice(name="add", value="2")
+    ])
+    async def glossary(self, interaction: Interaction, option: app_commands.Choice[str], term: str = '', definition: str = ''):
+        glossary = self.bot.config.get('glossary')
+        if option == 1 and term in glossary:
+            await interaction.response.send_message(glossary[term])
+        elif option == 2 and term and definition:
+            glossary[term] = definition
+            self.bot.config.set('glossary', glossary)
+            await interaction.response.send_message(f'{term} ajouté au glossaire.')
+
 
     @commands.Cog.listener()
     async def on_ready(self):
