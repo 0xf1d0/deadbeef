@@ -70,7 +70,7 @@ class Common(commands.Cog):
     
     @app_commands.command(description="Glossaire CYBER.")
     @app_commands.choices(option=[
-        app_commands.Choice(name="term", value="1"),
+        app_commands.Choice(name="view", value="1"),
         app_commands.Choice(name="add", value="2"),
         app_commands.Choice(name="remove", value="3")
     ])
