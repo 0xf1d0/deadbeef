@@ -73,6 +73,7 @@ class Common(commands.Cog):
         app_commands.Choice(name="term", value="1"),
         app_commands.Choice(name="add", value="2")
     ])
+    @app_commands.checks.has_any_role(1289241716985040960, 1289241666871627777)
     async def glossary(self, interaction: Interaction, option: app_commands.Choice[str], term: str = '', definition: str = ''):
         glossary = self.bot.config.get('glossary')
         if option == 1 and term in glossary:
