@@ -52,16 +52,16 @@ class Reminder(commands.Cog):
                 if msg:
                     for embed in msg.embeds:
                         if embed.title == course.name.upper():
-                            embed.add_field(name=f'__{event}__', value=('``' + description + "``\n\n" if description else "") + f'Echéance: {reminder_date}R>' + ("\n\n``" + modality + '``' if modality else ""), inline=False)
+                            embed.add_field(name=f'__{event}__', value=(description + "\n\n" if description else "") + f'Echéance: {reminder_date}R>' + ("\n\n``" + modality + '``' if modality else ""), inline=False)
                             await msg.edit(embeds=msg.embeds)
                             break
                     else:
                         embed = Embed(title=course.name.upper())
-                        embed.add_field(name=f'__{event}__', value=('``' + description + "``\n\n" if description else "") + f'Echéance: {reminder_date}R>' + ("\n\n``" + modality + '``' if modality else ""), inline=False)
+                        embed.add_field(name=f'__{event}__', value=(description + "``\n\n" if description else "") + f'Echéance: {reminder_date}R>' + ("\n\n``" + modality + '``' if modality else ""), inline=False)
                         await msg.edit(embeds=msg.embeds + [embed])
                 else:
                     embed = Embed(title=course.name.upper())
-                    embed.add_field(name=f'__{event}__', value=('``' + description + "``\n\n" if description else "") + f'Echéance: {reminder_date}R>' + ("\n\n``" + modality + '``' if modality else ""), inline=False)
+                    embed.add_field(name=f'__{event}__', value=(description + "``\n\n" if description else "") + f'Echéance: {reminder_date}R>' + ("\n\n``" + modality + '``' if modality else ""), inline=False)
                     msg = await reminders_channel.send(embeds=[embed])
                     self.bot.config.set('reminders_message_id', msg.id)
 
@@ -87,7 +87,7 @@ class Reminder(commands.Cog):
                         if embed.title == course.name.upper():
                             for index, field in enumerate(embed.fields):
                                 if field.name == f'__{event}__':
-                                    embed.set_field_at(index, name=f'__{event}__', value=('``' + description + "``\n\n" if description else "") + f'Echéance: {reminder_date}R>' + ("\n\n``" + modality + '``' if modality else ""), inline=False)
+                                    embed.set_field_at(index, name=f'__{event}__', value=(description + "``\n\n" if description else "") + f'Echéance: {reminder_date}R>' + ("\n\n``" + modality + '``' if modality else ""), inline=False)
                                     await msg.edit(embeds=msg.embeds)
                                     break
                             else:
