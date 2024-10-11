@@ -86,7 +86,7 @@ class Reminder(commands.Cog):
                     for embed in msg.embeds:
                         if embed.title == course.name.upper():
                             for index, field in enumerate(embed.fields):
-                                if field.name == event:
+                                if field.name == f'__{event}__':
                                     embed.set_field_at(index, name=f'__{event}__', value=('``' + description + "``\n\n" if description else "") + f'Echéance: {reminder_date}R>' + ("\n\n``" + modality + '``' if modality else ""), inline=False)
                                     await msg.edit(embeds=msg.embeds)
                                     break
@@ -119,7 +119,7 @@ class Reminder(commands.Cog):
                     for embed in msg.embeds:
                         if embed.title == course.name.upper():
                             for field in embed.fields:
-                                if field.name == event:
+                                if field.name == f'__{event}__':
                                     embed.remove_field(embed.fields.index(field))
                                     if not embed.fields:
                                         msg.embeds.remove(embed)
