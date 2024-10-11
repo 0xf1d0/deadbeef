@@ -71,7 +71,8 @@ class Common(commands.Cog):
     @app_commands.command(description="Glossaire CYBER.")
     @app_commands.choices(option=[
         app_commands.Choice(name="term", value="1"),
-        app_commands.Choice(name="add", value="2")
+        app_commands.Choice(name="add", value="2"),
+        app_commands.Choice(name="remove", value="3")
     ])
     @app_commands.checks.has_any_role(1289241716985040960, 1289241666871627777)
     async def glossary(self, interaction: Interaction, option: app_commands.Choice[str], term: str = '', definition: str = ''):
@@ -82,6 +83,10 @@ class Common(commands.Cog):
             glossary[term] = definition
             self.bot.config.set('glossary', glossary)
             await interaction.response.send_message(f'{term} ajouté au glossaire.')
+        elif option == 3 and term in glossary:
+            del glossary[term]
+            self.bot.config.set('glossary', glossary)
+            await interaction.response.send_message(f'{term} retiré du glossaire.')
 
 
     @commands.Cog.listener()
