@@ -139,7 +139,7 @@ class Tools(commands.Cog):
             else:
                 await interaction.response.send_message("Aucun message de tool trouvé.", ephemeral=True)
 
-        msg.embeds[0].set_footer(text=f"Last update by {interaction.user.mention} at {interaction.created_at}", icon_url=interaction.user.avatar.url)
+        msg.embeds[0].set_footer(text=f"Last update by {interaction.user.mention}", icon_url=interaction.user.avatar.url)
 
 
 async def setup(bot: commands.Bot):
