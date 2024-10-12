@@ -79,11 +79,14 @@ class Tools(commands.Cog):
             if msg:
                 for field in msg.embeds[0].fields:
                     if field.name == f'__{category.upper()}__':
+                        new_value = ""
                         for tool_field in field.value.split('\n'):
                             if tool_field.startswith(f"- **{tool}**"):
-                                field.value = field.value.replace(tool_field, f"- **{tool}**{': ' + description if description else ''}")
-                                await msg.edit(embeds=msg.embeds)
-                                break
+                                new_value += f"- **{tool}**{': ' + description if description else ''}\n"
+                            else:
+                                new_value += tool_field + "\n"
+                        field.value = new_value.strip()
+                        await msg.edit(embeds=msg.embeds)
                         break
                 else:
                     await interaction.response.send_message("Catégorie non trouvée.", ephemeral=True)
@@ -110,7 +113,7 @@ class Tools(commands.Cog):
                         new_value = "\n".join(
                             tool_field for tool_field in field.value.split('\n') if not tool_field.startswith(f"- **{tool}**")
                         )
-                        field.value = new_value
+                        field.value = new_value.strip()
                         await msg.edit(embeds=msg.embeds)
                         break
                 else:
