@@ -46,11 +46,19 @@ class Common(commands.Cog):
             await ctx.user.add_roles(role)
             await ctx.response.send_message('Rôle de joueur attribué.', ephemeral=True)
 
+    @app_commands.command(description="Affiche le lien d'invitation du serveur.")
+    async def invite(self, ctx: Interaction):
+        embed = Embed(title='Rejoignez-nous !', description='Partagez ce Code QR pour rejoindre le serveur Discord du Master Cybersécurité de Paris Cité.', color=0x8B1538)
+        file = File("assets/qrcode.png", filename="invite.png")
+        embed.set_thumbnail(url='attachment://invite.png')
+        embed.set_footer(text=f'Master Cybersécurité - Université Paris Cité - {len([member for member in ctx.guild.members if not member.bot])} membres', icon_url=ctx.guild.icon.url)
+        await ctx.response.send_message(file=file, embed=embed)
+
     @app_commands.command(description="Affiche les informations sur le bot.")
     async def about(self, ctx: Interaction):
         embed = Embed(title='À propos de moi', description='Je suis un bot Discord créé par [Vincent Cohadon](https://fr.linkedin.com/in/vincent-cohadon) pour le Master Cybersécurité de Paris Cité.')
         file = File("assets/f1d0.png", filename="f1d0.png")
-        embed.set_image(url='attachment://f1d0.png')
+        embed.set_thumbnail(url='attachment://f1d0.png')
         await ctx.response.send_message(file=file, embed=embed)
     
     @app_commands.command(description="Liste les membres manquants.")
