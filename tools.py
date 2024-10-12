@@ -35,7 +35,7 @@ class Tools(commands.Cog):
             except NotFound:
                 pass
 
-        if option.value == "1":  # Add tool
+        if option.value == "1":
             store = {
                 "category": category,
                 "fields": [
@@ -57,7 +57,7 @@ class Tools(commands.Cog):
                     msg.embeds[0].add_field(name=f'__{category.upper()}__', value=f"- **{tool}**{': ' + description if description else ''}", inline=False)
                     await msg.edit(embeds=msg.embeds)
             else:
-                embed = Embed(title='Cyber Tools')
+                embed = Embed(title='Cyber Tools', description='This embed contains a list of many hacking tools and websites to learn ethical hacking. The goal is to sumup in one place all the cybersecurity stuff !')
                 embed.add_field(name=f'__{category.upper()}__', value=f"- **{tool}**{': ' + description if description else ''}", inline=False)
                 msg = await tools_channel.send(embeds=[embed])
                 self.bot.config.set('tools_message_id', msg.id)
@@ -76,7 +76,7 @@ class Tools(commands.Cog):
 
             await interaction.response.send_message(f"Outil {tool} créé dans la catégorie {category}", ephemeral=True)
 
-        elif option.value == "2":  # Edit tool
+        elif option.value == "2":
             if msg:
                 for index, field in enumerate(msg.embeds[0].fields):
                     if field.name == f'__{category.upper()}__':
@@ -108,7 +108,7 @@ class Tools(commands.Cog):
             else:
                 await interaction.response.send_message("Aucun message de tool trouvé.", ephemeral=True)
 
-        elif option.value == "3":  # Remove tool
+        elif option.value == "3":
             if msg:
                 for index, field in enumerate(msg.embeds[0].fields):
                     if field.name == f'__{category.upper()}__':
@@ -138,6 +138,8 @@ class Tools(commands.Cog):
                 await interaction.response.send_message(f"Outil {tool} dans la catégorie {category} supprimé.", ephemeral=True)
             else:
                 await interaction.response.send_message("Aucun message de tool trouvé.", ephemeral=True)
+
+        msg.embeds[0].set_footer(text=f"Last update by {interaction.user.mention}", icon_url=interaction.user.avatar.url, ts=interaction.created_at)
 
 
 async def setup(bot: commands.Bot):
