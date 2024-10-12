@@ -48,9 +48,9 @@ class Common(commands.Cog):
 
     @app_commands.command(description="Affiche le lien d'invitation du serveur.")
     async def invite(self, ctx: Interaction):
-        embed = Embed(title='Rejoignez-nous !', description='Partagez ce Code QR pour rejoindre le serveur Discord du Master Cybersécurité de Paris Cité.', color=0x8B1538)
+        embed = Embed(title='Invitation', description='Scannez ce QR Code et rejoignez le serveur discord du Master Cybersécurité de Paris Cité.\n\nTous profils acceptés, curieux, intéressés ou experts en cybersécurité ! Bot multifonction intégré afin de dynamiser au maximum le serveur.', color=0x8B1538)
         file = File("assets/qrcode.png", filename="invite.png")
-        embed.set_thumbnail(url='attachment://invite.png')
+        embed.set_image(url='attachment://invite.png')
         embed.set_footer(text=f'Master Cybersécurité - Université Paris Cité - {len([member for member in ctx.guild.members if not member.bot])} membres', icon_url=ctx.guild.icon.url)
         await ctx.response.send_message(file=file, embed=embed)
 
