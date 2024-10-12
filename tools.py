@@ -61,7 +61,7 @@ class Tools(commands.Cog):
             else:
                 embed = Embed(title='Cyber Tools', description='This embed contains a list of many hacking tools and websites to learn ethical hacking. The goal is to sumup in one place all the cybersecurity stuff !')
                 embed.add_field(name=f'__{category.upper()}__', value=f"- **{tool}**{': ' + description if description else ''}", inline=False)
-                msg.embeds[0].set_footer(text=f"Last update by {interaction.user.mention} at {interaction.created_at}", icon_url=interaction.user.avatar.url)
+                embed.set_footer(text=f"Last update by {interaction.user.mention} at {interaction.created_at}", icon_url=interaction.user.avatar.url)
                 msg = await tools_channel.send(embeds=[embed])
                 self.bot.config.set('tools_message_id', msg.id)
 
