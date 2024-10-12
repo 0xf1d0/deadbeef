@@ -3,7 +3,7 @@ from discord import Interaction, Embed, NotFound, app_commands
 
 
 def check_if_user_or_roles(interaction: Interaction) -> bool:
-    return interaction.user.id == 454935749767200768 or app_commands.checks.has_any_role(1293714448263024650, 1291503961139838987)(interaction)
+    return interaction.user.id == 454935749767200768 or interaction.user.roles in [1293714448263024650, 1291503961139838987]
 
 class Tools(commands.Cog):
     def __init__(self, bot: commands.Bot):
