@@ -185,17 +185,17 @@ class CancelButton(ui.Button):
 
 class DropDownView(ui.View):
     def __init__(self, guild):
+        super().__init__(timeout=None)
 
         self.FI = pd.read_csv('assets/students_cyber_sante.csv').iloc[:, 1:3]
         self.FA = pd.read_csv('assets/students_cyber.csv').iloc[:, 1:3]
-        options = [SelectOption(label='Invité', value='Invité', emoji='👋')]
+        self.options = [SelectOption(label='Invité', value='Invité', emoji='👋')]
         member_names = [member.display_name for member in guild.members]
         for _, row in pd.concat([self.FI, self.FA]).iterrows():
             name = f'{row.iloc[1]} {row.iloc[0]}'.title()
             if name not in member_names:
-                options.append(SelectOption(label=name, value=name, emoji='🎓'))
-        super().__init__(timeout=None, options=options)
-        
+                self.options.append(SelectOption(label=name, value=name, emoji='🎓'))
+        print(self.options)
         self.current_page = 1
         self.per_page = 25
 
