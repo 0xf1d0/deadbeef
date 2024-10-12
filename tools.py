@@ -78,7 +78,7 @@ class Tools(commands.Cog):
 
         elif option.value == "2":  # Edit tool
             if msg:
-                for field in msg.embeds[0].fields:
+                for index, field in enumerate(msg.embeds[0].fields):
                     if field.name == f'__{category.upper()}__':
                         new_value = ""
                         for tool_field in field.value.split('\n'):
@@ -87,6 +87,7 @@ class Tools(commands.Cog):
                             else:
                                 new_value += tool_field + "\n"
                         field.value = new_value.strip()
+                        msg.embeds[0].set_field_at(index, name=field.name, value=field.value)
                         await msg.edit(embeds=msg.embeds)
                         break
                 else:
@@ -109,13 +110,14 @@ class Tools(commands.Cog):
 
         elif option.value == "3":  # Remove tool
             if msg:
-                for field in msg.embeds[0].fields:
+                for index, field in enumerate(msg.embeds[0].fields):
                     if field.name == f'__{category.upper()}__':
                         new_value = "\n".join(
                             tool_field for tool_field in field.value.split('\n') if not tool_field.startswith(f"- **{tool}**")
                         ).strip()
                         if new_value:
                             field.value = new_value
+                            msg.embeds[0].set_field_at(index, name=field.name, value=field.value)
                         else:
                             msg.embeds[0].remove_field(msg.embeds[0].fields.index(field))
                         await msg.edit(embeds=msg.embeds)
