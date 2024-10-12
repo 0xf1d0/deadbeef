@@ -195,7 +195,7 @@ class DropDownView(ui.View):
             name = f'{row.iloc[1]} {row.iloc[0]}'.title()
             if name not in member_names:
                 self.options.append(SelectOption(label=name, value=name, emoji='🎓'))
-        print(self.options)
+        print(self.options[22])
         self.current_page = 1
         self.per_page = 25
 
