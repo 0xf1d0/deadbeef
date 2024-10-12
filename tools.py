@@ -1,5 +1,5 @@
-from discord.ext import commands, app_commands
-from discord import Interaction, Embed, NotFound, TextChannel
+from discord.ext import commands
+from discord import Interaction, Embed, NotFound, app_commands
 
 
 def check_if_user_or_roles(interaction: Interaction) -> bool:
