@@ -47,9 +47,10 @@ class Tools(commands.Cog):
             }
 
             if msg:
-                for field in msg.embeds[0].fields:
+                for index, field in enumerate(msg.embeds[0].fields):
                     if field.name == f'__{category.upper()}__':
                         field.value += f"\n- **{tool}**{': ' + description if description else ''}"
+                        msg.embeds[0].set_field_at(index, name=field.name, value=field.value)
                         await msg.edit(embeds=msg.embeds)
                         break
                 else:
