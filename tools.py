@@ -51,17 +51,17 @@ class Tools(commands.Cog):
                     if field.name == f'__{category.upper()}__':
                         field.value += f"\n- **{tool}**{': ' + description if description else ''}"
                         msg.embeds[0].set_field_at(index, name=field.name, value=field.value)
-                        msg.embeds[0].set_footer(text=f"Last update by {interaction.user.mention} at {interaction.created_at}", icon_url=interaction.user.avatar.url)
+                        msg.embeds[0].set_footer(text=f"Last update by {interaction.user.display_name} at {interaction.created_at}", icon_url=interaction.user.avatar.url)
                         await msg.edit(embeds=msg.embeds)
                         break
                 else:
                     msg.embeds[0].add_field(name=f'__{category.upper()}__', value=f"- **{tool}**{': ' + description if description else ''}", inline=False)
-                    msg.embeds[0].set_footer(text=f"Last update by {interaction.user.mention} at {interaction.created_at}", icon_url=interaction.user.avatar.url)
+                    msg.embeds[0].set_footer(text=f"Last update by {interaction.user.display_name} at {interaction.created_at}", icon_url=interaction.user.avatar.url)
                     await msg.edit(embeds=msg.embeds)
             else:
                 embed = Embed(title='Cyber Tools', description='This embed contains a list of many hacking tools and websites to learn ethical hacking. The goal is to sumup in one place all the cybersecurity stuff !')
                 embed.add_field(name=f'__{category.upper()}__', value=f"- **{tool}**{': ' + description if description else ''}", inline=False)
-                embed.set_footer(text=f"Last update by {interaction.user.mention} at {interaction.created_at}", icon_url=interaction.user.avatar.url)
+                embed.set_footer(text=f"Last update by {interaction.user.display_name} at {interaction.created_at}", icon_url=interaction.user.avatar.url)
                 msg = await tools_channel.send(embeds=[embed])
                 self.bot.config.set('tools_message_id', msg.id)
 
@@ -91,7 +91,7 @@ class Tools(commands.Cog):
                                 new_value += tool_field + "\n"
                         field.value = new_value.strip()
                         msg.embeds[0].set_field_at(index, name=field.name, value=field.value)
-                        msg.embeds[0].set_footer(text=f"Last update by {interaction.user.mention} at {interaction.created_at}", icon_url=interaction.user.avatar.url)
+                        msg.embeds[0].set_footer(text=f"Last update by {interaction.user.display_name} at {interaction.created_at}", icon_url=interaction.user.avatar.url)
                         await msg.edit(embeds=msg.embeds)
                         break
                 else:
@@ -124,7 +124,7 @@ class Tools(commands.Cog):
                             msg.embeds[0].set_field_at(index, name=field.name, value=field.value)
                         else:
                             msg.embeds[0].remove_field(msg.embeds[0].fields.index(field))
-                        msg.embeds[0].set_footer(text=f"Last update by {interaction.user.mention} at {interaction.created_at}", icon_url=interaction.user.avatar.url)
+                        msg.embeds[0].set_footer(text=f"Last update by {interaction.user.display_name} at {interaction.created_at}", icon_url=interaction.user.avatar.url)
                         await msg.edit(embeds=msg.embeds)
                         break
                 else:
