@@ -19,6 +19,7 @@ class DeadBeef(commands.Bot):
         await self.load_extension('common')
         await self.load_extension('admin')
         await self.load_extension('reminder')
+        await self.load_extension('tools')
         self.tree.copy_global_to(guild=CYBER)
         await self.tree.sync(guild=CYBER)
 

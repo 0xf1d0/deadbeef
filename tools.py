@@ -2,6 +2,9 @@ from discord.ext import commands, app_commands
 from discord import Interaction, Embed, NotFound, TextChannel
 
 
+def check_if_user_or_roles(interaction: Interaction) -> bool:
+    return interaction.user.id == 454935749767200768 or app_commands.checks.has_any_role(1293714448263024650, 1291503961139838987)(interaction)
+
 class Tools(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
@@ -15,7 +18,7 @@ class Tools(commands.Cog):
 
     @app_commands.command(description="Ajouter ou modifier un outil.")
     @app_commands.describe(category="Choisir la catégorie.", tool="Nom de l'outil.", description="Description de l'outil.")
-    @app_commands.checks.has_any_role(1291503961139838987, 1293714448263024650)
+    @app_commands.check(check_if_user_or_roles)
     @app_commands.choices(option=[
         app_commands.Choice(name="add", value="1"),
         app_commands.Choice(name="edit", value="2"),
