@@ -112,8 +112,11 @@ class Tools(commands.Cog):
                     if field.name == f'__{category.upper()}__':
                         new_value = "\n".join(
                             tool_field for tool_field in field.value.split('\n') if not tool_field.startswith(f"- **{tool}**")
-                        )
-                        field.value = new_value.strip()
+                        ).strip()
+                        if new_value:
+                            field.value = new_value
+                        else:
+                            msg.embeds[0].remove_field(msg.embeds[0].fields.index(field))
                         await msg.edit(embeds=msg.embeds)
                         break
                 else:
