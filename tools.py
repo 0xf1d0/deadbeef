@@ -16,7 +16,7 @@ class Tools(commands.Cog):
     def save_tools(self):
         self.bot.config.set('tools', self.tools)
 
-    @app_commands.command(description="Ajouter ou modifier un outil.")
+    @app_commands.command(description="Ajouter, modifier ou supprimer un outil.")
     @app_commands.describe(category="Choisir la catégorie.", tool="Nom de l'outil.", description="Description de l'outil.")
     @app_commands.check(check_if_user_or_roles)
     @app_commands.choices(option=[
