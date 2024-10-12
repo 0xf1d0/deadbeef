@@ -94,13 +94,14 @@ class Tools(commands.Cog):
                 for existing_tool in self.tools:
                     if existing_tool['category'].lower() == category.lower():
                         if 0 <= index - 1 < len(existing_tool['fields']):
-                            existing_tool['fields'][index - 1]['tool'] = tool
-                            existing_tool['fields'][index - 1]['description'] = description if description else ""
+                            if tool is not None:
+                                existing_tool['fields'][index - 1]['tool'] = tool
+                            existing_tool['fields'][index - 1]['description'] = description if description else existing_tool['fields'][index - 1]['description']
                             self.update_embed(msg.embeds[0], category, existing_tool['fields'])
                             msg.embeds[0].set_footer(text=f"Last update by {interaction.user.display_name} at {formatted_time}", icon_url=interaction.user.avatar.url)
                             await msg.edit(embeds=msg.embeds)
                             self.save_tools()
-                            await interaction.response.send_message(f"Outil {tool} dans la catégorie {category} modifié.", ephemeral=True)
+                            await interaction.response.send_message(f"Outil {existing_tool['fields'][index - 1]['tool']} dans la catégorie {category} modifié.", ephemeral=True)
                             return
                 await interaction.response.send_message("Index ou catégorie non trouvée.", ephemeral=True)
             else:
