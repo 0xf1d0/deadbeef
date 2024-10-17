@@ -55,7 +55,7 @@ class Dropdown(ui.Select):
         value = ' '.join([role.mention for role in roles])
         self.embed.add_field(name='Rôles concernés', value=value)
         if self.mentions:
-            value += ' ' + ' '.join(self.mentions)
+            value += ' ' + ' '.join([match.group(0) for match in self.mentions])
         await interaction.response.send_message(embed=self.embed, view=ConfirmView(self.embed, value), ephemeral=True)
 
 
