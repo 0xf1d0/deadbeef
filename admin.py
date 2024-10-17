@@ -1,6 +1,7 @@
 from discord.ext import commands
 from discord import app_commands, Interaction, ui, ButtonStyle, Embed, SelectOption
 import functools
+import re
 
 
 def restrict_channel(channel_id):
@@ -24,7 +25,7 @@ class Admin(commands.Cog):
     async def announce(self, ctx: Interaction, title: str, message: str):
         embed = Embed(title=title, description=message.replace('\\n', '\n'), color=0x8B1538)
         embed.set_footer(text=f"Annoncé par {ctx.user.display_name}", icon_url=ctx.user.avatar.url)
-        await ctx.response.send_message('Quels rôles voulez-vous mentionner ?', view=DropdownView(self.bot.guilds[0], embed), ephemeral=True)
+        await ctx.response.send_message('Quels rôles voulez-vous mentionner ?', view=DropdownView(ctx.guild, embed, re.search(r'<@(\d{17}|\d{18})>', message)), ephemeral=True)
 
     @app_commands.command(description="Efface un nombre de messages.")
     @commands.has_permissions(manage_messages=True)
@@ -34,20 +35,23 @@ class Admin(commands.Cog):
 
 
 class DropdownView(ui.View):
-    def __init__(self, guild, embed):
+    def __init__(self, guild, embed, mention):
         super().__init__()
-        self.add_item(Dropdown([SelectOption(label=role.name, value=role.id) for role in guild.roles if role.name not in ['@everyone', 'DeadBeef']], len(guild.roles) - 2, embed))
-    
+        self.add_item(Dropdown([SelectOption(label=role.name, value=role.id) for role in guild.roles if role.name not in ['@everyone', 'DeadBeef']], len(guild.roles) - 2, embed, mention))
+
 
 class Dropdown(ui.Select):
-    def __init__(self, options, max_values, embed):
+    def __init__(self, options, max_values, embed, mention):
         super().__init__(placeholder='Choisissez un rôle', options=options, min_values=1, max_values=max_values)
         self.embed = embed
+        self.mention = mention
     
     async def callback(self, interaction: Interaction):
         roles = [interaction.guild.get_role(int(value)) for value in self.values]
         value = ' '.join([role.mention for role in roles])
         self.embed.add_field(name='Rôles concernés', value=value)
+        if self.mention:
+            value += self.mention.group(0)
         await interaction.response.send_message(embed=self.embed, view=ConfirmView(self.embed, value), ephemeral=True)
 
 
