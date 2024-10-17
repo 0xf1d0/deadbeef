@@ -65,8 +65,8 @@ class Common(commands.Cog):
     async def missing_members_list(self, ctx: Interaction):
         missing_members = []
         member_names = [member.display_name for member in ctx.guild.members]
-        FI = pd.read_csv('assets/students_cyber_sante.csv').iloc[:, 1:3]
-        FA = pd.read_csv('assets/students_cyber.csv').iloc[:, 1:3]
+        FI = pd.read_csv('assets/cyber_sante.csv').iloc[:, 1:3]
+        FA = pd.read_csv('assets/cyber.csv').iloc[:, 1:3]
         for _, row in pd.concat([FI, FA]).iterrows():
             name = f'{row.iloc[1]} {row.iloc[0]}'.title()
             if name not in member_names:
@@ -187,8 +187,8 @@ class DropDownView(ui.View):
     def __init__(self, guild):
         super().__init__(timeout=None)
 
-        self.FI = pd.read_csv('assets/students_cyber_sante.csv').iloc[:, 1:3]
-        self.FA = pd.read_csv('assets/students_cyber.csv').iloc[:, 1:3]
+        self.FI = pd.read_csv('assets/cyber_sante.csv').iloc[:, 1:3]
+        self.FA = pd.read_csv('assets/cyber.csv').iloc[:, 1:3]
         self.options = [SelectOption(label='Invité', value='Invité', emoji='👋')]
         member_names = [member.display_name for member in guild.members]
         for _, row in pd.concat([self.FI, self.FA]).iterrows():
