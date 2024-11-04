@@ -144,7 +144,7 @@ class Common(commands.Cog):
             .add_field(name='Name', value=member.name)\
             .add_field(name='Display Name', value=member.display_name)\
             .add_field(name='Nick', value=member.nick)\
-            .add_field(name='Roles', value=member.roles)
+            .add_field(name='Roles', value='\n'.join([f'{i+1}. Id: {role.id} | Nom: {role.name}' for i, role in enumerate(member.roles)]))
         await ctx.response.send_message(embed=embed, ephemeral=True)
 
 
