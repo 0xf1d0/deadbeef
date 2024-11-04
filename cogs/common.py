@@ -124,7 +124,12 @@ class Common(commands.Cog):
     @commands.Cog.listener()
     async def on_member_remove(self, member: Member):
         channel = member.guild.get_channel(1292059079287504930)
-        await channel.send(f'{member.display_name} ({member.mention} ; ({member.name}) ; ({member.nick}) ; ({member.roles} ; ({member.__str__}) a quitté le serveur.')
+        embed = Embed(title=f'{member} left')\
+            .add_field(name='Name', value=member.name)\
+            .add_field(name='Display Name', value=member.display_name)\
+            .add_field(name='Nick', value=member.nick)\
+            .add_field(name='Roles', value=member.roles)
+        await channel.send(embed=embed)
         guild = member.guild
         welcome = guild.get_channel(1291494038427537559)
         message_id = self.bot.config.get('welcome_message_id')
@@ -135,7 +140,12 @@ class Common(commands.Cog):
     
     @app_commands.command(description="Test")
     async def test(self, ctx: Interaction, member: Member):
-        await ctx.response.send_message(member.__str__(), ephemeral=True)
+        embed = Embed(title=f'{member} left')\
+            .add_field(name='Name', value=member.name)\
+            .add_field(name='Display Name', value=member.display_name)\
+            .add_field(name='Nick', value=member.nick)\
+            .add_field(name='Roles', value=member.roles)
+        await ctx.response.send_message(embed=embed, ephemeral=True)
 
 
 
