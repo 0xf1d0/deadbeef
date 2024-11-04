@@ -17,7 +17,7 @@ class DeadBeef(commands.Bot):
 
     async def setup_hook(self) -> None:
         for file in os.listdir("cogs"):
-            if not re.fullmatch(r".*\.py", file):
+            if not re.fullmatch(r"[a-z]*\.py", file):
                 continue  # Skip non-python files
 
             name = file[:-3]
