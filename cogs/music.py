@@ -5,7 +5,7 @@ from discord.ext import commands
 from discord.app_commands.errors import CommandInvokeError
 
 from utils import YTDLSource
-from admin import restrict_channel
+from cogs.admin import restrict_channel
 
 
 def ensure_voice(f):
