@@ -135,7 +135,7 @@ class Common(commands.Cog):
     
     @app_commands.command(description="Test")
     async def test(self, ctx: Interaction, member: Member):
-        await ctx.response.send_message(member, ephemeral=True)
+        await ctx.response.send_message(member.__str__(), ephemeral=True)
 
 
 
