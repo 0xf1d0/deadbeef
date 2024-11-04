@@ -1,7 +1,6 @@
 from discord.ext import commands
 from discord import app_commands, Interaction, ui, ButtonStyle, Embed, SelectOption
-import functools
-import re
+import functools, re
 
 
 def restrict_channel(channel_id):
