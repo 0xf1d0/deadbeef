@@ -1,6 +1,5 @@
 from discord.ext import commands
 from discord import Interaction, Embed, NotFound, app_commands
-from datetime import datetime
 
 
 def check_if_user_or_roles(interaction: Interaction) -> bool:

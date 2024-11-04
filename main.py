@@ -1,5 +1,6 @@
 from discord.ext import commands
 from discord import Intents, Object
+import os
 
 from utils import ConfigManager
 
@@ -15,11 +16,12 @@ class DeadBeef(commands.Bot):
         super().__init__(command_prefix='!', intents=intents)
 
     async def setup_hook(self) -> None:
-        await self.load_extension('music')
-        await self.load_extension('common')
-        await self.load_extension('admin')
-        await self.load_extension('reminder')
-        await self.load_extension('tools')
+        for file in os.listdir("cogs"):
+            if not file.endswith(".py"):
+                continue  # Skip non-python files
+
+            name = file[:-3]
+            await self.load_extension(f"cogs.{name}")
         self.tree.copy_global_to(guild=CYBER)
         await self.tree.sync(guild=CYBER)
 
