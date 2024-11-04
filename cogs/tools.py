@@ -130,7 +130,7 @@ class Tools(commands.Cog):
 
     @tool.error
     async def calendar_error(self, interaction: Interaction, error: Exception):
-        if isinstance(error, commands.CheckFailure):
+        if isinstance(error, app_commands.CheckFailure):
             await interaction.response.send_message("Vous n'avez pas la permission d'utiliser cette commande.", ephemeral=True)
 
 
