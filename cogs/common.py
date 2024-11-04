@@ -111,7 +111,6 @@ class Common(commands.Cog):
         else:
             await interaction.response.send_message('Paramètres invalides.', ephemeral=True)
 
-
     @commands.Cog.listener()
     async def on_ready(self):
         guild = self.bot.guilds[0]
@@ -133,6 +132,11 @@ class Common(commands.Cog):
             msg = await welcome.send(self.bot.config.get('welcome_message'), view=DropDownView(guild))
             self.bot.config.set('welcome_message_id', msg.id)
         self.bot.add_view(DropDownView(guild), message_id=message_id)
+    
+    @app_commands.command(description="Test")
+    async def test(self, ctx: Interaction, member: Member):
+        await ctx.response.send_message(member, ephemeral=True)
+
 
 
 class DropDown(ui.Select):
