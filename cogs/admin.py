@@ -29,12 +29,22 @@ class Admin(commands.Cog):
             if match.group(1) not in matches:
                 matches.append(match)
         await ctx.response.send_message('Quels rôles voulez-vous mentionner ?', view=DropdownView(ctx.guild, embed, matches), ephemeral=True)
+    
+    @announce.error
+    async def announce_error(self, interaction: Interaction, error: Exception):
+        if isinstance(error, commands.CheckFailure):
+            await interaction.response.send_message("Vous n'avez pas la permission d'utiliser cette commande.", ephemeral=True)
 
     @app_commands.command(description="Efface un nombre de messages.")
     @commands.has_permissions(manage_messages=True)
     async def purge(self, ctx: Interaction, limit: int):
         await ctx.response.send_message(f'{limit} messages ont été effacés.', ephemeral=True)
         await ctx.channel.purge(limit=limit)
+
+    @purge.error
+    async def purge_error(self, interaction: Interaction, error: Exception):
+        if isinstance(error, commands.CheckFailure):
+            await interaction.response.send_message("Vous n'avez pas la permission d'utiliser cette commande.", ephemeral=True)
 
 
 class DropdownView(ui.View):

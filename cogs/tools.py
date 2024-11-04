@@ -128,6 +128,11 @@ class Tools(commands.Cog):
             else:
                 await interaction.response.send_message("Aucun message de tool trouvé ou index non fourni.", ephemeral=True)
 
+    @tool.error
+    async def calendar_error(self, interaction: Interaction, error: Exception):
+        if isinstance(error, commands.CheckFailure):
+            await interaction.response.send_message("Vous n'avez pas la permission d'utiliser cette commande.", ephemeral=True)
+
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Tools(bot))

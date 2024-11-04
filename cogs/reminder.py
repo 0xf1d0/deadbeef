@@ -154,6 +154,11 @@ class Reminder(commands.Cog):
         except ValueError:
             await interaction.response.send_message("Format invalide - JJ/MM/AAAA.", ephemeral=True)
 
+    @calendar.error
+    async def calendar_error(self, interaction: Interaction, error: Exception):
+        if isinstance(error, commands.CheckFailure):
+            await interaction.response.send_message("Vous n'avez pas la permission d'utiliser cette commande.", ephemeral=True)
+
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Reminder(bot))

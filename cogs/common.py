@@ -8,13 +8,6 @@ class Common(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    @commands.Cog.listener()
-    async def on_command_error(self, ctx: Interaction, error: Exception):
-        if isinstance(error, commands.CheckFailure):
-            await ctx.response.send_message("Vous n'avez pas la permission d'utiliser cette commande.", ephemeral=True)
-        else:
-            await ctx.response.send_message(f'Erreur: {error}', ephemeral=True)
-
     @app_commands.command(description="Affiche ou inscrit un profil LinkedIn.")
     @app_commands.describe(member='Le profil du membre à afficher', register='Inscrire un profil LinkedIn.')
     async def linkedin(self, ctx: Interaction, member: Member = None, register: str = ''):
