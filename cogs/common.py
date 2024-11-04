@@ -137,16 +137,6 @@ class Common(commands.Cog):
             msg = await welcome.send(self.bot.config.get('welcome_message'), view=DropDownView(guild))
             self.bot.config.set('welcome_message_id', msg.id)
         self.bot.add_view(DropDownView(guild), message_id=message_id)
-    
-    @app_commands.command(description="Test")
-    async def test(self, ctx: Interaction, member: Member):
-        embed = Embed(title=f'{member} left')\
-            .add_field(name='Name', value=member.name)\
-            .add_field(name='Display Name', value=member.display_name)\
-            .add_field(name='Nick', value=member.nick)\
-            .add_field(name='Roles', value='\n'.join([f"{i+1}. {role.mention if role.name != '@everyone' else role.name} - {role.id}" for i, role in enumerate(member.roles)]))
-        await ctx.response.send_message(embed=embed, ephemeral=True)
-
 
 
 class DropDown(ui.Select):
