@@ -1,13 +1,11 @@
-import functools
-import os
-import asyncio
+import functools, os, asyncio
 
 from discord import Interaction, app_commands
 from discord.ext import commands
 from discord.app_commands.errors import CommandInvokeError
 
-from utils import YTDLSource
-from admin import restrict_channel
+from ..utils import YTDLSource
+from .admin import restrict_channel
 
 
 def ensure_voice(f):
