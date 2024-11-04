@@ -32,7 +32,7 @@ class Admin(commands.Cog):
     
     @announce.error
     async def announce_error(self, interaction: Interaction, error: Exception):
-        if isinstance(error, commands.MissingPermissions):
+        if isinstance(error, commands.MissingAnyRole):
             await interaction.response.send_message("Vous n'avez pas la permission d'utiliser cette commande.", ephemeral=True)
 
     @app_commands.command(description="Efface un nombre de messages.")
