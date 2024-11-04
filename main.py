@@ -1,6 +1,6 @@
 from discord.ext import commands
 from discord import Intents, Object
-import os
+import os, re
 
 from utils import ConfigManager
 
@@ -17,7 +17,7 @@ class DeadBeef(commands.Bot):
 
     async def setup_hook(self) -> None:
         for file in os.listdir("cogs"):
-            if not file.endswith(".py"):
+            if not re.fullmatch(r".*\.py", file):
                 continue  # Skip non-python files
 
             name = file[:-3]
