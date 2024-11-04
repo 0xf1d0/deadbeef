@@ -36,7 +36,7 @@ class Admin(commands.Cog):
             await interaction.response.send_message("Vous n'avez pas la permission d'utiliser cette commande.", ephemeral=True)
 
     @app_commands.command(description="Efface un nombre de messages.")
-    @app_commands.has_permissions(manage_messages=True)
+    @app_commands.checks.has_permissions(manage_messages=True)
     async def purge(self, ctx: Interaction, limit: int):
         await ctx.response.send_message(f'{limit} messages ont été effacés.', ephemeral=True)
         await ctx.channel.purge(limit=limit)
