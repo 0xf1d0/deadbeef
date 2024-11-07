@@ -28,7 +28,7 @@ class Reminder(commands.Cog):
         try:
             if ' ' not in date:
                 date += ' 23:59'
-            reminder_date = f'<t:{int(datetime.strptime(date, "%d/%m/%Y %H:%M").timestamp())}:f>'
+            reminder_date = f'<t:{int(datetime.strptime(date, "%d/%m/%Y %H:%M").timestamp())}:'
             reminders_channel = interaction.guild.get_channel(1293319532361809986)
             reminders_message_id = self.bot.config.get('reminders_message_id')
             msg = None
