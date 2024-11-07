@@ -26,7 +26,7 @@ class Reminder(commands.Cog):
     ])
     async def calendar(self, interaction: Interaction, option: app_commands.Choice[str], course: TextChannel, date: str, event: str, description: str = None, modality: str = None):
         try:
-            reminder_date = f'<t:{int(datetime.strptime(date, "%d/%m/%Y").timestamp())}:'
+            reminder_date = f'<t:{int(datetime.strptime(date, "%d/%m/%Y %H:%M").timestamp())}:f>'
             reminders_channel = interaction.guild.get_channel(1293319532361809986)
             reminders_message_id = self.bot.config.get('reminders_message_id')
             msg = None
@@ -152,7 +152,7 @@ class Reminder(commands.Cog):
                     await interaction.response.send_message("Aucun message de rappel trouvé.", ephemeral=True)
 
         except ValueError:
-            await interaction.response.send_message("Format invalide - JJ/MM/AAAA.", ephemeral=True)
+            await interaction.response.send_message("Format invalide - JJ/MM/AAAA HH:II.", ephemeral=True)
 
     @calendar.error
     async def calendar_error(self, interaction: Interaction, error: Exception):
