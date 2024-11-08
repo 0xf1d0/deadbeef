@@ -32,9 +32,10 @@ class Reminder(commands.Cog):
             return []
 
         return [
-            app_commands.Choice(name=event['name'], value=event['name'])
-            for event in self.reminders
-            if current.lower() in event['name'].lower()
+            app_commands.Choice(name=field['name'], value=field['name'])
+            for reminder in self.reminders
+            for field in reminder['fields']
+            if current.lower() in field['name'].lower()
         ]
 
     @app_commands.command(description="Etablit un rappel pour un événement.")
