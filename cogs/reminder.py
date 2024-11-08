@@ -17,7 +17,7 @@ class Reminder(commands.Cog):
     def save_reminders(self):
         self.bot.config.set('reminders', self.reminders)
     
-    async def channel_autocomplete(self, interaction: Interaction, current: str) -> list[app_commands.Choice[str]]:
+    async def channel_autocomplete(self, _: Interaction, current: str) -> list[app_commands.Choice[str]]:
         category = self.bot.get_channel(1289244121004900487)
 
         return [
@@ -100,8 +100,8 @@ class Reminder(commands.Cog):
                     for embed in msg.embeds:
                         if embed.title == course.upper():
                             for index, field in enumerate(embed.fields):
-                                if field.name == f'__{event}__':
-                                    embed.set_field_at(index, name=f'__{event}__', value=(description + "\n\n" if description else "") + f'Echéance: {reminder_date}R>' + ("\n\n``" + modality + '``' if modality else ""), inline=False)
+                                if event in field.name:
+                                    embed.set_field_at(index, name=field.name, value=(description + "\n\n" if description else "") + f'Echéance: {reminder_date}R>' + ("\n\n``" + modality + '``' if modality else ""), inline=False)
                                     await msg.edit(embeds=msg.embeds)
                                     break
                             else:
@@ -133,7 +133,7 @@ class Reminder(commands.Cog):
                     for embed in msg.embeds:
                         if embed.title == course.upper():
                             for field in embed.fields:
-                                if field.name == f'__{event}__':
+                                if event in field.name:
                                     embed.remove_field(embed.fields.index(field))
                                     if not embed.fields:
                                         msg.embeds.remove(embed)
