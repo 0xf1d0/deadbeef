@@ -28,13 +28,13 @@ class Reminder(commands.Cog):
     
     async def event_autocomplete(self, interaction: Interaction, current: str) -> list[app_commands.Choice[str]]:
         option = interaction.namespace.option
-        if option not in ["2", "3"]:
+        course = interaction.namespace.course
+        if option not in ["2", "3"] and not course in self.reminders:
             return []
 
         return [
             app_commands.Choice(name=field['name'], value=field['name'])
-            for reminder in self.reminders
-            for field in reminder['fields']
+            for field in self.reminders[course]['fields']
             if current.lower() in field['name'].lower()
         ]
 
