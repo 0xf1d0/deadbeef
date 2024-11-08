@@ -27,8 +27,8 @@ class Reminder(commands.Cog):
         ]
     
     async def event_autocomplete(self, interaction: Interaction, current: str) -> list[app_commands.Choice[str]]:
-        option = interaction.namespace.get("option")
-        if not option or option.value not in ["2", "3"]:
+        option = interaction.namespace.option
+        if option.value not in ["2", "3"]:
             return []
 
         return [
