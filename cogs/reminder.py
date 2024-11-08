@@ -25,6 +25,17 @@ class Reminder(commands.Cog):
             for channel in category.text_channels
             if current.lower() in re.sub(r':.+?:', '', channel.name.lower())
         ]
+    
+    async def event_autocomplete(self, interaction: Interaction, current: str) -> list[app_commands.Choice[str]]:
+        option = interaction.namespace.get("option")
+        if not option or option.value not in ["2", "3"]:
+            return []
+
+        return [
+            app_commands.Choice(name=event['name'], value=event['name'])
+            for event in self.reminders
+            if current.lower() in event['name'].lower()
+        ]
 
     @app_commands.command(description="Etablit un rappel pour un événement.")
     @app_commands.describe(course="Choisir le cours.", date="Choisir la date de l'événement.", event="Nom de l'événement", modality="Modalité de l'événement")
@@ -35,6 +46,7 @@ class Reminder(commands.Cog):
         app_commands.Choice(name="remove", value="3")
     ])
     @app_commands.autocomplete(course=channel_autocomplete)
+    @app_commands.autocomplete(event=event_autocomplete)
     async def calendar(self, interaction: Interaction, option: app_commands.Choice[str], course: str, date: str, event: str, description: str = None, modality: str = None):
         try:
             if ' ' not in date:
