@@ -1,4 +1,4 @@
-import functools, os, asyncio
+import functools, os, asyncio, __main__
 
 from discord import Interaction, app_commands
 from discord.ext import commands
@@ -82,7 +82,7 @@ class Music(commands.Cog):
         if path:
             try:
                 await asyncio.sleep(1)
-                dirname = os.path.dirname(__file__)
+                dirname = os.path.dirname(__main__.__file__)
                 os.remove(os.path.join(dirname, path))
             except OSError as e:
                 print(f'Error deleting file: {e}')
