@@ -48,9 +48,10 @@ class Schedule(commands.Cog):
             if "Entreprise" in block[1][i] or "stage" in block[1][i]:
                 continue  # Ignore les jours en entreprise ou stage
             date = datetime.strptime(block[0][i], "%d/%m")
+            formatted_date = date.strftime("%A %d %B")
             morning_course = f"{block[1][0]}: {block[1][i]} ({block[2][i]}) -> Salle {block[3][i]}"
             afternoon_course = f"{block[4][0]}: {block[4][i]} ({block[5][i]}) -> Salle {block[6][i]}"
-            formatted_data.append(f"**{date.strftime("%A %d %B")}**\n```{morning_course}\n{afternoon_course}```")
+            formatted_data.append(f"**{formatted_date}**\n```{morning_course}\n{afternoon_course}```")
         return formatted_data
 
     @tasks.loop(hours=24)
