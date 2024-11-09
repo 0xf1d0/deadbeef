@@ -34,7 +34,7 @@ class Schedule(commands.Cog):
                     date = datetime.strptime(row[j], "%d/%m")
                     date = date.replace(year=today.year)  # Ajoute l'année actuelle
                     if start_of_week <= date <= end_of_week:
-                        filtered_data.append(schedule_data[i:i+6])  # Inclure les 6 prochaines lignes
+                        filtered_data.append(schedule_data[i:i+7])  # Inclure les 6 prochaines lignes
                         break
                 except ValueError:
                     continue  # Ignore les colonnes qui ne contiennent pas de date valide
@@ -44,7 +44,7 @@ class Schedule(commands.Cog):
     def format_schedule(self, schedule_data):
         formatted_data = []
         block = schedule_data[0]
-        for i in range(1, len(schedule_data[0])):
+        for i in range(1, len(schedule_data[0]) - 1):
             if "Entreprise" in block[1][i] or "stage" in block[1][i]:
                 continue  # Ignore les jours en entreprise ou stage
             date = block[0][i]
