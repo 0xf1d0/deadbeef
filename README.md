@@ -13,6 +13,9 @@ source .venv/bin/activate
 
 # Install dependencies
 pip install -r requirements.txt
+
+# Execute program
+./start.sh
 ```
 
 ## Features
