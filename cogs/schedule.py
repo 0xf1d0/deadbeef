@@ -48,11 +48,10 @@ class Schedule(commands.Cog):
             if "Entreprise" in block[1][i] or "stage" in block[1][i]:
                 continue  # Ignore les jours en entreprise ou stage
             date = block[0][i]
-            morning_course = f"{block[1][0]}: {block[1][i]:<15} | {block[2][i]:<15} | {block[3][i]:<15}"
-            afternoon_course = f"{block[4][0]}: {block[4][i]:<15} | {block[5][i]:<15} | {block[6][i]:<15}"
-            formatted_data.append(f"{date:<15}\n{morning_course}\n{afternoon_course}")
+            morning_course = f"{block[1][0]}: {block[1][i]} ({block[2][i]}) -> Salle {block[3][i]}"
+            afternoon_course = f"{block[4][0]}: {block[4][i]} ({block[5][i]}) -> Salle {block[6][i]}"
+            formatted_data.append(f"**{date}**\n```{morning_course}\n{afternoon_course}```")
         return formatted_data
-
 
     @tasks.loop(hours=24)
     async def update_schedule(self):
@@ -61,17 +60,7 @@ class Schedule(commands.Cog):
             schedule_data = self.get_schedule()
             filtered_data = self.filter_schedule(schedule_data)
             formatted_data = self.format_schedule(filtered_data)
-            schedule_message = "Emploi du temps :\n\n"
-            messages = []
-            for line in formatted_data:
-                if len(schedule_message) + len(line) + 6 > 2000:  # 6 caractères pour les balises de code
-                    messages.append(f"```\n{schedule_message}\n```")
-                    schedule_message = ""
-                schedule_message += line + "\n"
-            messages.append(f"```\n{schedule_message}\n```")  # Append the last message
-
-            for message in messages:
-                await channel.send(message)
+            await channel.send('\n'.join(formatted_data))
 
     @update_schedule.before_loop
     async def before_update_schedule(self):
