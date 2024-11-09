@@ -34,7 +34,7 @@ class Schedule(commands.Cog):
                     date = datetime.strptime(row[j], "%d/%m")
                     date = date.replace(year=today.year)  # Ajoute l'année actuelle
                     if start_of_week <= date <= end_of_week:
-                        filtered_data.append(schedule_data[i:i+7])  # Inclure les 6 prochaines lignes
+                        filtered_data.append(schedule_data[i:i+6])  # Inclure les 6 prochaines lignes
                         break
                 except ValueError:
                     continue  # Ignore les colonnes qui ne contiennent pas de date valide
@@ -50,7 +50,7 @@ class Schedule(commands.Cog):
             date = block[0][i]
             morning_course = f"{block[1][0]}: {block[1][i]:<15} | {block[2][i]:<15} | {block[3][i]:<15}"
             afternoon_course = f"{block[4][0]}: {block[4][i]:<15} | {block[5][i]:<15} | {block[6][i]:<15}"
-            formatted_data.append(f"{date}\n{morning_course}\n{afternoon_course}")
+            formatted_data.append(f"{date:<15}\n{morning_course}\n{afternoon_course}")
         return formatted_data
 
 
