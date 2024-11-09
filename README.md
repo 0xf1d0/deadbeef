@@ -1,5 +1,9 @@
 # DeadBeef
 
+DeadBeef is a `discord.py` bot for M1 Cybersecurity's Discord at Paris Cité University.
+
+This bot embeds all the features to make everyday life easier for students.
+
 ## Installation
 
 ```sh
