@@ -48,11 +48,11 @@ class Schedule(commands.Cog):
             if "Entreprise" in block[1][i] or "stage" in block[1][i]:
                 continue  # Ignore les jours en entreprise ou stage
             date = block[0][i]
-            morning_course = f"{block[1][0]}: {block[1][i]} | {block[2][i]} | {block[3][i]}"
-            print(i)
-            afternoon_course = f"{block[4][0]}: {block[4][i]} | {block[5][i]} | {block[6][i]}"
+            morning_course = f"{block[1][0]}: {block[1][i]:<15} | {block[2][i]:<15} | {block[3][i]:<15}"
+            afternoon_course = f"{block[4][0]}: {block[4][i]:<15} | {block[5][i]:<15} | {block[6][i]:<15}"
             formatted_data.append(f"{date}\n{morning_course}\n{afternoon_course}")
         return formatted_data
+
 
     @tasks.loop(hours=24)
     async def update_schedule(self):
