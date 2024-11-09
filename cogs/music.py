@@ -90,9 +90,12 @@ class Music(commands.Cog):
 
     @tasks.loop(minutes=1)
     async def check_voice_channel(self):
+        print('test1')
         if self.vc and self.vc.is_connected():
+            print('test2')
             members_length = len(self.vc.channel.members)
             if members_length == 1:
+                print('test3')
                 await asyncio.sleep(300)  # Wait for 5 minutes
                 if members_length == 1:  # Check again if only the bot is in the channel
                     await self.vc.disconnect()

@@ -74,15 +74,13 @@ class Schedule(commands.Cog):
                     try:
                         message = await channel.fetch_message(self.schedule_message_id)
                         await message.edit(content=schedule_message)
-                        await channel.send("L'emploi du temps a été mis à jour.")
+                        await channel.send("L'emploi du temps a été mis à jour. @everyone", delete_after=10)
                     except discord.NotFound:
                         message = await channel.send(schedule_message)
                         self.schedule_message_id = message.id
                 else:
                     message = await channel.send(schedule_message)
                     self.schedule_message_id = message.id
-            else:
-                await channel.send("Aucun changement dans l'emploi du temps.")
 
     @update_schedule.before_loop
     async def before_update_schedule(self):
