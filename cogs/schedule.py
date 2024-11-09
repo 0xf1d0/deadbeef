@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 class Schedule(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.schedule_channel_id = 1304836325010313287
+        self.schedule_channel_id = 1304836325010313287  # Remplacez par l'ID du channel où vous voulez envoyer l'emploi du temps
         self.update_schedule.start()
 
     def get_schedule(self):
@@ -16,8 +16,7 @@ class Schedule(commands.Cog):
         response.raise_for_status()  # Vérifie si la requête a réussi
         data = response.content.decode('utf-8')
         reader = csv.reader(io.StringIO(data))
-        print(list(reader)[50:])
-        return list(reader)[50:]
+        return list(reader)[:50]
 
     def filter_schedule(self, schedule_data):
         today = datetime.today()
@@ -39,20 +38,29 @@ class Schedule(commands.Cog):
 
         return filtered_data
 
+    def format_schedule(self, schedule_data):
+        formatted_data = []
+        for row in schedule_data:
+            if "Entreprise" in row or "stage" in row:
+                continue  # Ignore les jours en entreprise ou stage
+            formatted_row = " | ".join(row[:4]) if datetime.strptime(row[0], "%d/%m/%Y") < datetime(2023, 2, 1) else " | ".join(row[:3])
+            formatted_data.append(formatted_row)
+        return formatted_data
+
     @tasks.loop(hours=24)
     async def update_schedule(self):
         channel = self.bot.get_channel(self.schedule_channel_id)
         if channel:
             schedule_data = self.get_schedule()
             filtered_data = self.filter_schedule(schedule_data)
+            formatted_data = self.format_schedule(filtered_data)
             schedule_message = "Emploi du temps :\n\n"
             messages = []
-            for row in filtered_data:
-                line = " | ".join(row) + "\n"
-                if len(schedule_message) + len(line) > 2000:
+            for line in formatted_data:
+                if len(schedule_message) + len(line) + 6 > 4000:  # 6 caractères pour les balises de code
                     messages.append(f"```\n{schedule_message}\n```")
                     schedule_message = ""
-                schedule_message += line
+                schedule_message += line + "\n"
             messages.append(f"```\n{schedule_message}\n```")  # Append the last message
 
             for message in messages:
