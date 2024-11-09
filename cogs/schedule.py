@@ -1,8 +1,10 @@
 from discord.ext import commands, tasks
-import requests
-import csv
-import io
+import requests, csv, io, locale
 from datetime import datetime, timedelta
+
+
+locale.setlocale(locale.LC_TIME, 'fr_FR.UTF-8')
+
 
 class Schedule(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -47,8 +49,8 @@ class Schedule(commands.Cog):
         for i in range(1, len(schedule_data[0]) - 1):
             if "Entreprise" in block[1][i] or "stage" in block[1][i]:
                 continue  # Ignore les jours en entreprise ou stage
-            date = datetime.strptime(block[0][i], "%d/%m")
-            formatted_date = date.strftime("%A %d %B")
+            date = datetime.strptime(block[0][i], "%d/%m").replace(year=datetime.now().year)
+            formatted_date = date.strftime("%A %d %B %Y")
             morning_course = f"{block[1][0]}: {block[1][i]} ({block[2][i]}) -> Salle {block[3][i]}"
             afternoon_course = f"{block[4][0]}: {block[4][i]} ({block[5][i]}) -> Salle {block[6][i]}"
             formatted_data.append(f"**{formatted_date}**\n```{morning_course}\n{afternoon_course}```")
