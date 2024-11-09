@@ -43,6 +43,7 @@ class Schedule(commands.Cog):
 
     def format_schedule(self, schedule_data):
         formatted_data = []
+        print(schedule_data)
         for block in schedule_data:
             for i in range(1, len(block[0])):
                 if "Entreprise" in block[1][i] or "stage" in block[1][i]:
