@@ -23,9 +23,17 @@ class Schedule(commands.Cog):
         if channel:
             schedule_data = self.get_schedule()
             schedule_message = "Emploi du temps :\n\n"
+            messages = []
             for row in schedule_data:
-                schedule_message += " | ".join(row) + "\n"
-            await channel.send(schedule_message)
+                line = " | ".join(row) + "\n"
+                if len(schedule_message) + len(line) > 4000:
+                    messages.append(schedule_message)
+                    schedule_message = ""
+                schedule_message += line
+            messages.append(schedule_message)  # Append the last message
+
+            for message in messages:
+                await channel.send(message)
 
     @update_schedule.before_loop
     async def before_update_schedule(self):
