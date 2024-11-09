@@ -1,15 +1,18 @@
+import discord
 from discord.ext import commands, tasks
+
 import requests, csv, io, locale
+
 from datetime import datetime, timedelta
 
-
 locale.setlocale(locale.LC_TIME, 'fr_FR.UTF-8')
-
 
 class Schedule(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.schedule_channel_id = 1304836325010313287  # Remplacez par l'ID du channel où vous voulez envoyer l'emploi du temps
+        self.schedule_channel_id = 1304836325010313287
+        self.schedule_message_id = None
+        self.previous_schedule = None
         self.update_schedule.start()
 
     def get_schedule(self):
@@ -56,14 +59,30 @@ class Schedule(commands.Cog):
             formatted_data.append(f"**{formatted_date}**\n```{morning_course}\n{afternoon_course}```")
         return formatted_data
 
-    @tasks.loop(hours=24)
+    @tasks.loop(hours=1)
     async def update_schedule(self):
         channel = self.bot.get_channel(self.schedule_channel_id)
         if channel:
             schedule_data = self.get_schedule()
             filtered_data = self.filter_schedule(schedule_data)
             formatted_data = self.format_schedule(filtered_data)
-            await channel.send('\n'.join(formatted_data))
+            schedule_message = '\n'.join(formatted_data)
+
+            if self.previous_schedule != schedule_message:
+                self.previous_schedule = schedule_message
+                if self.schedule_message_id:
+                    try:
+                        message = await channel.fetch_message(self.schedule_message_id)
+                        await message.edit(content=schedule_message)
+                        await channel.send("L'emploi du temps a été mis à jour.")
+                    except discord.NotFound:
+                        message = await channel.send(schedule_message)
+                        self.schedule_message_id = message.id
+                else:
+                    message = await channel.send(schedule_message)
+                    self.schedule_message_id = message.id
+            else:
+                await channel.send("Aucun changement dans l'emploi du temps.")
 
     @update_schedule.before_loop
     async def before_update_schedule(self):
