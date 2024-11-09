@@ -73,7 +73,7 @@ class Reminder(commands.Cog):
                     "fields": [
                         {
                             "name": event,
-                            "date": reminder_date,
+                            "date": f'{reminder_date}',
                             "description": description if description else "",
                             "modality": modality if modality else ""
                         }
@@ -100,7 +100,7 @@ class Reminder(commands.Cog):
                     if existing_reminder['name'] == course:
                         existing_reminder['fields'].append({
                             "name": event,
-                            "date": reminder_date,
+                            "date": f'{reminder_date}',
                             "description": description if description else "",
                             "modality": modality if modality else ""
                         })
@@ -133,7 +133,7 @@ class Reminder(commands.Cog):
                         if existing_reminder['name'] == course:
                             for field in existing_reminder['fields']:
                                 if field['name'] == event:
-                                    field['date'] = reminder_date
+                                    field['date'] = f'{reminder_date}'
                                     field['description'] = description if description else ""
                                     field['modality'] = modality if modality else ""
                                     break
