@@ -171,7 +171,7 @@ class Reminder(commands.Cog):
         reminder_channel = self.bot.get_channel(self.reminder_channel_id)
         for reminder in self.reminders:
             for event in reminder['fields']:
-                event_time = datetime.strptime(event['date'], "%d/%m/%Y %H:%M")
+                event_time = datetime.strptime(event['date'], "%Y/%m/%d %H:%M:%S")
                 if now + timedelta(hours=1) - timedelta(seconds=30) <= event_time <= now + timedelta(hours=1) + timedelta(seconds=30):
                     await reminder_channel.send(f"@everyone L'échéance '{event['name']}' du cours '{reminder['name']}' a lieu dans 1 heure!")
                 elif now + timedelta(days=1) - timedelta(seconds=30) <= event_time <= now + timedelta(days=1) + timedelta(seconds=30):
