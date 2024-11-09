@@ -16,7 +16,7 @@ class Schedule(commands.Cog):
         response.raise_for_status()  # Vérifie si la requête a réussi
         data = response.content.decode('utf-8')
         reader = csv.reader(io.StringIO(data))
-        return list(reader)[:50]
+        return list(reader)
 
     def filter_schedule(self, schedule_data):
         today = datetime.today()
@@ -29,12 +29,15 @@ class Schedule(commands.Cog):
 
         filtered_data = []
         for row in schedule_data:
-            try:
-                date = datetime.strptime(row[0], "%d/%m/%Y")
-                if start_of_week <= date <= end_of_week:
-                    filtered_data.append(row)
-            except ValueError:
-                continue  # Ignore les lignes qui ne contiennent pas de date valide
+            for i in range(1, len(row)):
+                try:
+                    date = datetime.strptime(row[i], "%d/%m")
+                    date = date.replace(year=today.year)  # Ajoute l'année actuelle
+                    if start_of_week <= date <= end_of_week:
+                        filtered_data.append(row)
+                        break
+                except ValueError:
+                    continue  # Ignore les colonnes qui ne contiennent pas de date valide
 
         return filtered_data
 
@@ -43,7 +46,7 @@ class Schedule(commands.Cog):
         for row in schedule_data:
             if "Entreprise" in row or "stage" in row:
                 continue  # Ignore les jours en entreprise ou stage
-            formatted_row = " | ".join(row[:4]) if datetime.strptime(row[0], "%d/%m/%Y") < datetime(2023, 2, 1) else " | ".join(row[:3])
+            formatted_row = " | ".join(row[1:5]) if datetime.strptime(row[1], "%d/%m").replace(year=datetime.today().year) < datetime(2023, 2, 1) else " | ".join(row[1:4])
             formatted_data.append(formatted_row)
         return formatted_data
 
@@ -57,7 +60,7 @@ class Schedule(commands.Cog):
             schedule_message = "Emploi du temps :\n\n"
             messages = []
             for line in formatted_data:
-                if len(schedule_message) + len(line) + 6 > 4000:  # 6 caractères pour les balises de code
+                if len(schedule_message) + len(line) + 6 > 2000:  # 6 caractères pour les balises de code
                     messages.append(f"```\n{schedule_message}\n```")
                     schedule_message = ""
                 schedule_message += line + "\n"
