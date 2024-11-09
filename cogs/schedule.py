@@ -16,7 +16,7 @@ class Schedule(commands.Cog):
         response.raise_for_status()  # Vérifie si la requête a réussi
         data = response.content.decode('utf-8')
         reader = csv.reader(io.StringIO(data))
-        return list(reader)[:50][0]
+        return list(reader)[:50]
 
     def filter_schedule(self, schedule_data):
         today = datetime.today()
@@ -43,8 +43,7 @@ class Schedule(commands.Cog):
 
     def format_schedule(self, schedule_data):
         formatted_data = []
-        print(schedule_data)
-        for block in schedule_data:
+        for block in schedule_data[0]:
             for i in range(1, len(block[0])):
                 if "Entreprise" in block[1][i] or "stage" in block[1][i]:
                     continue  # Ignore les jours en entreprise ou stage
