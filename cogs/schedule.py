@@ -26,7 +26,7 @@ class Schedule(commands.Cog):
             messages = []
             for row in schedule_data:
                 line = " | ".join(row) + "\n"
-                if len(schedule_message) + len(line) > 4000:
+                if len(schedule_message) + len(line) > 2000:
                     messages.append(schedule_message)
                     schedule_message = ""
                 schedule_message += line
