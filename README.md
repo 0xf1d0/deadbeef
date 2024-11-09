@@ -20,7 +20,7 @@ pip install -r requirements.txt
 
 ## Config
 
-The bot needs a `config.json` file to gather some values to be able work.
+The bot needs a `config.json` file to gather some values to be able to work.
 Here is an example :
 
 ```json
