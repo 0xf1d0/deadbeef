@@ -16,7 +16,7 @@ class Schedule(commands.Cog):
         response.raise_for_status()  # Vérifie si la requête a réussi
         data = response.content.decode('utf-8')
         reader = csv.reader(io.StringIO(data))
-        return list(reader)
+        return list(reader)[:50][0]
 
     def filter_schedule(self, schedule_data):
         today = datetime.today()
