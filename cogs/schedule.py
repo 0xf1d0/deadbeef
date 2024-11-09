@@ -28,13 +28,13 @@ class Schedule(commands.Cog):
             end_of_week = end_of_week + timedelta(days=7)
 
         filtered_data = []
-        for row in schedule_data:
-            for i in range(1, len(row)):
+        for i, row in enumerate(schedule_data):
+            for j in range(1, len(row)):
                 try:
-                    date = datetime.strptime(row[i], "%d/%m")
+                    date = datetime.strptime(row[j], "%d/%m")
                     date = date.replace(year=today.year)  # Ajoute l'année actuelle
                     if start_of_week <= date <= end_of_week:
-                        filtered_data.append(row)
+                        filtered_data.append(schedule_data[i:i+6])  # Inclure les 6 prochaines lignes
                         break
                 except ValueError:
                     continue  # Ignore les colonnes qui ne contiennent pas de date valide
@@ -43,11 +43,14 @@ class Schedule(commands.Cog):
 
     def format_schedule(self, schedule_data):
         formatted_data = []
-        for row in schedule_data:
-            if "Entreprise" in row or "stage" in row:
-                continue  # Ignore les jours en entreprise ou stage
-            formatted_row = " | ".join(row[1:5]) if datetime.strptime(row[1], "%d/%m").replace(year=datetime.today().year) < datetime(2023, 2, 1) else " | ".join(row[1:4])
-            formatted_data.append(formatted_row)
+        for block in schedule_data:
+            for i in range(1, len(block[0])):
+                if "Entreprise" in block[1][i] or "stage" in block[1][i]:
+                    continue  # Ignore les jours en entreprise ou stage
+                date = block[0][i]
+                morning_course = f"{block[1][0]}: {block[1][i]} | {block[2][i]} | {block[3][i]}"
+                afternoon_course = f"{block[4][0]}: {block[4][i]} | {block[5][i]} | {block[6][i]}"
+                formatted_data.append(f"{date}\n{morning_course}\n{afternoon_course}")
         return formatted_data
 
     @tasks.loop(hours=24)
