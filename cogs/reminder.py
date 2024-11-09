@@ -173,9 +173,9 @@ class Reminder(commands.Cog):
             for event in reminder['fields']:
                 event_time = datetime.strptime(event['date'], "%Y-%m-%d %H:%M:%S")
                 if now + timedelta(hours=1) - timedelta(seconds=30) <= event_time <= now + timedelta(hours=1) + timedelta(seconds=30):
-                    await reminder_channel.send(f"@everyone L'échéance '{event['name']}' du cours '{reminder['name']}' a lieu dans 1 heure!")
+                    await reminder_channel.send(f"@everyone L'échéance '{event['name']}' du cours '{reminder['name']}' a lieu dans 1 heure!", delete_after=3600)
                 elif now + timedelta(days=1) - timedelta(seconds=30) <= event_time <= now + timedelta(days=1) + timedelta(seconds=30):
-                    await reminder_channel.send(f"@everyone L'échéance '{event['name']}' du cours '{reminder['name']}' a lieu dans 1 jour!")
+                    await reminder_channel.send(f"@everyone L'échéance '{event['name']}' du cours '{reminder['name']}' a lieu dans 1 jour!", delete_after=3600)
                 elif event_time <= now:
                     await self.remove_event(reminder, event, reminder_channel)
 
