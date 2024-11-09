@@ -83,16 +83,16 @@ class Reminder(commands.Cog):
                 if msg:
                     for embed in msg.embeds:
                         if embed.title == course.upper():
-                            embed.add_field(name=f'__{event}__', value=(description + "\n\n" if description else "") + f'Echéance: {reminder_timestamp}>' + ("\n\n``" + modality + '``' if modality else ""), inline=False)
+                            embed.add_field(name=f'__{event}__', value=(description + "\n\n" if description else "") + f'Echéance: {reminder_timestamp}' + ("\n\n``" + modality + '``' if modality else ""), inline=False)
                             await msg.edit(embeds=msg.embeds)
                             break
                     else:
                         embed = Embed(title=course.upper())
-                        embed.add_field(name=f'__{event}__', value=(description + "\n\n" if description else "") + f'Echéance: {reminder_timestamp}>' + ("\n\n``" + modality + '``' if modality else ""), inline=False)
+                        embed.add_field(name=f'__{event}__', value=(description + "\n\n" if description else "") + f'Echéance: {reminder_timestamp}' + ("\n\n``" + modality + '``' if modality else ""), inline=False)
                         await msg.edit(embeds=msg.embeds + [embed])
                 else:
                     embed = Embed(title=course.upper())
-                    embed.add_field(name=f'__{event}__', value=(description + "\n\n" if description else "") + f'Echéance: {reminder_timestamp}>' + ("\n\n``" + modality + '``' if modality else ""), inline=False)
+                    embed.add_field(name=f'__{event}__', value=(description + "\n\n" if description else "") + f'Echéance: {reminder_timestamp}' + ("\n\n``" + modality + '``' if modality else ""), inline=False)
                     msg = await reminders_channel.send(embeds=[embed])
                     self.bot.config.set('reminders_message_id', msg.id)
 
@@ -118,7 +118,7 @@ class Reminder(commands.Cog):
                         if embed.title == course.upper():
                             for index, field in enumerate(embed.fields):
                                 if event in field.name:
-                                    embed.set_field_at(index, name=field.name, value=(description + "\n\n" if description else "") + f'Echéance: {reminder_timestamp}>' + ("\n\n``" + modality + '``' if modality else ""), inline=False)
+                                    embed.set_field_at(index, name=field.name, value=(description + "\n\n" if description else "") + f'Echéance: {reminder_timestamp}' + ("\n\n``" + modality + '``' if modality else ""), inline=False)
                                     await msg.edit(embeds=msg.embeds)
                                     break
                             else:
@@ -172,9 +172,9 @@ class Reminder(commands.Cog):
         for reminder in self.reminders:
             for event in reminder['fields']:
                 event_time = event['date']
-                if now + timedelta(hours=1) >= event_time > now:
+                if now + timedelta(hours=1) - timedelta(seconds=30) <= event_time <= now + timedelta(hours=1) + timedelta(seconds=30):
                     await reminder_channel.send(f"@everyone L'échéance '{event['name']}' du cours '{reminder['name']}' a lieu dans 1 heure!")
-                elif now + timedelta(days=1) >= event_time > now:
+                elif now + timedelta(days=1) - timedelta(seconds=30) <= event_time <= now + timedelta(days=1) + timedelta(seconds=30):
                     await reminder_channel.send(f"@everyone L'échéance '{event['name']}' du cours '{reminder['name']}' a lieu dans 1 jour!")
                 elif event_time <= now:
                     await self.remove_event(reminder, event, reminder_channel)
