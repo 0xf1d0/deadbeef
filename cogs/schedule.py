@@ -3,7 +3,7 @@ import requests, csv, io, locale
 from datetime import datetime, timedelta
 
 
-locale.setlocale(locale.LC_TIME, '')
+locale.setlocale(locale.LC_TIME, 'fr_FR.UTF-8')
 
 
 class Schedule(commands.Cog):
