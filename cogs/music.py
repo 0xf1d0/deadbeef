@@ -1,7 +1,7 @@
 import functools, os, asyncio, __main__
 
 from discord import Interaction, app_commands
-from discord.ext import commands
+from discord.ext import commands, tasks
 from discord.app_commands.errors import CommandInvokeError
 
 from utils import YTDLSource
@@ -87,6 +87,19 @@ class Music(commands.Cog):
             except OSError as e:
                 print(f'Error deleting file: {e}')
         await self.play_next(ctx)
+
+    @tasks.loop(minutes=1)
+    async def check_voice_channel(self):
+        if self.vc and self.vc.is_connected():
+            members_length = len(self.vc.channel.members)
+            if members_length == 1:
+                await asyncio.sleep(300)  # Wait for 5 minutes
+                if members_length == 1:  # Check again if only the bot is in the channel
+                    await self.vc.disconnect()
+
+    @check_voice_channel.before_loop
+    async def before_check_voice_channel(self):
+        await self.bot.wait_until_ready()
 
 
 async def setup(bot: commands.Bot):
