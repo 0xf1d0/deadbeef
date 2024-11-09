@@ -42,16 +42,16 @@ class Schedule(commands.Cog):
         return filtered_data
 
     def format_schedule(self, schedule_data):
-    formatted_data = []
-    for block in schedule_data:
-        for i in range(1, len(block[0])):
-            if "Entreprise" in block[1][i] or "stage" in block[1][i]:
-                continue  # Ignore les jours en entreprise ou stage
-            date = block[0][i]
-            morning_course = f"{block[1][0]}: {block[1][i]} | {block[2][i] if len(block[2]) > i else ''} | {block[3][i] if len(block[3]) > i else ''}"
-            afternoon_course = f"{block[4][0]}: {block[4][i] if len(block[4]) > i else ''} | {block[5][i] if len(block[5]) > i else ''} | {block[6][i] if len(block[6]) > i else ''}"
-            formatted_data.append(f"{date}\n{morning_course}\n{afternoon_course}")
-    return formatted_data
+        formatted_data = []
+        for block in schedule_data:
+            for i in range(1, len(block[0])):
+                if "Entreprise" in block[1][i] or "stage" in block[1][i]:
+                    continue  # Ignore les jours en entreprise ou stage
+                date = block[0][i]
+                morning_course = f"{block[1][0]}: {block[1][i]} | {block[2][i] if len(block[2]) > i else ''} | {block[3][i] if len(block[3]) > i else ''}"
+                afternoon_course = f"{block[4][0]}: {block[4][i] if len(block[4]) > i else ''} | {block[5][i] if len(block[5]) > i else ''} | {block[6][i] if len(block[6]) > i else ''}"
+                formatted_data.append(f"{date}\n{morning_course}\n{afternoon_course}")
+        return formatted_data
 
     @tasks.loop(hours=24)
     async def update_schedule(self):
