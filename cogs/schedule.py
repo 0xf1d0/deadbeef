@@ -47,7 +47,7 @@ class Schedule(commands.Cog):
                 schedule_data[i][1] = date.strftime("%A %d %B %Y")
                 for j in range(2, days + 2):
                     schedule_data[i][j] = datetime.strptime(schedule_data[i][j], "%d/%m").replace(year=today.year).strftime("%A %d %B %Y")
-                return schedule_data[i:i+6][:, days + 2]
+                return [row[:days + 2] for row in schedule_data[i:i + 6]]
             i += 7
         
         return []
