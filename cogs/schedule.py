@@ -37,7 +37,9 @@ class Schedule(commands.Cog):
         elif weekday > 3 and next_week < february_2025:
             start_of_week += timedelta(days=7)
 
-        end_of_week = start_of_week + timedelta(days=days)
+        # end_of_week = start_of_week + timedelta(days=days)
+
+        print(schedule_data)
 
         i = 0
         while i < len(schedule_data):
