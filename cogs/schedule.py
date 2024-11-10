@@ -42,8 +42,7 @@ class Schedule(commands.Cog):
         i = 0
         while i < len(schedule_data):
             date = datetime.strptime(schedule_data[i][1], "%d/%m").replace(year=today.year)
-            print(start_of_week, date)
-            if start_of_week == date:
+            if start_of_week.date() == date.date():
                 schedule_data[i][1] = date.strftime("%A %d %B %Y")
                 for j in range(2, days + 2):
                     schedule_data[i][j] = datetime.strptime(schedule_data[i][j], "%d/%m").replace(year=today.year).strftime("%A %d %B %Y")
