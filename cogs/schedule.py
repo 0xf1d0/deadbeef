@@ -39,10 +39,9 @@ class Schedule(commands.Cog):
 
         # end_of_week = start_of_week + timedelta(days=days)
 
-        print(schedule_data)
-
         i = 0
         while i < len(schedule_data):
+            print(schedule_data[i][1])
             date = datetime.strptime(schedule_data[i][1], "%d/%m").replace(year=today.year)
             if start_of_week == date:
                 schedule_data[i][1] = date.strftime("%A %d %B %Y")
