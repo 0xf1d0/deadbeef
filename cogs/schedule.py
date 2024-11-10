@@ -50,8 +50,8 @@ class Schedule(commands.Cog):
         formatted_data = []
         block = schedule_data[0]
         for i in range(1, len(schedule_data[0]) - 1):
-            if "Entreprise" in block[1][i] or "stage" in block[1][i]:
-                continue  # Ignore les jours en entreprise ou stage
+            if any(keyword in block[1][i] for keyword in ["Entreprise", "stage", "FERIE"]):
+                continue  # Ignore les jours en entreprise, fériés ou stage
             date = datetime.strptime(block[0][i], "%d/%m").replace(year=datetime.now().year)
             formatted_date = date.strftime("%A %d %B %Y")
             morning_course = f"{block[1][0]}: {block[1][i]} ({block[2][i]}) -> Salle {block[3][i]}"
