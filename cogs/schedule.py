@@ -46,7 +46,6 @@ class Schedule(commands.Cog):
                 schedule_data[i][1] = date.strftime("%A %d %B %Y")
                 for j in range(2, days + 2):
                     schedule_data[i][j] = datetime.strptime(schedule_data[i][j], "%d/%m").replace(year=today.year).strftime("%A %d %B %Y")
-                print([row[:days + 2] for row in schedule_data[i:i + 6]])
                 return [row[:days + 2] for row in schedule_data[i:i + 6]]
             i += 7
         
@@ -55,11 +54,10 @@ class Schedule(commands.Cog):
     def format_schedule(self, schedule_data):
         formatted_data = []
 
-        for line in schedule_data:
-            for j in range(1, len(line)):
-                morning_course = f"{line[1][0]}: {line[1][j]} ({line[2][j]}) -> Salle {line[3][j]}"
-                afternoon_course = f"{line[4][0]}: {line[4][j]} ({line[5][j]}) -> Salle {line[6][j]}"
-                formatted_data.append(f"**{line[0][j]}**\n```{morning_course}\n{afternoon_course}```")
+        for j in range(1, len(schedule_data[0])):
+            morning_course = f"{schedule_data[1][0]}: {schedule_data[1][j]} ({schedule_data[2][j]}) -> Salle {schedule_data[3][j]}"
+            afternoon_course = f"{schedule_data[4][0]}: {schedule_data[4][j]} ({schedule_data[5][j]}) -> Salle {schedule_data[6][j]}"
+            formatted_data.append(f"**{schedule_data[0][j]}**\n```{morning_course}\n{afternoon_course}```")
 
         return formatted_data
 
