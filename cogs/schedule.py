@@ -71,7 +71,7 @@ class Schedule(commands.Cog):
             filtered_data = self.filter_schedule(schedule_data)
             formatted_data = self.format_schedule(filtered_data)
             schedule_message = '\n'.join(formatted_data)
-            print(schedule_message)
+            print(filtered_data)
 
             if self.previous_schedule != schedule_message:
                 self.previous_schedule = schedule_message
