@@ -43,7 +43,7 @@ class Schedule(commands.Cog):
         while i < len(schedule_data):
             date = datetime.strptime(schedule_data[i][1], "%d/%m").replace(year=today.year)
             if start_of_week.date() == date.date():
-                schedule_data[i][1] = date.strftime("%A %d %B %Y")
+                schedule_data[i][1] = date.strftime("%A %d %B %Y").capitalize()
                 for j in range(2, days + 2):
                     schedule_data[i][j] = datetime.strptime(schedule_data[i][j], "%d/%m").replace(year=today.year).strftime("%A %d %B %Y")
                 return [row[:days + 2] for row in schedule_data[i:i + 7]]
@@ -61,7 +61,7 @@ class Schedule(commands.Cog):
 
         return formatted_data
 
-    @tasks.loop(hours=1)
+    @tasks.loop(minutes=30)
     async def update_schedule(self):
         channel = self.bot.get_channel(self.schedule_channel_id)
         if channel:
