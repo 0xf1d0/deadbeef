@@ -45,7 +45,7 @@ class Schedule(commands.Cog):
             if start_of_week.date() == date.date():
                 schedule_data[i][1] = date.strftime("%A %d %B %Y").capitalize()
                 for j in range(2, days + 2):
-                    schedule_data[i][j] = datetime.strptime(schedule_data[i][j], "%d/%m").replace(year=today.year).strftime("%A %d %B %Y")
+                    schedule_data[i][j] = datetime.strptime(schedule_data[i][j], "%d/%m").replace(year=today.year).strftime("%A %d %B %Y").capitalize()
                 return [row[:days + 2] for row in schedule_data[i:i + 7]]
             i += 7
         
