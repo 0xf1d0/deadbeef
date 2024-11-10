@@ -3,20 +3,61 @@ from discord import Interaction, Embed, NotFound, app_commands
 
 
 def check_if_user_or_roles(interaction: Interaction) -> bool:
+    """
+    @brief Checks if the user has a specific ID or any of the specified role IDs.
+    @param interaction The interaction object containing user information.
+    @return True if the user's ID matches the specified ID or if the user has any of the specified role IDs, False otherwise.
+    """
+
     return interaction.user.id == 454935749767200768 or any([role.id in [1293714448263024650, 1291503961139838987] for role in interaction.user.roles])
 
 class Tools(commands.Cog):
+    """
+    @brief A class to manage tools within a Discord bot.
+    This class provides commands to add, edit, and remove tools from a list,
+    and updates an embed message in a specified channel with the current list of tools.
+    """
+    
     def __init__(self, bot: commands.Bot):
+        """
+        Initializes the Tools cog.
+        @param bot: The bot instance that this cog will be attached to.
+        @type bot: commands.Bot
+        """
+
         self.bot = bot
         self.tools = self.load_tools()
 
     def load_tools(self):
+        """
+        @brief Loads the tools configuration for the bot.
+        @return A list of tools from the bot's configuration. If no tools are configured, returns an empty list.
+        """
+
         return self.bot.config.get('tools', [])
 
     def save_tools(self):
+        """
+        @brief Saves the current state of tools to the bot's configuration.
+        This method updates the bot's configuration by setting the 'tools' key 
+        to the current state of the tools attribute.
+        @return None
+        """
+
         self.bot.config.set('tools', self.tools)
 
     def update_embed(self, embed, category, tools):
+        """
+        @brief Updates or adds a field in the embed with the given category and tools.
+        This method searches for a field in the embed with the name matching the given category.
+        If found, it updates the field with the new list of tools. If not found, it adds a new field
+        with the category name and the list of tools.
+        @param embed The embed object to be updated.
+        @param category The category name to be used as the field name in the embed.
+        @param tools A list of dictionaries, where each dictionary represents a tool with 'tool' and 'description' keys.
+        @return None
+        """
+
         for index, field in enumerate(embed.fields):
             if field.name == f'__{category.upper()}__':
                 new_value = "\n".join(
@@ -38,6 +79,23 @@ class Tools(commands.Cog):
         app_commands.Choice(name="remove", value="3")
     ])
     async def tool(self, interaction: Interaction, option: app_commands.Choice[str], category: str, tool: str = None, description: str = None, index: int = None):
+        """
+        @brief Handles the tool management commands (add, edit, remove) for the bot.
+        @param interaction The interaction object that triggered this command.
+        @param option The option chosen by the user (add, edit, remove).
+        @param category The category of the tool.
+        @param tool The name of the tool (optional for edit and remove).
+        @param description The description of the tool (optional).
+        @param index The index of the tool in the category (required for edit and remove).
+        @return None
+        This function handles three main operations:
+        - Adding a new tool to a specified category.
+        - Editing an existing tool in a specified category.
+        - Removing an existing tool from a specified category.
+        The function updates the message containing the tools list in the specified channel,
+        and saves the updated tools list to the bot's configuration.
+        """
+
         tools_channel = interaction.guild.get_channel(1294665610093138061)
         tools_message_id = self.bot.config.get('tools_message_id')
         msg = None
@@ -130,9 +188,26 @@ class Tools(commands.Cog):
 
     @tool.error
     async def calendar_error(self, interaction: Interaction, error: Exception):
+        """
+        Handles errors that occur during the execution of calendar-related commands.
+        This method is called when an error is raised while processing an interaction
+        with a calendar command. It checks the type of error and sends an appropriate
+        response message to the user.
+        @param interaction: The interaction that triggered the error.
+        @type interaction: Interaction
+        @param error: The exception that was raised.
+        @type error: Exception
+        """
+
         if isinstance(error, app_commands.CheckFailure):
             await interaction.response.send_message("Vous n'avez pas la permission d'utiliser cette commande.", ephemeral=True)
 
 
 async def setup(bot: commands.Bot):
+    """
+    @brief Asynchronous function to set up the Tools cog.
+    This function is used to add the Tools cog to the bot.
+    @param bot The instance of the bot to which the cog will be added.
+    """
+
     await bot.add_cog(Tools(bot))

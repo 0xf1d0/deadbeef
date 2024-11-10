@@ -8,7 +8,15 @@ from datetime import datetime, timedelta
 locale.setlocale(locale.LC_TIME, 'fr_FR.UTF-8')
 
 class Schedule(commands.Cog):
+    """
+    @brief Schedule class to manage the timetable.
+    """
+
     def __init__(self, bot: commands.Bot):
+        """
+        @brief Constructor for the Schedule class.
+        @param bot Instance of the Discord bot.
+        """
         self.bot = bot
         self.schedule_channel_id = 1304836325010313287
         self.schedule_message_id = None
@@ -16,14 +24,23 @@ class Schedule(commands.Cog):
         self.update_schedule.start()
 
     def get_schedule(self):
+        """
+        @brief Retrieves the timetable from Google Sheets.
+        @return List of timetable rows.
+        """
         url = "https://docs.google.com/spreadsheets/d/1_FbKo3bwaJ5-PObvIbQrEHUbCbqPro-CH08pyikZ04k/export?format=csv&gid=496614399"
         response = requests.get(url)
-        response.raise_for_status()  # Vérifie si la requête a réussi
+        response.raise_for_status() # Check if the request was successful
         data = response.content.decode('utf-8')
         reader = csv.reader(io.StringIO(data))
         return list(reader)[50:92]
 
     def filter_schedule(self, schedule_data):
+        """
+        @brief Filters the timetable to include only events for the current or next week.
+        @param schedule_data List of timetable rows.
+        @return List of filtered timetable rows.
+        """
         today = datetime.today()
         weekday = today.weekday()
         february_2025 = datetime(2025, 2, 1)
@@ -52,6 +69,11 @@ class Schedule(commands.Cog):
         return []
 
     def format_schedule(self, schedule_data):
+        """
+        @brief Formats the timetable for display.
+        @param schedule_data List of filtered timetable rows.
+        @return List of formatted timetable rows.
+        """
         formatted_data = []
 
         for j in range(1, len(schedule_data[0])):
@@ -63,6 +85,9 @@ class Schedule(commands.Cog):
 
     @tasks.loop(minutes=30)
     async def update_schedule(self):
+        """
+        @brief Periodically updates the timetable.
+        """
         channel = self.bot.get_channel(self.schedule_channel_id)
         if channel:
             schedule_data = self.get_schedule()
@@ -86,7 +111,14 @@ class Schedule(commands.Cog):
 
     @update_schedule.before_loop
     async def before_update_schedule(self):
+        """
+        @brief Waits until the bot is ready before starting the update loop.
+        """
         await self.bot.wait_until_ready()
 
 async def setup(bot: commands.Bot):
+    """
+    @brief Sets up the Schedule cog.
+    @param bot Instance of the Discord bot.
+    """
     await bot.add_cog(Schedule(bot))
