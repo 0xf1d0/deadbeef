@@ -21,7 +21,7 @@ class Schedule(commands.Cog):
         response.raise_for_status()  # Vérifie si la requête a réussi
         data = response.content.decode('utf-8')
         reader = csv.reader(io.StringIO(data))
-        return list(reader)[50:]
+        return list(reader)[50:91]
 
     def filter_schedule(self, schedule_data):
         today = datetime.today()
@@ -41,7 +41,6 @@ class Schedule(commands.Cog):
 
         i = 0
         while i < len(schedule_data):
-            print(schedule_data[i][1])
             date = datetime.strptime(schedule_data[i][1], "%d/%m").replace(year=today.year)
             if start_of_week == date:
                 schedule_data[i][1] = date.strftime("%A %d %B %Y")
