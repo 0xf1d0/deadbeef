@@ -25,38 +25,41 @@ class Schedule(commands.Cog):
 
     def filter_schedule(self, schedule_data):
         today = datetime.today()
+        weekday = today.weekday()
+        february_2025 = datetime(2025, 2, 1)
         start_of_week = today - timedelta(days=today.weekday())
-        end_of_week = start_of_week + timedelta(days=6)
+        next_week = start_of_week + timedelta(days=7)
+        days = 2
+
+        if weekday > 2 and next_week > february_2025:
+            days = 1
+            start_of_week += timedelta(days=7)
+        elif weekday > 3 and next_week < february_2025:
+            start_of_week += timedelta(days=7)
+
+        end_of_week = start_of_week + timedelta(days=days)
+
+        i = 0
+        while i < len(schedule_data):
+            date = datetime.strptime(schedule_data[i][1], "%d/%m").replace(year=today.year)
+            if start_of_week == date:
+                schedule_data[i][1] = date.strftime("%A %d %B %Y")
+                for j in range(2, days + 2):
+                    schedule_data[i][j] = datetime.strptime(schedule_data[i][j], "%d/%m").replace(year=today.year).strftime("%A %d %B %Y")
+                return schedule_data[i:i+6][:, days + 2]
+            i += 6
         
-        if today.weekday() >= 3:  # Jeudi (3) ou plus tard
-            start_of_week = start_of_week + timedelta(days=7)
-            end_of_week = end_of_week + timedelta(days=7)
-
-        filtered_data = []
-        for i, row in enumerate(schedule_data):
-            for j in range(1, len(row)):
-                try:
-                    date = datetime.strptime(row[j], "%d/%m")
-                    date = date.replace(year=today.year)  # Ajoute l'année actuelle
-                    if start_of_week <= date <= end_of_week:
-                        filtered_data.append(schedule_data[i:i+7])  # Inclure les 6 prochaines lignes
-                        break
-                except ValueError:
-                    continue  # Ignore les colonnes qui ne contiennent pas de date valide
-
-        return filtered_data
+        return []
 
     def format_schedule(self, schedule_data):
         formatted_data = []
-        block = schedule_data[0]
-        for i in range(1, len(schedule_data[0]) - 1):
-            if any(keyword in block[1][i] for keyword in ["Entreprise", "stage", "FERIE"]):
-                continue  # Ignore les jours en entreprise, fériés ou stage
-            date = datetime.strptime(block[0][i], "%d/%m").replace(year=datetime.now().year)
-            formatted_date = date.strftime("%A %d %B %Y")
-            morning_course = f"{block[1][0]}: {block[1][i]} ({block[2][i]}) -> Salle {block[3][i]}"
-            afternoon_course = f"{block[4][0]}: {block[4][i]} ({block[5][i]}) -> Salle {block[6][i]}"
-            formatted_data.append(f"**{formatted_date}**\n```{morning_course}\n{afternoon_course}```")
+
+        for line in schedule_data:
+            for j in range(1, len(line)):
+                morning_course = f"{line[1][0]}: {line[1][j]} ({line[2][j]}) -> Salle {line[3][j]}"
+                afternoon_course = f"{line[4][0]}: {line[4][j]} ({line[5][j]}) -> Salle {line[6][j]}"
+                formatted_data.append(f"**{line[0][j]}**\n```{morning_course}\n{afternoon_course}```")
+
         return formatted_data
 
     @tasks.loop(hours=1)
