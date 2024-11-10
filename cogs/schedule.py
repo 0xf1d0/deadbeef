@@ -39,7 +39,6 @@ class Schedule(commands.Cog):
 
         # end_of_week = start_of_week + timedelta(days=days)
 
-        print(schedule_data)
         i = 0
         while i < len(schedule_data):
             date = datetime.strptime(schedule_data[i][1], "%d/%m").replace(year=today.year)
@@ -72,7 +71,6 @@ class Schedule(commands.Cog):
             filtered_data = self.filter_schedule(schedule_data)
             formatted_data = self.format_schedule(filtered_data)
             schedule_message = '\n'.join(formatted_data)
-            print(filtered_data)
 
             if self.previous_schedule != schedule_message:
                 self.previous_schedule = schedule_message
