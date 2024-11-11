@@ -10,7 +10,9 @@ This bot embeds all the features to make everyday life easier for students.
 # Clone repository
 git clone https://github.com/0xf1d0/deadbeef
 
+# Get into the project
 cd deadbeef
+
 # Consider using a virtual environment
 python3 -m venv .venv
 source .venv/bin/activate

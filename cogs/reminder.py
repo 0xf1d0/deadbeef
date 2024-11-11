@@ -243,6 +243,7 @@ class Reminder(commands.Cog):
         @details
         - Sends a notification 1 hour before the event.
         - Sends a notification 1 day before the event.
+        - Sends a notification 1 week before the event.
         - Removes the event if it has already occurred.
         @param self The instance of the class containing the reminders and bot information.
         @return None
@@ -254,10 +255,13 @@ class Reminder(commands.Cog):
             for event in reminder['fields']:
                 event_time = datetime.strptime(event['date'], "%Y-%m-%d %H:%M:%S")
                 if now + timedelta(hours=1) - timedelta(seconds=30) <= event_time <= now + timedelta(hours=1) + timedelta(seconds=30):
-                    await reminder_channel.send(f"@everyone L'échéance '{event['name']}' du cours '{reminder['name']}' a lieu dans 1 heure!", delete_after=3600)
+                    await reminder_channel.send(f":warning: L'échéance *{event['name']}* du cours **{reminder['name'].upper()}** a lieu dans 1 heure !\n|| @everyone ||", delete_after=3600)
                 elif now + timedelta(days=1) - timedelta(seconds=30) <= event_time <= now + timedelta(days=1) + timedelta(seconds=30):
-                    await reminder_channel.send(f"@everyone L'échéance '{event['name']}' du cours '{reminder['name']}' a lieu dans 1 jour!", delete_after=3600)
+                    await reminder_channel.send(f":warning: L'échéance *{event['name']}* du cours **{reminder['name'].upper()}** a lieu dans 1 jour !\n|| @everyone ||", delete_after=3600)
+                elif now + timedelta(weeks=1) - timedelta(seconds=30) <= event_time <= now + timedelta(weeks=1) + timedelta(seconds=30):
+                    await reminder_channel.send(f":warning: L'échéance *{event['name']}* du cours **{reminder['name'].upper()}** a lieu dans 1 semaine !\n|| @everyone ||", delete_after=3600)
                 elif event_time <= now:
+                    await reminder_channel.send(f":warning: L'échéance *{event['name']}* du cours **{reminder['name'].upper()}** vient d'avoir lieu !\n|| @everyone ||", delete_after=60)
                     await self.remove_event(reminder, event, reminder_channel)
 
     async def remove_event(self, reminder, event, reminder_channel):
