@@ -33,7 +33,7 @@ class Schedule(commands.Cog):
         response.raise_for_status() # Check if the request was successful
         data = response.content.decode('utf-8')
         reader = csv.reader(io.StringIO(data))
-        return list(reader)[50:92]
+        return list(reader)[:92] + list(reader)[102:]
 
     def filter_schedule(self, schedule_data):
         """
@@ -47,12 +47,15 @@ class Schedule(commands.Cog):
         start_of_week = today - timedelta(days=today.weekday())
         next_week = start_of_week + timedelta(days=7)
         days = 2
+        week_updated = False
 
-        if weekday > 2 and next_week > february_2025:
+        if weekday > 1 and next_week > february_2025:
             days = 1
             start_of_week += timedelta(days=7)
-        elif weekday > 3 and next_week < february_2025:
+            week_updated = True
+        elif weekday > 2 and next_week < february_2025:
             start_of_week += timedelta(days=7)
+            week_updated = True
 
         # end_of_week = start_of_week + timedelta(days=days)
 
@@ -83,7 +86,7 @@ class Schedule(commands.Cog):
 
         return formatted_data
 
-    @tasks.loop(minutes=30)
+    @tasks.loop(hours=1)
     async def update_schedule(self):
         """
         @brief Periodically updates the timetable.
@@ -91,7 +94,7 @@ class Schedule(commands.Cog):
         channel = self.bot.get_channel(self.schedule_channel_id)
         if channel:
             schedule_data = self.get_schedule()
-            filtered_data = self.filter_schedule(schedule_data)
+            filtered_data, week_updated = self.filter_schedule(schedule_data)
             formatted_data = self.format_schedule(filtered_data)
             schedule_message = '\n'.join(formatted_data)
 
@@ -101,7 +104,8 @@ class Schedule(commands.Cog):
                     try:
                         message = await channel.fetch_message(self.schedule_message_id)
                         await message.edit(content=schedule_message)
-                        await channel.send("L'emploi du temps a été mis à jour. @everyone", delete_after=10)
+                        if not week_updated:
+                            await channel.send("L'emploi du temps a été mis à jour. @everyone", delete_after=10)
                     except discord.NotFound:
                         message = await channel.send(schedule_message)
                         self.schedule_message_id = message.id
