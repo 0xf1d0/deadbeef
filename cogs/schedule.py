@@ -33,7 +33,7 @@ class Schedule(commands.Cog):
         response.raise_for_status() # Check if the request was successful
         data = response.content.decode('utf-8')
         reader = csv.reader(io.StringIO(data))
-        return list(reader)[2:92] + list(reader)[102:]
+        return list(reader)[1:92] + list(reader)[102:]
 
     def filter_schedule(self, schedule_data):
         """
