@@ -21,7 +21,7 @@ class Common(commands.Cog):
         """
 
         self.bot = bot
-        self.guild = bot.get_guild(CYBER.id)
+        self.guild = bot.get_guild(CYBER)
     
     def missing_member_names(self):
         names = {'FI': [], 'FA': []}
