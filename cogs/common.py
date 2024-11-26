@@ -391,7 +391,7 @@ class DropDownView(ui.View):
         total_pages = (total_options + per_page - 1) // per_page
         current_page = min(current_page, total_pages)
 
-        start = (current_page - 1) * self.per_page
+        start = (current_page - 1) * per_page
         end = start + per_page
         page_options = options[start:end]
         
