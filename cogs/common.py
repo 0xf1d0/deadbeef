@@ -383,24 +383,36 @@ class DropDownView(ui.View):
 
         super().__init__(timeout=None)
         
-        options = [SelectOption(label='Invité', value='Invité', emoji='👋')] + [SelectOption(label=f'FI - {name}', value=name, emoji='🎓') for name in missing_members['FI']] + [SelectOption(label=f'FA - {name}', value=name, emoji='🎓') for name in missing_members['FA']]
+        self.options = [SelectOption(label='Invité', value='Invité', emoji='👋')] + [SelectOption(label=f'FI - {name}', value=name, emoji='🎓') for name in missing_members['FI']] + [SelectOption(label=f'FA - {name}', value=name, emoji='🎓') for name in missing_members['FA']]
 
-        total_options = len(options)
-        per_page = 25
-        current_page = 1
-        total_pages = (total_options + per_page - 1) // per_page
-        current_page = min(current_page, total_pages)
+        self.current_page = 1
+        self.per_page = 25
 
-        start = (current_page - 1) * per_page
-        end = start + per_page
-        page_options = options[start:end]
-        
+        self.update_options()
+    
+    def update_options(self):
+        """
+        @brief Updates the options for the current page and manages pagination controls.
+        This method calculates the total number of pages based on the number of options and the number of options per page.
+        It then updates the current page to ensure it is within the valid range. The method slices the options list to get
+        the options for the current page and clears any existing items. Finally, it adds the dropdown with the current page
+        options and the previous/next buttons with appropriate enabled/disabled states.
+        @param self The instance of the class containing options, per_page, current_page, and methods to clear and add items.
+        """
+
+        total_options = len(self.options)
+        total_pages = (total_options + self.per_page - 1) // self.per_page
+        self.current_page = min(self.current_page, total_pages)
+
+        start = (self.current_page - 1) * self.per_page
+        end = start + self.per_page
+        page_options = self.options[start:end]
 
         self.clear_items()
 
         self.add_item(DropDown(page_options))
-        self.add_item(PreviousButton(disabled=current_page == 1))
-        self.add_item(NextButton(disabled=current_page >= total_pages))
+        self.add_item(PreviousButton(disabled=self.current_page == 1))
+        self.add_item(NextButton(disabled=self.current_page >= total_pages))
 
 
 class PreviousButton(ui.Button):
