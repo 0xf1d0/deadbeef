@@ -330,13 +330,13 @@ class ConfirmButton(ui.Button):
         selected_value = self.view.selected_value
         dropdown_view = self.view.dropdown_view
         if selected_value == 'Invité':
-            await interaction.user.add_roles(ROLE_GUEST.id)
+            await interaction.user.add_roles(ROLE_GUEST)
         else:
             dropdown_view.options = [option for option in dropdown_view.options if option.value != selected_value]
             dropdown_view.update_options()
             await interaction.user.edit(nick=selected_value)
             await self.based_interaction.message.edit(view=dropdown_view)
-            await interaction.user.add_roles(ROLE_FI.id if self.view.selected_label.startswith('FI') else ROLE_FA.id)
+            await interaction.user.add_roles(ROLE_FI if self.view.selected_label.startswith('FI') else ROLE_FA)
         
         await interaction.response.edit_message(content=f'Sélection confirmée : {selected_value}', view=None)
 
