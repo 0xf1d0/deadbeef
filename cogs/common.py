@@ -250,13 +250,14 @@ class DropDown(ui.Select):
     This class represents a dropdown menu that allows users to select an option from a list. It inherits from `ui.Select` and provides a callback method to handle the user's selection.
     """
 
-    def __init__(self, options):
+    def __init__(self, options, missing_members):
         """
         @brief Constructor for initializing the dropdown menu.
         @param options A list of options to be displayed in the dropdown menu.
         """
 
         super().__init__(placeholder='Se chercher', custom_id='dropdown', options=options, min_values=1, max_values=1)
+        self.missing_members = missing_members
     
     async def callback(self, interaction: Interaction):
         """
@@ -269,7 +270,7 @@ class DropDown(ui.Select):
 
         selected_value = self.values[0]
         if selected_value in [option.value for option in self.options]:
-            view = ConfirmView(selected_value, self.view, interaction)
+            view = ConfirmView(selected_value, self.view, interaction, self.missing_members)
             await interaction.response.send_message(f"Confirmez-vous la sélection de {selected_value} ?", view=view, ephemeral=True)
 
 
@@ -279,7 +280,7 @@ class ConfirmView(ui.View):
     This class creates a view with two buttons: one for confirming an action and one for cancelling it.
     """
 
-    def __init__(self, selected_value, dropdown_view, based_interaction):
+    def __init__(self, selected_value, dropdown_view, based_interaction, missing_members):
         """
         Initializes the class with the selected value, dropdown view, and based interaction.
         @param selected_value: The value selected by the user.
@@ -290,7 +291,7 @@ class ConfirmView(ui.View):
         super().__init__(timeout=None)
         self.selected_value = selected_value
         self.dropdown_view = dropdown_view
-        self.add_item(ConfirmButton(label="Confirmer", style=ButtonStyle.success, based_interaction=based_interaction))
+        self.add_item(ConfirmButton(label="Confirmer", style=ButtonStyle.success, based_interaction=based_interaction, missing_members=missing_members))
         self.add_item(CancelButton(label="Annuler", style=ButtonStyle.danger))
 
 
@@ -302,7 +303,7 @@ class ConfirmButton(ui.Button):
     and nickname based on the selected value.
     """
 
-    def __init__(self, label, style, based_interaction):
+    def __init__(self, label, style, based_interaction, missing_members):
         """
         @brief Constructor for initializing the class with label, style, and based_interaction.
         @param label The label for the component.
@@ -312,6 +313,7 @@ class ConfirmButton(ui.Button):
 
         super().__init__(label=label, style=style)
         self.based_interaction = based_interaction
+        self.missing_members = missing_members
 
     async def callback(self, interaction: Interaction):
         """
@@ -336,7 +338,7 @@ class ConfirmButton(ui.Button):
             dropdown_view.update_options()
             await interaction.user.edit(nick=selected_value)
             await self.based_interaction.message.edit(view=dropdown_view)
-            await interaction.user.add_roles(ROLE_FI if self.view.selected_label.startswith('FI') else ROLE_FA)
+            await interaction.user.add_roles(ROLE_FI if self.view.selected_value in self.missing_members['FI'] else ROLE_FA)
         
         await interaction.response.edit_message(content=f'Sélection confirmée : {selected_value}', view=None)
 
@@ -382,6 +384,8 @@ class DropDownView(ui.View):
     def __init__(self, missing_members):
 
         super().__init__(timeout=None)
+
+        self.missing_members = missing_members
         
         self.options = [SelectOption(label='Invité', value='Invité', emoji='👋')] + [SelectOption(label=f'FI - {name}', value=name, emoji='🎓') for name in missing_members['FI']] + [SelectOption(label=f'FA - {name}', value=name, emoji='🎓') for name in missing_members['FA']]
 
@@ -410,7 +414,7 @@ class DropDownView(ui.View):
 
         self.clear_items()
 
-        self.add_item(DropDown(page_options))
+        self.add_item(DropDown(page_options, self.missing_members))
         self.add_item(PreviousButton(disabled=self.current_page == 1))
         self.add_item(NextButton(disabled=self.current_page >= total_pages))
 
