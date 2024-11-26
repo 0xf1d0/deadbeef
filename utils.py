@@ -2,10 +2,10 @@ import yt_dlp, asyncio, re, json, os, csv
 from discord import PCMVolumeTransformer, FFmpegPCMAudio, Object, Guild, Role
 
 
-CYBER = Object(1289169690895323167, Guild)
-ROLE_FI = Object(1289241716985040960, Role)
-ROLE_FA = Object(1289241666871627777, Role)
-ROLE_GUEST = Object(1291510062753517649, Role)
+CYBER = Object(1289169690895323167, type=Guild)
+ROLE_FI = Object(1289241716985040960, type=Role)
+ROLE_FA = Object(1289241666871627777, type=Role)
+ROLE_GUEST = Object(1291510062753517649, type=Role)
 
 
 yt_dlp.utils.bug_reports_message = lambda: ''
