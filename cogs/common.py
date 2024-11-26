@@ -256,11 +256,7 @@ class DropDown(ui.Select):
         @param options A list of options to be displayed in the dropdown menu.
         """
 
-        start = (self.current_page - 1) * self.per_page
-        end = start + self.per_page
-        page_options = self.options[start:end]
-
-        super().__init__(placeholder='Se chercher', custom_id='dropdown', options=page_options, min_values=1, max_values=1)
+        super().__init__(placeholder='Se chercher', custom_id='dropdown', options=options, min_values=1, max_values=1)
     
     async def callback(self, interaction: Interaction):
         """
@@ -394,11 +390,15 @@ class DropDownView(ui.View):
         current_page = 1
         total_pages = (total_options + per_page - 1) // per_page
         current_page = min(current_page, total_pages)
+
+        start = (self.current_page - 1) * self.per_page
+        end = start + self.per_page
+        page_options = self.options[start:end]
         
 
-        # self.clear_items()
+        self.clear_items()
 
-        self.add_item(DropDown())
+        self.add_item(DropDown(page_options))
         self.add_item(PreviousButton(disabled=self.current_page == 1))
         self.add_item(NextButton(disabled=self.current_page >= total_pages))
 
