@@ -1,9 +1,11 @@
-import yt_dlp
-import asyncio
-import re
-import json
-import os
-from discord import PCMVolumeTransformer, FFmpegPCMAudio
+import yt_dlp, asyncio, re, json, os, csv
+from discord import PCMVolumeTransformer, FFmpegPCMAudio, Object, Guild, Role
+
+
+CYBER = Object(1289169690895323167, Guild)
+ROLE_FI = Object(1289241716985040960, Role)
+ROLE_FA = Object(1289241666871627777, Role)
+ROLE_GUEST = Object(1291510062753517649, Role)
 
 
 yt_dlp.utils.bug_reports_message = lambda: ''
@@ -24,6 +26,20 @@ ytdl_format_options = {
 }
 
 ytdl = yt_dlp.YoutubeDL(ytdl_format_options)
+
+def read_csv(file_path):
+    """
+    @brief Reads a CSV file and returns a list of rows.
+    @param file_path The path to the CSV file.
+    @return List of rows, where each row is a list of values.
+    """
+    data = []
+    with open(file_path, newline='', encoding='utf-8') as csvfile:
+        reader = csv.reader(csvfile)
+        next(reader)  # Skip the header row
+        for row in reader:
+            data.append(row)
+    return data
 
 
 class YTDLSource(PCMVolumeTransformer):

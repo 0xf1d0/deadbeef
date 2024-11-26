@@ -1,10 +1,8 @@
 from discord.ext import commands
-from discord import Intents, Object
+from discord import Intents
 import os, re
 
-from utils import ConfigManager
-
-CYBER = Object(1289169690895323167)
+from utils import ConfigManager, CYBER
 
 
 class DeadBeef(commands.Bot):

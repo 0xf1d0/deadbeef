@@ -1,27 +1,18 @@
-import pandas as pd
 import re
 from discord import app_commands, Interaction, ui, SelectOption, ButtonStyle, Member, Embed, File
 from discord.ext import commands
+
+from utils import CYBER, ROLE_FA, ROLE_FI, ROLE_GUEST, read_csv
 
 
 class Common(commands.Cog):
     """
     @brief A class that contains common commands and listeners for the bot.
     This class defines several commands and event listeners that provide various functionalities such as managing LinkedIn profiles, assigning roles, sending invites, and more.
-    @details
-    The class includes the following commands:
-    - linkedin: Display or register a LinkedIn profile.
-    - gaming: Assign or remove the gamer role.
-    - invite: Display the server invitation link.
-    - about: Display information about the bot.
-    - missing_members_list: List missing members.
-    - glossary: Manage the cyber glossary.
-    It also includes the following event listeners:
-    - on_ready: Triggered when the bot is ready.
-    - on_member_remove: Triggered when a member leaves the server.
-    @note
-    Some commands require specific permissions or roles to execute.
     """
+
+    FI = read_csv('assets/cyber_sante.csv')
+    FA = read_csv('assets/cyber.csv')
     
     def __init__(self, bot: commands.Bot):
         """
@@ -30,6 +21,21 @@ class Common(commands.Cog):
         """
 
         self.bot = bot
+        self.guild = bot.get_guild(CYBER.id)
+    
+    def missing_member_names(self):
+        names = {'FI': [], 'FA': []}
+        roles = {'FI': ROLE_FI, 'FA': ROLE_FA}
+        data = {'FI': Common.FI, 'FA': Common.FA}
+
+        for key in data:
+            for row in data[key]:
+                name = f'{row[2]} {row[1]}'.title()
+                member = self.guild.get_member_named(name)
+                if not member or not member.get_role(roles[key]):
+                    names[key].append(name)
+
+        return names
 
     @app_commands.command(description="Affiche ou inscrit un profil LinkedIn.")
     @app_commands.describe(member='Le profil du membre à afficher', register='Inscrire un profil LinkedIn.')
@@ -134,18 +140,11 @@ class Common(commands.Cog):
         @return None
         """
 
-        missing_members = []
-        member_names = [member.display_name for member in ctx.guild.members]
-        FI = pd.read_csv('assets/cyber_sante.csv').iloc[:, 1:3]
-        FA = pd.read_csv('assets/cyber.csv').iloc[:, 1:3]
-        for _, row in pd.concat([FI, FA]).iterrows():
-            name = f'{row.iloc[1]} {row.iloc[0]}'.title()
-            if name not in member_names:
-                missing_members.append(name)
-        if missing_members:
-            await ctx.response.send_message(f'**{len(missing_members)}** Personnes manquantes:\n' + ', '.join(missing_members))
-        else:
-            await ctx.response.send_message('Tous les membres sont présents.')
+        embed = Embed(title='Membres manquants')
+        missing_members = self.missing_member_names()
+        embed.add_field(name='FI', value=', '.join(missing_members['FI']) or 'Aucun')
+        embed.add_field(name='FA', value=', '.join(missing_members['FA']) or 'Aucun')
+        await ctx.response.send_message(embed=embed)
 
     @app_commands.command(description="Glossaire CYBER.")
     @app_commands.choices(option=[
@@ -212,13 +211,12 @@ class Common(commands.Cog):
         @param self The instance of the class.
         """
 
-        guild = self.bot.guilds[0]
-        welcome = guild.get_channel(1291494038427537559)
+        welcome = self.guild.get_channel(1291494038427537559)
         message_id = self.bot.config.get('welcome_message_id')
         if not message_id:
-            msg = await welcome.send(self.bot.config.get('welcome_message'), view=DropDownView(guild))
+            msg = await welcome.send(self.bot.config.get('welcome_message'), view=DropDownView(self.guild))
             self.bot.config.set('welcome_message_id', msg.id)
-        self.bot.add_view(DropDownView(guild), message_id=message_id)
+        self.bot.add_view(DropDownView(self.missing_member_names()), message_id=message_id)
 
     @commands.Cog.listener()
     async def on_member_remove(self, member: Member):
@@ -231,7 +229,7 @@ class Common(commands.Cog):
         """
         
         channel = member.guild.get_channel(1292059079287504930)
-        embed = Embed(title=f'{member} left')\
+        embed = Embed(title=f'{member} ({member.id}) left')\
             .add_field(name='Name', value=member.name)\
             .add_field(name='Display Name', value=member.display_name)\
             .add_field(name='Nick', value=member.nick)\
@@ -243,7 +241,7 @@ class Common(commands.Cog):
         if not message_id:
             msg = await welcome.send(self.bot.config.get('welcome_message'), view=DropDownView(guild))
             self.bot.config.set('welcome_message_id', msg.id)
-        self.bot.add_view(DropDownView(guild), message_id=message_id)
+        self.bot.add_view(DropDownView(self.missing_member_names()), message_id=message_id)
 
 
 class DropDown(ui.Select):
@@ -333,13 +331,13 @@ class ConfirmButton(ui.Button):
         selected_value = self.view.selected_value
         dropdown_view = self.view.dropdown_view
         if selected_value == 'Invité':
-            await interaction.user.add_roles(interaction.guild.get_role(1291510062753517649))
+            await interaction.user.add_roles(ROLE_GUEST)
         else:
             dropdown_view.options = [option for option in dropdown_view.options if option.value != selected_value]
             dropdown_view.update_options()
             await interaction.user.edit(nick=selected_value)
             await self.based_interaction.message.edit(view=dropdown_view)
-            await interaction.user.add_roles(interaction.guild.get_role(1289241716985040960) if selected_value.split(' ')[1] in dropdown_view.FI['Nom'].unique() else interaction.guild.get_role(1289241666871627777))
+            await interaction.user.add_roles(ROLE_FI if selected_value.split(' ')[1] in Common.FI['Nom'].unique() else interaction.guild.get_role(1289241666871627777))
         
         await interaction.response.edit_message(content=f'Sélection confirmée : {selected_value}', view=None)
 
@@ -382,28 +380,11 @@ class DropDownView(ui.View):
     @note The dropdown options include an 'Invité' option by default.
     """
 
-    def __init__(self, guild):
-        """
-        Initializes the common cog with the given guild.
-        @param guild: The guild object containing members information.
-        This constructor performs the following tasks:
-        - Calls the superclass constructor with no timeout.
-        - Reads data from 'assets/cyber_sante.csv' and 'assets/cyber.csv' files.
-        - Creates a list of SelectOption objects for a dropdown menu.
-        - Adds an option for each member not present in the guild.
-        - Initializes pagination variables and updates the options list.
-        """
+    def __init__(self, missing_members):
 
         super().__init__(timeout=None)
-
-        self.FI = pd.read_csv('assets/cyber_sante.csv').iloc[:, 1:3]
-        self.FA = pd.read_csv('assets/cyber.csv').iloc[:, 1:3]
-        self.options = [SelectOption(label='Invité', value='Invité', emoji='👋')]
-        member_names = [member.display_name for member in guild.members]
-        for _, row in pd.concat([self.FI, self.FA]).iterrows():
-            name = f'{row.iloc[1]} {row.iloc[0]}'.title()
-            if name not in member_names:
-                self.options.append(SelectOption(label=name, value=name, emoji='🎓'))
+        
+        self.options = [SelectOption(label='Invité', value='Invité', emoji='👋')] + [SelectOption(label='FI', value=name, emoji='🎓') for name in missing_members['FI']] + [SelectOption(label='FA', value=name, emoji='🎓') for name in missing_members['FA']]
 
         self.current_page = 1
         self.per_page = 25
