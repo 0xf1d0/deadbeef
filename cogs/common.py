@@ -399,8 +399,8 @@ class DropDownView(ui.View):
         self.clear_items()
 
         self.add_item(DropDown(page_options))
-        self.add_item(PreviousButton(disabled=self.current_page == 1))
-        self.add_item(NextButton(disabled=self.current_page >= total_pages))
+        self.add_item(PreviousButton(disabled=current_page == 1))
+        self.add_item(NextButton(disabled=current_page >= total_pages))
 
 
 class PreviousButton(ui.Button):
