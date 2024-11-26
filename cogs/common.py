@@ -30,7 +30,7 @@ class Common(commands.Cog):
         for key in data:
             for row in data[key]:
                 name = f'{row[2]} {row[1]}'.title()
-                member = self.bot.get_guild(CYBER).get_member_named(name)
+                member = self.bot.guilds[0].get_member_named(name)
                 if not member or not member.get_role(roles[key]):
                     names[key].append(name)
 
@@ -210,7 +210,7 @@ class Common(commands.Cog):
         @param self The instance of the class.
         """
 
-        welcome = self.bot.get_guild(CYBER).get_channel(1291494038427537559)
+        welcome = self.bot.guilds[0].get_channel(1291494038427537559)
         message_id = self.bot.config.get('welcome_message_id')
         if not message_id:
             msg = await welcome.send(self.bot.config.get('welcome_message'), view=DropDownView(self.missing_member_names()))
