@@ -256,7 +256,11 @@ class DropDown(ui.Select):
         @param options A list of options to be displayed in the dropdown menu.
         """
 
-        super().__init__(placeholder='Se chercher', custom_id='dropdown', options=options, min_values=1, max_values=1)
+        start = (self.current_page - 1) * self.per_page
+        end = start + self.per_page
+        page_options = self.options[start:end]
+
+        super().__init__(placeholder='Se chercher', custom_id='dropdown', options=page_options, min_values=1, max_values=1)
     
     async def callback(self, interaction: Interaction):
         """
@@ -336,7 +340,7 @@ class ConfirmButton(ui.Button):
             dropdown_view.update_options()
             await interaction.user.edit(nick=selected_value)
             await self.based_interaction.message.edit(view=dropdown_view)
-            await interaction.user.add_roles(ROLE_FI.id if self.view.selected_label == 'FI' else ROLE_FA.id)
+            await interaction.user.add_roles(ROLE_FI.id if self.view.selected_label.startswith('FI') else ROLE_FA.id)
         
         await interaction.response.edit_message(content=f'Sélection confirmée : {selected_value}', view=None)
 
@@ -383,34 +387,18 @@ class DropDownView(ui.View):
 
         super().__init__(timeout=None)
         
-        self.options = [SelectOption(label='Invité', value='Invité', emoji='👋')] + [SelectOption(label='FI', value=name, emoji='🎓') for name in missing_members['FI']] + [SelectOption(label='FA', value=name, emoji='🎓') for name in missing_members['FA']]
+        options = [SelectOption(label='Invité', value='Invité', emoji='👋')] + [SelectOption(label=f'FI - {name}', value=name, emoji='🎓') for name in missing_members['FI']] + [SelectOption(label=f'FA - {name}', value=name, emoji='🎓') for name in missing_members['FA']]
 
-        self.current_page = 1
-        self.per_page = 25
+        total_options = len(options)
+        per_page = 25
+        current_page = 1
+        total_pages = (total_options + per_page - 1) // per_page
+        current_page = min(current_page, total_pages)
+        
 
-        self.update_options()
+        # self.clear_items()
 
-    def update_options(self):
-        """
-        @brief Updates the options for the current page and manages pagination controls.
-        This method calculates the total number of pages based on the number of options and the number of options per page.
-        It then updates the current page to ensure it is within the valid range. The method slices the options list to get
-        the options for the current page and clears any existing items. Finally, it adds the dropdown with the current page
-        options and the previous/next buttons with appropriate enabled/disabled states.
-        @param self The instance of the class containing options, per_page, current_page, and methods to clear and add items.
-        """
-
-        total_options = len(self.options)
-        total_pages = (total_options + self.per_page - 1) // self.per_page
-        self.current_page = min(self.current_page, total_pages)
-
-        start = (self.current_page - 1) * self.per_page
-        end = start + self.per_page
-        page_options = self.options[start:end]
-
-        self.clear_items()
-
-        self.add_item(DropDown(page_options))
+        self.add_item(DropDown())
         self.add_item(PreviousButton(disabled=self.current_page == 1))
         self.add_item(NextButton(disabled=self.current_page >= total_pages))
 
