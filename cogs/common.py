@@ -24,7 +24,7 @@ class Common(commands.Cog):
     
     def missing_member_names(self):
         names = {'FI': [], 'FA': []}
-        roles = {'FI': ROLE_FI, 'FA': ROLE_FA}
+        roles = {'FI': ROLE_FI.id, 'FA': ROLE_FA.id}
         data = {'FI': Common.FI, 'FA': Common.FA}
 
         for key in data:
@@ -330,13 +330,13 @@ class ConfirmButton(ui.Button):
         selected_value = self.view.selected_value
         dropdown_view = self.view.dropdown_view
         if selected_value == 'Invité':
-            await interaction.user.add_roles(ROLE_GUEST)
+            await interaction.user.add_roles(ROLE_GUEST.id)
         else:
             dropdown_view.options = [option for option in dropdown_view.options if option.value != selected_value]
             dropdown_view.update_options()
             await interaction.user.edit(nick=selected_value)
             await self.based_interaction.message.edit(view=dropdown_view)
-            await interaction.user.add_roles(ROLE_FI if selected_value.split(' ')[1] in Common.FI['Nom'].unique() else interaction.guild.get_role(1289241666871627777))
+            await interaction.user.add_roles(ROLE_FI.id if self.view.selected_label == 'FI' else ROLE_FA.id)
         
         await interaction.response.edit_message(content=f'Sélection confirmée : {selected_value}', view=None)
 
