@@ -413,7 +413,6 @@ class DropDownView(ui.View):
         page_options = self.options[start:end]
 
         self.clear_items()
-        print("ok")
 
         self.add_item(DropDown(page_options, self.missing_members))
         self.add_item(PreviousButton(disabled=self.current_page == 1))
