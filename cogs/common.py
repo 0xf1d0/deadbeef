@@ -238,8 +238,9 @@ class Common(commands.Cog):
         welcome = guild.get_channel(1291494038427537559)
         message_id = self.bot.config.get('welcome_message_id')
         if not message_id:
-            msg = await welcome.send(self.bot.config.get('welcome_message'), view=DropDownView(guild))
+            msg = await welcome.send(self.bot.config.get('welcome_message'), view=DropDownView(self.missing_member_names()))
             self.bot.config.set('welcome_message_id', msg.id)
+        print(self.missing_member_names())
         self.bot.add_view(DropDownView(self.missing_member_names()), message_id=message_id)
 
 
