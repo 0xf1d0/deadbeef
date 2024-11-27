@@ -240,7 +240,6 @@ class Common(commands.Cog):
         if not message_id:
             msg = await welcome.send(self.bot.config.get('welcome_message'), view=DropDownView(self.missing_member_names()))
             self.bot.config.set('welcome_message_id', msg.id)
-        print(self.missing_member_names())
         self.bot.add_view(DropDownView(self.missing_member_names()), message_id=message_id)
 
 
@@ -414,6 +413,7 @@ class DropDownView(ui.View):
         page_options = self.options[start:end]
 
         self.clear_items()
+        print("ok")
 
         self.add_item(DropDown(page_options, self.missing_members))
         self.add_item(PreviousButton(disabled=self.current_page == 1))
