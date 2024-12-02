@@ -37,45 +37,61 @@ class Schedule(commands.Cog):
 
     def filter_schedule(self, schedule_data):
         """
-        @brief Filters the timetable to include only events for the current or next week.
-        @param schedule_data List of timetable rows.
-        @return List of filtered timetable rows.
+        Filters the timetable to include only events for the current or next week.
+        
+        Args:
+            schedule_data (List): List of timetable rows.
+        
+        Returns:
+            Tuple[List, bool]: Filtered timetable rows and whether the week was updated.
         """
         today = datetime.today()
         weekday = today.weekday()
         february_2025 = datetime(2025, 2, 1)
-        start_of_week = today - timedelta(days=today.weekday())
-        next_week = start_of_week + timedelta(days=7)
-        days = 2
-        week_updated = False
-
-        if weekday > 1 and next_week > february_2025:
-            days = 1
-            start_of_week += timedelta(days=7)
-            week_updated = True
-        elif weekday > 2 and next_week < february_2025:
-            start_of_week += timedelta(days=7)
-            week_updated = True
-
-        # end_of_week = start_of_week + timedelta(days=days)
-
-        i = 0
-        while i < len(schedule_data):
-            date = datetime.strptime(schedule_data[i][1], "%d/%m").replace(year=today.year)
-            if start_of_week.date() == date.date():
-                schedule_data[i][1] = date.strftime("%A %d %B %Y").capitalize()
-                for j in range(2, days + 2):
-                    schedule_data[i][j] = datetime.strptime(schedule_data[i][j], "%d/%m").replace(year=today.year).strftime("%A %d %B %Y").capitalize()
-                return [row[:days + 2] for row in schedule_data[i:i + 7]], week_updated
-            i += 7
         
+        # Determine the start of the week and number of days to include
+        start_of_week = today - timedelta(days=weekday)
+        week_updated = False
+        days = 2
+
+        # Adjust start of week and days based on specific conditions
+        if weekday > 1:
+            if next_week := start_of_week + timedelta(days=7) > february_2025:
+                days = 1
+                start_of_week += timedelta(days=7)
+                week_updated = True
+            elif next_week < february_2025:
+                start_of_week += timedelta(days=7)
+                week_updated = True
+
+        # Vectorize the filtering process
+        for i in range(0, len(schedule_data), 7):
+            try:
+                date = datetime.strptime(schedule_data[i][1], "%d/%m").replace(year=today.year)
+                
+                if date.date() == start_of_week.date():
+                    # Format dates for the matching week
+                    schedule_data[i][1] = date.strftime("%A %d %B %Y").capitalize()
+                    
+                    for j in range(2, days + 2):
+                        schedule_data[i][j] = (
+                            datetime.strptime(schedule_data[i][j], "%d/%m")
+                            .replace(year=today.year)
+                            .strftime("%A %d %B %Y")
+                            .capitalize()
+                        )
+                    
+                    return [row[:days + 2] for row in schedule_data[i:i + 7]], week_updated
+            
+            except (ValueError, IndexError):
+                # Skip rows that don't match the expected format
+                continue
+
         return [], week_updated
 
     def format_schedule(self, schedule_data):
         """
-        @brief Formats the timetable for display.
-        @param schedule_data List of filtered timetable rows.
-        @return List of formatted timetable rows.
+        Formats the timetable for display.
         """
         formatted_data = []
 
@@ -85,33 +101,71 @@ class Schedule(commands.Cog):
             formatted_data.append(f"**{schedule_data[0][j]}**\n```{morning_course}\n{afternoon_course}```")
 
         return formatted_data
+    
+    def detect_changes(self, current_data, previous_data):
+        """
+        Detect changes between two schedules.
+        
+        Returns:
+            List of change descriptions
+        """
+        if previous_data is None:
+            return []
+
+        changes = []
+        for j in range(1, len(current_data[0])):
+            # Compare morning courses
+            if (current_data[1][j] != previous_data[1][j] or 
+                current_data[2][j] != previous_data[2][j] or 
+                current_data[3][j] != previous_data[3][j]):
+                changes.append(f"🔄 Modification matin {current_data[0][j]} : {current_data[1][j]} ({current_data[2][j]}) -> Salle {current_data[3][j]}")
+            
+            # Compare afternoon courses
+            if (current_data[4][j] != previous_data[4][j] or 
+                current_data[5][j] != previous_data[5][j] or 
+                current_data[6][j] != previous_data[6][j]):
+                changes.append(f"🔄 Modification après-midi {current_data[0][j]} : {current_data[4][j]} ({current_data[5][j]}) -> Salle {current_data[6][j]}")
+
+        return changes
 
     @tasks.loop(hours=1)
     async def update_schedule(self):
         """
-        @brief Periodically updates the timetable.
+        Periodically updates the timetable in the designated Discord channel.
+        
+        Handles schedule updates, message editing, and notification dispatching.
         """
         channel = self.bot.get_channel(self.schedule_channel_id)
         if channel:
             schedule_data = self.get_schedule()
             filtered_data, week_updated = self.filter_schedule(schedule_data)
-            formatted_data = self.format_schedule(filtered_data)
-            schedule_message = '\n'.join(formatted_data)
+            changes = self.detect_changes(filtered_data, self.previous_schedule_data)
 
-            if self.previous_schedule != schedule_message:
-                self.previous_schedule = schedule_message
+            # Format only if there are changes or the previous schedule data is None
+            if changes or self.previous_schedule_data is None:
+                formatted_data = self.format_schedule(filtered_data)
+                schedule_message = '\n'.join(formatted_data)
+
+                # Update message
                 if self.schedule_message_id:
                     try:
                         message = await channel.fetch_message(self.schedule_message_id)
                         await message.edit(content=schedule_message)
-                        if not week_updated:
-                            await channel.send("L'emploi du temps a été mis à jour. @everyone", delete_after=10)
+                        
+                        # Send edits
+                        if changes and not week_updated:
+                            modification_message = "📋 Modifications de l'emploi du temps :\n" + "\n".join(changes + ['@everyone'])
+                            await channel.send(modification_message, delete_after=3600)
+                    
                     except discord.NotFound:
                         message = await channel.send(schedule_message)
                         self.schedule_message_id = message.id
                 else:
                     message = await channel.send(schedule_message)
                     self.schedule_message_id = message.id
+                
+                # Update previous schedule data
+                self.previous_schedule_data = filtered_data
 
     @update_schedule.before_loop
     async def before_update_schedule(self):
