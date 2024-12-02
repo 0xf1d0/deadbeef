@@ -20,7 +20,7 @@ class Schedule(commands.Cog):
         self.bot = bot
         self.schedule_channel_id = 1304836325010313287
         self.schedule_message_id = None
-        self.previous_schedule = None
+        self.previous_schedule_data = None
         self.update_schedule.start()
 
     def get_schedule(self):
