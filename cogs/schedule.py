@@ -56,12 +56,12 @@ class Schedule(commands.Cog):
 
         # Adjust start of week and days based on specific conditions
         if weekday > 1:
-            if next_week := start_of_week + timedelta(days=7) > february_2025:
+            if (next_week := start_of_week + timedelta(days=7)) > february_2025:
                 days = 1
-                start_of_week += timedelta(days=7)
+                start_of_week = next_week
                 week_updated = True
             elif next_week < february_2025:
-                start_of_week += timedelta(days=7)
+                start_of_week = next_week
                 week_updated = True
 
         # Vectorize the filtering process
