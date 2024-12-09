@@ -69,7 +69,7 @@ class YTDLSource(PCMVolumeTransformer):
         self.filepath = data.get('filepath')
 
     @classmethod
-    async def from_url(cls, url, *, loop=None, stream=False, timestamp=0, stop=None):
+    async def from_url(cls, url, *, loop=None, stream=True, timestamp=0, stop=None):
         """
         Asynchronously creates an instance from a given URL.
         @param cls: The class itself.
@@ -91,7 +91,7 @@ class YTDLSource(PCMVolumeTransformer):
         }
 
 
-        data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=stream))
+        data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=not stream))
 
         if 'entries' in data:
             data = data['entries'][0]

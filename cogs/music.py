@@ -2,7 +2,7 @@ import functools, os, asyncio, __main__
 
 from discord import Interaction, app_commands
 from discord.ext import commands, tasks
-from discord.app_commands.errors import CommandInvokeError
+# from discord.app_commands.errors import CommandInvokeError
 
 from utils import YTDLSource
 from cogs.admin import restrict_channel
@@ -132,7 +132,7 @@ class Music(commands.Cog):
 
                 self.vc.play(player, after=lambda e: self.bot.loop.create_task(self.cleanup(ctx, e, filename)))
                 await ctx.followup.send(f"Lecture de {player.title}.")
-            except CommandInvokeError as e:
+            except Exception as e:
                 await ctx.followup.send(f"Erreur lors de la lecture de la vidéo: {e}")
 
     async def cleanup(self, ctx: Interaction, error, path: str):
