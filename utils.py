@@ -93,7 +93,7 @@ class YTDLSource(PCMVolumeTransformer):
         @return: A tuple containing an instance of the class and the filename.
         """
 
-        if not YTDLSource.is_url_supported(url):
+        if re.match(r'^https?', url) and not YTDLSource.is_url_supported(url):
             raise yt_dlp.utils.UnsupportedError(f"Unsupported URL: {url}")
 
         loop = loop or asyncio.get_event_loop()
