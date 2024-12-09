@@ -22,6 +22,10 @@ ytdl_format_options = {
     'default_search': 'auto',
     'source_address': '0.0.0.0',
     'logtostderr': False,
+    'proxy': 'socks5://128.140.73.79:41216',
+    'geo_bypass': True,
+    'geo_bypass_country': 'US',
+    'geo_bypass_ip_block': '0.0.0.0/0',
     'impersonate': yt_dlp.ImpersonateTarget(client='chrome', version='110', os='windows', os_version='10'),
 }
 
@@ -87,7 +91,7 @@ class YTDLSource(PCMVolumeTransformer):
         }
 
 
-        data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=not stream))
+        data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=stream))
 
         if 'entries' in data:
             data = data['entries'][0]
