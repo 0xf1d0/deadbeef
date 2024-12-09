@@ -22,7 +22,7 @@ ytdl_format_options = {
     'default_search': 'auto',
     'source_address': '0.0.0.0',
     'logtostderr': False,
-    'proxy': 'socks5://128.140.73.79:41216',
+    'proxy': 'socks5://161.97.163.52:55730',
     'geo_bypass': True,
     'geo_bypass_country': 'US',
     'geo_bypass_ip_block': '0.0.0.0/0',
