@@ -22,7 +22,6 @@ ytdl_format_options = {
     'default_search': 'auto',
     'source_address': '0.0.0.0',
     'logtostderr': False,
-    'proxy': 'socks5://161.97.163.52:55730',
     'geo_bypass': True,
     'geo_bypass_country': 'US',
     'geo_bypass_ip_block': '0.0.0.0/0',
@@ -68,6 +67,19 @@ class YTDLSource(PCMVolumeTransformer):
         self.url = data.get('url')
         self.filepath = data.get('filepath')
 
+    @staticmethod
+    def is_url_supported(url):
+        """
+        @brief Checks if a given URL is supported by yt-dlp.
+        @param url The URL to check.
+        @return True if the URL is supported, False otherwise.
+        """
+        extractors = yt_dlp.gen_extractors()
+        for extractor in extractors:
+            if extractor.suitable(url) and extractor.IE_NAME != 'generic':
+                return True
+        return False
+
     @classmethod
     async def from_url(cls, url, *, loop=None, stream=True, timestamp=0, stop=None):
         """
@@ -81,6 +93,9 @@ class YTDLSource(PCMVolumeTransformer):
         @return: A tuple containing an instance of the class and the filename.
         """
 
+        if not YTDLSource.is_url_supported(url):
+            raise yt_dlp.utils.UnsupportedError(f"Unsupported URL: {url}")
+
         loop = loop or asyncio.get_event_loop()
         match = re.search(r'[&?]t=(\d+)', url)
         if not timestamp and match:
@@ -89,7 +104,6 @@ class YTDLSource(PCMVolumeTransformer):
         ffmpeg_options = {
             'options': f'-vn -ss {timestamp}' + (f' -to {stop}' if stop else ''),
         }
-
 
         data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=not stream))
 
