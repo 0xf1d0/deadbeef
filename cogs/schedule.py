@@ -93,6 +93,7 @@ class Schedule(commands.Cog):
         """
         Formats the timetable for display.
         """
+        print(schedule_data)
         formatted_data = []
 
         for j in range(1, len(schedule_data[0])):
