@@ -81,7 +81,7 @@ class YTDLSource(PCMVolumeTransformer):
         return False
 
     @classmethod
-    async def from_url(cls, url, *, loop=None, stream=True, timestamp=0, stop=None):
+    async def from_url(cls, url, *, loop=None, stream=False, timestamp=0, stop=None):
         """
         Asynchronously creates an instance from a given URL.
         @param cls: The class itself.
