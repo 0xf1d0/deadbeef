@@ -33,7 +33,7 @@ class Schedule(commands.Cog):
         response.raise_for_status() # Check if the request was successful
         data = response.content.decode('utf-8')
         reader = csv.reader(io.StringIO(data))
-        return list(reader)[8:92] + list(reader)[102:]
+        return list(reader)[8:92] + list(reader)[103:]
 
     def filter_schedule(self, schedule_data):
         """
@@ -93,7 +93,6 @@ class Schedule(commands.Cog):
         """
         Formats the timetable for display.
         """
-        print(schedule_data)
         formatted_data = []
 
         for j in range(1, len(schedule_data[0])):
