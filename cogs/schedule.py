@@ -33,8 +33,7 @@ class Schedule(commands.Cog):
         response.raise_for_status() # Check if the request was successful
         data = response.content.decode('utf-8')
         reader = list(csv.reader(io.StringIO(data)))
-        print(reader[102:])
-        return reader[8:92] + reader[103:]
+        return reader[8:92] + reader[102:]
 
     def filter_schedule(self, schedule_data):
         """
@@ -140,6 +139,7 @@ class Schedule(commands.Cog):
         if channel:
             schedule_data = self.get_schedule()
             filtered_data, week_updated = self.filter_schedule(schedule_data)
+            print(filtered_data)
             changes = self.detect_changes(filtered_data, self.previous_schedule_data)
 
             # Format only if there are changes or the previous schedule data is None
