@@ -139,7 +139,6 @@ class Schedule(commands.Cog):
         if channel:
             schedule_data = self.get_schedule()
             filtered_data, week_updated = self.filter_schedule(schedule_data)
-            print(filtered_data)
             changes = self.detect_changes(filtered_data, self.previous_schedule_data)
 
             # Format only if there are changes or the previous schedule data is None
