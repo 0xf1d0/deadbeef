@@ -37,19 +37,3 @@ Here is an example :
     "reminders": []
 }
 ```
-
-## Features
-
-### Calendar System
-
-![Calendar](./assets/calendar.png)
-
-### Multiple capabilities
-
-![Card](./assets/card.png)
-
-### Music System using yt-dlp
-
-![Music](./assets/music.png)
-
-And more ...
