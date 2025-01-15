@@ -82,6 +82,7 @@ class Tools(commands.Cog):
                     if i != nb_tools - 1:
                         existing_tool = self.tools[i]
                         if 0 <= index - 1 < len(existing_tool['fields']):
+                            t = existing_tool['fields'][index - 1]['tool']
                             if option.name == "edit":
                                 if tool is not None:
                                     existing_tool['fields'][index - 1]['tool'] = tool
@@ -97,7 +98,7 @@ class Tools(commands.Cog):
                                             msg.embeds[0].remove_field(field_index)
                                             break
                             await msg.edit(embeds=msg.embeds)
-                            await interaction.response.send_message(f"Outil {existing_tool['fields'][index - 1]['tool']} dans la catégorie {category} {option.value}.", ephemeral=True)
+                            await interaction.response.send_message(f"Outil {t} dans la catégorie {category} {option.value}.", ephemeral=True)
                             msg.embeds[0].set_footer(text=f"Last update by {interaction.user.display_name} at {formatted_time}", icon_url=interaction.user.avatar.url)
                             self.save_tools()
                         else:
