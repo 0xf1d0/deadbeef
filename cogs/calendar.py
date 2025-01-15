@@ -173,7 +173,7 @@ class Calendar(commands.Cog):
     async def check_reminders(self):
         
         now = datetime.now()
-        reminder_channel = self.bot.get_channel(self.reminder_channel_id)
+        reminder_channel = self.bot.get_channel(self.calendar_channel_id)
         for reminder in self.reminders:
             for event in reminder['fields']:
                 event_time = datetime.strptime(event['date'], "%Y-%m-%d %H:%M:%S")
