@@ -126,9 +126,7 @@ class Common(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
         welcome = self.bot.get_guild(CYBER.id).get_channel(1291494038427537559)
-        if self.welcome_message_id:
-            msg = await welcome.send(self.bot.config.get('welcome_message'), view=DropDownView(self.missing_member_names()))
-            self.bot.config.set('welcome_message_id', msg.id)
+        await welcome.edit(self.bot.config.get('welcome_message'), view=DropDownView(self.missing_member_names()))
         self.bot.add_view(DropDownView(self.missing_member_names()), message_id=self.welcome_message_id)
 
     @commands.Cog.listener()
