@@ -10,9 +10,12 @@ class Calendar(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.reminders = bot.config.get('reminders', [])
-        self.calendar_channel = bot.guilds[0].get_channel(1293319532361809986)
         self.calendar_message_id = bot.config.get('calendar_message_id', 0)
         self.check_reminders.start()
+        
+    @commands.Cog.listener()
+    async def on_ready(self):
+        self.calendar_channel = self.bot.get_channel(1293319532361809986)
     
     def save_reminders(self):
         self.bot.config.set('reminders', self.reminders)
