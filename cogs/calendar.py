@@ -1,5 +1,4 @@
-from discord import app_commands, Interaction, Embed
-from discord.errors import NotFound
+from discord import app_commands, Interaction, Embed, NotFound
 from discord.ext import commands, tasks
 
 from datetime import datetime, timedelta
@@ -77,14 +76,12 @@ class Calendar(commands.Cog):
                     
                     try:
                         msg = await self.calendar_channel.fetch_message(self.calendar_message_id)
-                        print('test')
                         for embed in msg.embeds:
                             if embed.title == course.upper():
                                 embed.add_field(name=f'__{event}__', value=f'{description}Echéance: {reminder_timestamp}{modality}', inline=False)
                                 await msg.edit(embeds=msg.embeds)
                                 break
                     except NotFound:
-                        print('lol')
                         embed = Embed(title=course.upper())
                         embed.add_field(name=f'__{event}__', value=f'{description}Echéance: {reminder_timestamp}{modality}', inline=False)
                         msg = await self.calendar_channel.send(embed=embed)
