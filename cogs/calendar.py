@@ -152,7 +152,7 @@ class Calendar(commands.Cog):
         else:
             await interaction.response.send_message(error, ephemeral=True)
 
-    @tasks.loop(minutes=1)
+    @tasks.loop(seconds=1)
     async def check_reminders(self):
         now = datetime.now()
         for reminder in self.reminders:
@@ -171,7 +171,6 @@ class Calendar(commands.Cog):
     async def remove_event(self, reminder, event):
         try:
             msg = await self.calendar_channel.fetch_message(self.bot.config.get('calendar_message_id', 0))
-            print(f"Message fetched: {msg.id}")
             for embed in msg.embeds:
                 if embed.title == reminder['name'].upper():
                     for field in embed.fields:
