@@ -58,6 +58,7 @@ class Calendar(commands.Cog):
 
             match option.name:
                 case "add":
+                    print('add')
                     if description:
                         description = f'{description}\n\n'
                     if modality:
