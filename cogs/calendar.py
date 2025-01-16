@@ -12,10 +12,6 @@ class Calendar(commands.Cog):
         self.reminders = bot.config.get('reminders', [])
         self.calendar_message_id = bot.config.get('calendar_message_id', 0)
         self.check_reminders.start()
-        
-    @commands.Cog.listener()
-    async def on_ready(self):
-        self.calendar_channel = self.bot.get_channel(1293319532361809986)
     
     def save_reminders(self):
         self.bot.config.set('reminders', self.reminders)
@@ -76,9 +72,8 @@ class Calendar(commands.Cog):
                             }
                         ]
                     }
-                    print('before')
+
                     try:
-                        print('try')
                         msg = await self.calendar_channel.fetch_message(self.calendar_message_id)
                         for embed in msg.embeds:
                             if embed.title == course.upper():
@@ -86,12 +81,10 @@ class Calendar(commands.Cog):
                                 await msg.edit(embeds=msg.embeds)
                                 break
                     except NotFound:
-                        print('except')
                         embed = Embed(title=course.upper())
                         embed.add_field(name=f'__{event}__', value=f'{description}Echéance: {reminder_timestamp}{modality}', inline=False)
                         msg = await self.calendar_channel.send(embed=embed)
                         self.bot.config.set('calendar_message_id', msg.id)
-                    print('after')
 
                     for existing_reminder in self.reminders:
                         if existing_reminder['name'] == course:
@@ -157,6 +150,7 @@ class Calendar(commands.Cog):
 
     @tasks.loop(minutes=1)
     async def check_reminders(self):
+        self.calendar_channel = self.bot.get_channel(1293319532361809986)
         now = datetime.now()
         for reminder in self.reminders:
             for event in reminder['fields']:
