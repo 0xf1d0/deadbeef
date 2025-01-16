@@ -70,7 +70,7 @@ class Tools(commands.Cog):
                 
             case "edit" | "remove":
                 for existing_tool in self.tools:
-                    if tool['category'].lower() == category.lower():
+                    if existing_tool['category'].lower() == category.lower():
                         if 0 <= index - 1 < len(existing_tool['fields']):
                             t = existing_tool['fields'][index - 1]['tool']
                             if option.name == "edit":
