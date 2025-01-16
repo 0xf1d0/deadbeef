@@ -56,8 +56,7 @@ class Calendar(commands.Cog):
                 date += ' 23:59'
             reminder_date = datetime.strptime(date, "%d/%m/%Y %H:%M")
             reminder_timestamp = f'<t:{int(reminder_date.timestamp())}:R>'
-            
-            
+
             match option.name:
                 case "add":
                     if description:
@@ -78,12 +77,14 @@ class Calendar(commands.Cog):
                     
                     try:
                         msg = await self.calendar_channel.fetch_message(self.calendar_message_id)
+                        print('test')
                         for embed in msg.embeds:
                             if embed.title == course.upper():
                                 embed.add_field(name=f'__{event}__', value=f'{description}Echéance: {reminder_timestamp}{modality}', inline=False)
                                 await msg.edit(embeds=msg.embeds)
                                 break
                     except NotFound:
+                        print('lol')
                         embed = Embed(title=course.upper())
                         embed.add_field(name=f'__{event}__', value=f'{description}Echéance: {reminder_timestamp}{modality}', inline=False)
                         msg = await self.calendar_channel.send(embed=embed)
