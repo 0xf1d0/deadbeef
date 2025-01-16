@@ -58,7 +58,6 @@ class Calendar(commands.Cog):
 
             match option.name:
                 case "add":
-                    print('add')
                     if description:
                         description = f'{description}\n\n'
                     if modality:
@@ -74,19 +73,22 @@ class Calendar(commands.Cog):
                             }
                         ]
                     }
-                    
+                    print('before')
                     try:
                         msg = await self.calendar_channel.fetch_message(self.calendar_message_id)
+                        print('try')
                         for embed in msg.embeds:
                             if embed.title == course.upper():
                                 embed.add_field(name=f'__{event}__', value=f'{description}Echéance: {reminder_timestamp}{modality}', inline=False)
                                 await msg.edit(embeds=msg.embeds)
                                 break
                     except NotFound:
+                        print('except')
                         embed = Embed(title=course.upper())
                         embed.add_field(name=f'__{event}__', value=f'{description}Echéance: {reminder_timestamp}{modality}', inline=False)
                         msg = await self.calendar_channel.send(embed=embed)
                         self.bot.config.set('calendar_message_id', msg.id)
+                    print('after')
 
                     for existing_reminder in self.reminders:
                         if existing_reminder['name'] == course:
