@@ -76,19 +76,16 @@ class Calendar(commands.Cog):
                     print('before')
                     try:
                         msg = await self.calendar_channel.fetch_message(self.calendar_message_id)
-                        print('try')
                         for embed in msg.embeds:
                             if embed.title == course.upper():
                                 embed.add_field(name=f'__{event}__', value=f'{description}Echéance: {reminder_timestamp}{modality}', inline=False)
                                 await msg.edit(embeds=msg.embeds)
                                 break
-                    except NotFound:
-                        print('except')
+                    except:
                         embed = Embed(title=course.upper())
                         embed.add_field(name=f'__{event}__', value=f'{description}Echéance: {reminder_timestamp}{modality}', inline=False)
                         msg = await self.calendar_channel.send(embed=embed)
                         self.bot.config.set('calendar_message_id', msg.id)
-                    print('after')
 
                     for existing_reminder in self.reminders:
                         if existing_reminder['name'] == course:
@@ -126,7 +123,7 @@ class Calendar(commands.Cog):
                                 break
                         else:
                             await interaction.response.send_message("Cours non trouvé.", ephemeral=True)
-                    except NotFound:
+                    except:
                         await interaction.response.send_message("Aucun message de rappel trouvé.", ephemeral=True)
                 case "remove":
                     for existing_reminder in self.reminders:
