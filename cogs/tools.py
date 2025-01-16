@@ -3,7 +3,7 @@ from discord import Interaction, app_commands
 
 
 def check_if_user_or_roles(interaction: Interaction) -> bool:
-    return interaction.user.id == 454935749767200768 or any([role.id in [1293714448263024650, 1291503961139838987] for role in interaction.user.roles])
+    return interaction.user.id == 454935749767200768 or any(role.id in [1293714448263024650, 1291503961139838987] for role in interaction.user.roles)
 
 class Tools(commands.Cog):
     
@@ -15,17 +15,15 @@ class Tools(commands.Cog):
         self.bot.config.set('tools', self.tools)
 
     def update_embed(self, embed, category, tools):
-        for index, field in enumerate(embed.fields):
-            if field.name == f'__{category.upper()}__':
-                new_value = "\n".join(
-                    [f"{i+1}. **{tool['tool']}**{': ' + tool['description'] if tool['description'] else ''}" for i, tool in enumerate(tools)]
-                )
-                embed.set_field_at(index, name=field.name, value=new_value, inline=False)
-                return
         new_value = "\n".join(
             [f"{i+1}. **{tool['tool']}**{': ' + tool['description'] if tool['description'] else ''}" for i, tool in enumerate(tools)]
         )
-        embed.add_field(name=f'__{category.upper()}__', value=new_value, inline=False)
+        for index, field in enumerate(embed.fields):
+            if field.name == f'__{category.upper()}__':
+                embed.set_field_at(index, name=field.name, value=new_value, inline=False)
+                break
+        else:
+            embed.add_field(name=f'__{category.upper()}__', value=new_value, inline=False)
 
     @app_commands.command(description="Ajouter, modifier ou supprimer un outil.")
     @app_commands.describe(category="Choisir la catégorie.", tool="Nom de l'outil.", description="Description de l'outil.", index="Index de l'outil à modifier ou supprimer.")
@@ -35,7 +33,7 @@ class Tools(commands.Cog):
         app_commands.Choice(name="edit", value="modifié"),
         app_commands.Choice(name="remove", value="supprimé")
     ])
-    async def tool(self, interaction: Interaction, option: app_commands.Choice[str], category: str, tool: str = None, description: str = None, index: int = None):
+    async def tool(self, interaction: Interaction, option: app_commands.Choice[str], category: str, tool: str = None, description: str = '', index: int = 1):
         tools_channel = interaction.guild.get_channel(1294665610093138061)
         msg = await tools_channel.fetch_message(1294690496815566983)
 
@@ -48,17 +46,14 @@ class Tools(commands.Cog):
                     "fields": [
                         {
                             "tool": tool,
-                            "description": description if description else ""
+                            "description": description
                         }
                     ]
                 }
                 
                 for existing_tool in self.tools:
                     if existing_tool['category'].lower() == category.lower():
-                        existing_tool['fields'].append({
-                            "tool": tool,
-                            "description": description if description else ""
-                        })
+                        existing_tool['fields'].append(store['fields'][0])
                         self.update_embed(msg.embeds[0], category, existing_tool['fields'])
                         msg.embeds[0].set_footer(text=f"Last update by {interaction.user.display_name} at {formatted_time}", icon_url=interaction.user.avatar.url)
                         await msg.edit(embeds=msg.embeds)
@@ -74,13 +69,8 @@ class Tools(commands.Cog):
                 await interaction.response.send_message(f"Outil {tool} créé dans la catégorie {category}", ephemeral=True)
                 
             case "edit" | "remove":
-                if index is not None:
-                    i = 0
-                    nb_tools = len(self.tools)
-                    while i < nb_tools and self.tools[i]['category'].lower() != category.lower():
-                        i += 1
-                    if i != nb_tools - 1:
-                        existing_tool = self.tools[i]
+                for existing_tool in self.tools:
+                    if tool['category'].lower() == category.lower():
                         if 0 <= index - 1 < len(existing_tool['fields']):
                             t = existing_tool['fields'][index - 1]['tool']
                             if option.name == "edit":
@@ -103,9 +93,9 @@ class Tools(commands.Cog):
                             self.save_tools()
                         else:
                             await interaction.response.send_message("Index non trouvé.", ephemeral=True)
-                    else:
-                        await interaction.response.send_message("Catégorie non trouvée.", ephemeral=True)
-                
+                        break
+                else:
+                    await interaction.response.send_message("Catégorie non trouvée.", ephemeral=True)
 
     @tool.error
     async def calendar_error(self, interaction: Interaction, error: Exception):
