@@ -10,7 +10,6 @@ class Calendar(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.reminders = bot.config.get('reminders', [])
-        self.calendar_message_id = bot.config.get('calendar_message_id', 0)
         self.check_reminders.start()
 
     @commands.Cog.listener()
@@ -58,6 +57,7 @@ class Calendar(commands.Cog):
                 date += ' 23:59'
             reminder_date = datetime.strptime(date, "%d/%m/%Y %H:%M")
             reminder_timestamp = f'<t:{int(reminder_date.timestamp())}:R>'
+            calendar_message_id = self.bot.config.get('calendar_message_id', 0)
 
             match option.name:
                 case "add":
@@ -78,7 +78,7 @@ class Calendar(commands.Cog):
                     }
 
                     try:
-                        msg = await self.calendar_channel.fetch_message(self.calendar_message_id)
+                        msg = await self.calendar_channel.fetch_message(calendar_message_id)
                         for embed in msg.embeds:
                             if embed.title == course.upper():
                                 embed.add_field(name=f'__{event}__', value=f'{description}Echéance: {reminder_timestamp}{modality}', inline=False)
@@ -100,7 +100,7 @@ class Calendar(commands.Cog):
                     await interaction.response.send_message(f"Rappel créé pour {reminder_timestamp}", ephemeral=True)
                 case "edit":
                     try:
-                        msg = await self.calendar_channel.fetch_message(self.calendar_message_id)
+                        msg = await self.calendar_channel.fetch_message(calendar_message_id)
                         for embed in msg.embeds:
                             if embed.title == course.upper():
                                 for index, field in enumerate(embed.fields):
@@ -170,24 +170,20 @@ class Calendar(commands.Cog):
 
     async def remove_event(self, reminder, event):
         try:
-            msg = await self.calendar_channel.fetch_message(self.calendar_message_id)
+            msg = await self.calendar_channel.fetch_message(self.bot.config.get('calendar_message_id', 0))
             print(f"Message fetched: {msg.id}")
             for embed in msg.embeds:
                 if embed.title == reminder['name'].upper():
                     for field in embed.fields:
                         if event['name'] in field.name:
                             embed.remove_field(embed.fields.index(field))
-                            print(f"Field removed: {field.name}")
                             if not embed.fields:
                                 msg.embeds.remove(embed)
-                                print("Embed removed")
                                 if not msg.embeds:
                                     await msg.delete()
                                     self.bot.config.remove('calendar_message_id')
-                                    print("Message deleted")
                                     break
                             await msg.edit(embeds=msg.embeds)
-                            print("Message edited")
                             break
                     break
         except NotFound:
