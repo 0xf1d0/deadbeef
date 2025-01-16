@@ -12,7 +12,11 @@ class Calendar(commands.Cog):
         self.reminders = bot.config.get('reminders', [])
         self.calendar_message_id = bot.config.get('calendar_message_id', 0)
         self.check_reminders.start()
-    
+
+    @commands.Cog.listener()
+    async def on_ready(self):
+        self.calendar_channel = await self.bot.fetch_channel(1293319532361809986)
+
     def save_reminders(self):
         self.bot.config.set('reminders', self.reminders)
     
@@ -150,7 +154,6 @@ class Calendar(commands.Cog):
 
     @tasks.loop(minutes=1)
     async def check_reminders(self):
-        self.calendar_channel = self.bot.get_channel(1293319532361809986)
         now = datetime.now()
         for reminder in self.reminders:
             for event in reminder['fields']:
@@ -166,25 +169,24 @@ class Calendar(commands.Cog):
                     await self.remove_event(reminder, event)
 
     async def remove_event(self, reminder, event):
-        if self.calendar_message_id:
-            try:
-                msg = await self.calendar_channel.fetch_message(self.calendar_message_id)
-                for embed in msg.embeds:
-                    if embed.title == reminder['name'].upper():
-                        for field in embed.fields:
-                            if event['name'] in field.name:
-                                embed.remove_field(embed.fields.index(field))
-                                if not embed.fields:
-                                    msg.embeds.remove(embed)
-                                    if not msg.embeds:
-                                        await msg.delete()
-                                        self.bot.config.remove('calendar_message_id')
-                                        break
-                                await msg.edit(embeds=msg.embeds)
-                                break
-                        break
-            except NotFound:
-                pass
+        try:
+            msg = await self.calendar_channel.fetch_message(self.calendar_message_id)
+            for embed in msg.embeds:
+                if embed.title == reminder['name'].upper():
+                    for field in embed.fields:
+                        if event['name'] in field.name:
+                            embed.remove_field(embed.fields.index(field))
+                            if not embed.fields:
+                                msg.embeds.remove(embed)
+                                if not msg.embeds:
+                                    await msg.delete()
+                                    self.bot.config.remove('calendar_message_id')
+                                    break
+                            await msg.edit(embeds=msg.embeds)
+                            break
+                    break
+        except NotFound:
+            pass
 
         reminder['fields'] = [field for field in reminder['fields'] if field['name'] != event['name']]
         if not reminder['fields']:
