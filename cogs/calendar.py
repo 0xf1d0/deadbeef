@@ -149,6 +149,8 @@ class Calendar(commands.Cog):
     async def calendar_error(self, interaction: Interaction, error: Exception):
         if isinstance(error, app_commands.MissingAnyRole):
             await interaction.response.send_message("Vous n'avez pas la permission d'utiliser cette commande.", ephemeral=True)
+        else:
+            await interaction.response.send_message(f"Une erreur est survenue.\n{error}", ephemeral=True)
 
     @tasks.loop(minutes=1)
     async def check_reminders(self):
