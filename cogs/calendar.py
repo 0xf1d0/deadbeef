@@ -10,7 +10,7 @@ class Calendar(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.reminders = bot.config.get('reminders', [])
-        self.calendar_channel = bot.get_channel(1293319532361809986)
+        self.calendar_channel = bot.guilds[0].get_channel(1293319532361809986)
         self.calendar_message_id = bot.config.get('calendar_message_id', 0)
         self.check_reminders.start()
     
@@ -150,7 +150,7 @@ class Calendar(commands.Cog):
         if isinstance(error, app_commands.MissingAnyRole):
             await interaction.response.send_message("Vous n'avez pas la permission d'utiliser cette commande.", ephemeral=True)
         else:
-            await interaction.response.send_message(f"Une erreur est survenue.\n{error}", ephemeral=True)
+            await interaction.response.send_message(error, ephemeral=True)
 
     @tasks.loop(minutes=1)
     async def check_reminders(self):
