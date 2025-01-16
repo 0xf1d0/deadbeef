@@ -173,17 +173,16 @@ class Calendar(commands.Cog):
             msg = await self.calendar_channel.fetch_message(self.bot.config.get('calendar_message_id', 0))
             for embed in msg.embeds:
                 if embed.title == reminder['name'].upper():
-                    for field in embed.fields:
-                        if event['name'] in field.name:
-                            embed.remove_field(embed.fields.index(field))
-                            if not embed.fields:
-                                msg.embeds.remove(embed)
-                                if not msg.embeds:
-                                    await msg.delete()
-                                    self.bot.config.remove('calendar_message_id')
-                                    break
-                            await msg.edit(embeds=msg.embeds)
+                    fields_to_remove = [field for field in embed.fields if event['name'] in field.name]
+                    for field in fields_to_remove:
+                        embed.remove_field(embed.fields.index(field))
+                    if not embed.fields:
+                        msg.embeds.remove(embed)
+                        if not msg.embeds:
+                            await msg.delete()
+                            self.bot.config.remove('calendar_message_id')
                             break
+                    await msg.edit(embeds=msg.embeds)
                     break
         except NotFound:
             pass
