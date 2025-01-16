@@ -58,13 +58,14 @@ class Calendar(commands.Cog):
             reminder_date = datetime.strptime(date, "%d/%m/%Y %H:%M")
             reminder_timestamp = f'<t:{int(reminder_date.timestamp())}:R>'
             calendar_message_id = self.bot.config.get('calendar_message_id', 0)
+            
+            if description:
+                description = f'{description}\n\n'
+            if modality:
+                modality = f'\n\n``{modality}``'
 
             match option.name:
                 case "add":
-                    if description:
-                        description = f'{description}\n\n'
-                    if modality:
-                        modality = f'\n\n``{modality}``'
                     reminder = {
                         "name": course,
                         "fields": [
