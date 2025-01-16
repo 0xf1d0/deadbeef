@@ -82,7 +82,7 @@ class Calendar(commands.Cog):
                                 embed.add_field(name=f'__{event}__', value=f'{description}Echéance: {reminder_timestamp}{modality}', inline=False)
                                 await msg.edit(embeds=msg.embeds)
                                 break
-                    except:
+                    except NotFound:
                         print('except')
                         embed = Embed(title=course.upper())
                         embed.add_field(name=f'__{event}__', value=f'{description}Echéance: {reminder_timestamp}{modality}', inline=False)
@@ -126,7 +126,7 @@ class Calendar(commands.Cog):
                                 break
                         else:
                             await interaction.response.send_message("Cours non trouvé.", ephemeral=True)
-                    except:
+                    except NotFound:
                         await interaction.response.send_message("Aucun message de rappel trouvé.", ephemeral=True)
                 case "remove":
                     for existing_reminder in self.reminders:
