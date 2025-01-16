@@ -75,6 +75,7 @@ class Calendar(commands.Cog):
                     }
                     print('before')
                     try:
+                        print('try')
                         msg = await self.calendar_channel.fetch_message(self.calendar_message_id)
                         for embed in msg.embeds:
                             if embed.title == course.upper():
@@ -82,10 +83,12 @@ class Calendar(commands.Cog):
                                 await msg.edit(embeds=msg.embeds)
                                 break
                     except:
+                        print('except')
                         embed = Embed(title=course.upper())
                         embed.add_field(name=f'__{event}__', value=f'{description}Echéance: {reminder_timestamp}{modality}', inline=False)
                         msg = await self.calendar_channel.send(embed=embed)
                         self.bot.config.set('calendar_message_id', msg.id)
+                    print('after')
 
                     for existing_reminder in self.reminders:
                         if existing_reminder['name'] == course:
