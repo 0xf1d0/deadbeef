@@ -150,7 +150,7 @@ class Common(commands.Cog):
 
 class DropDown(ui.Select):
     def __init__(self, options, missing_members):
-        super().__init__(placeholder='Se chercher', custom_id='dropdown', options=options, min_values=1, max_values=1)
+        super().__init__(placeholder='Choisir son statut', custom_id='dropdown', options=options, min_values=1, max_values=1)
         self.missing_members = missing_members
     
     async def callback(self, interaction: Interaction):
