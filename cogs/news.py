@@ -4,7 +4,7 @@ import feedparser
 
 
 class News(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.channel_id = 1329861281427095582
         self.latest_entry = None
@@ -34,5 +34,5 @@ class News(commands.Cog):
         await self.bot.wait_until_ready()
 
 
-def setup(bot):
-    bot.add_cog(News(bot))
+async def setup(bot: commands.Bot):
+    await bot.add_cog(News(bot))
