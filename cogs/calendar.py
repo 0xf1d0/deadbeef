@@ -88,7 +88,7 @@ class Calendar(commands.Cog):
                         else:
                             embed = Embed(title=course.upper())
                             embed.add_field(name=f'__{event}__', value=f'{description}Echéance: {reminder_timestamp}{modality}', inline=False)
-                            msg = await self.calendar_channel.send(embed=embed)
+                            await msg.edit(embeds=msg.embeds + [embed])
                     except NotFound:
                         embed = Embed(title=course.upper())
                         embed.add_field(name=f'__{event}__', value=f'{description}Echéance: {reminder_timestamp}{modality}', inline=False)
