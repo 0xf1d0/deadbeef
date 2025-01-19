@@ -157,7 +157,7 @@ class Calendar(commands.Cog):
         else:
             await interaction.response.send_message(error, ephemeral=True)
 
-    @tasks.loop(seconds=1)
+    @tasks.loop(minutes=1)
     async def check_reminders(self):
         now = datetime.now()
         for reminder in self.reminders:
