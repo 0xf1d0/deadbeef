@@ -187,14 +187,13 @@ class Calendar(commands.Cog):
                     fields_to_remove = [field for field in embed.fields if event['name'] in field.name]
                     for field in fields_to_remove:
                         embed.remove_field(embed.fields.index(field))
+                    msg.embeds.sort(key=lambda embed: datetime.fromtimestamp(int(embed.fields[-1].value.split('Echéance: <t:')[1].split(':')[0])), reverse=True)
                     if not embed.fields:
                         msg.embeds.remove(embed)
                         if not msg.embeds:
                             await msg.delete()
                             self.bot.config.remove('calendar_message_id')
                             break
-                        else:
-                            msg.embeds.sort(key=lambda embed: datetime.fromtimestamp(int(embed.fields[-1].value.split('Echéance: <t:')[1].split(':')[0])), reverse=True)
                     await msg.edit(embeds=msg.embeds)
                     break
         except NotFound:
