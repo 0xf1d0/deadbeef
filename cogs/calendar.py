@@ -83,12 +83,15 @@ class Calendar(commands.Cog):
                         for embed in msg.embeds:
                             if embed.title == course.upper():
                                 embed.add_field(name=f'__{event}__', value=f'{description}Echéance: {reminder_timestamp}{modality}', inline=False)
+                                embed.fields.sort(key=lambda field: datetime.strptime(field.value.split('Echéance: ')[1].split(' ')[0], '<t:%s:R>'), reverse=True)
                                 await msg.edit(embeds=msg.embeds)
                                 break
                         else:
                             embed = Embed(title=course.upper())
                             embed.add_field(name=f'__{event}__', value=f'{description}Echéance: {reminder_timestamp}{modality}', inline=False)
                             await msg.edit(embeds=msg.embeds + [embed])
+                            msg.embeds.sort(key=lambda embed: datetime.strptime(embed.fields[0].value.split('Echéance: ')[1].split(' ')[0], '<t:%s:R>'), reverse=True)
+                            await msg.edit(embeds=msg.embeds)
                     except NotFound:
                         embed = Embed(title=course.upper())
                         embed.add_field(name=f'__{event}__', value=f'{description}Echéance: {reminder_timestamp}{modality}', inline=False)
@@ -111,6 +114,7 @@ class Calendar(commands.Cog):
                                 for index, field in enumerate(embed.fields):
                                     if event in field.name:
                                         embed.set_field_at(index, name=f'__{event}__', value=f'{description}Echéance: {reminder_timestamp}{modality}', inline=False)
+                                        embed.fields.sort(key=lambda field: datetime.strptime(field.value.split('Echéance: ')[1].split(' ')[0], '<t:%s:R>'), reverse=True)
                                         await msg.edit(embeds=msg.embeds)
                                         for existing_reminder in self.reminders:
                                             if existing_reminder['name'] == course:
