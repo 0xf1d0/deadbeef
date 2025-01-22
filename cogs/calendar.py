@@ -193,6 +193,8 @@ class Calendar(commands.Cog):
                             await msg.delete()
                             self.bot.config.remove('calendar_message_id')
                             break
+                        else:
+                            msg.embeds.sort(key=lambda embed: datetime.fromtimestamp(int(embed.fields[-1].value.split('Echéance: <t:')[1].split(':')[0])), reverse=True)
                     await msg.edit(embeds=msg.embeds)
                     break
         except NotFound:
