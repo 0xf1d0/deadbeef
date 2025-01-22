@@ -84,13 +84,14 @@ class Calendar(commands.Cog):
                             if embed.title == course.upper():
                                 embed.add_field(name=f'__{event}__', value=f'{description}Echéance: {reminder_timestamp}{modality}', inline=False)
                                 embed.fields.sort(key=lambda field: datetime.fromtimestamp(int(field.value.split('Echéance: <t:')[1].split(':')[0])), reverse=True)
+                                msg.embeds.sort(key=lambda embed: datetime.fromtimestamp(int(embed.fields[-1].value.split('Echéance: <t:')[1].split(':')[0])), reverse=True)
                                 await msg.edit(embeds=msg.embeds)
                                 break
                         else:
                             embed = Embed(title=course.upper())
                             embed.add_field(name=f'__{event}__', value=f'{description}Echéance: {reminder_timestamp}{modality}', inline=False)
                             msg.embeds.append(embed)
-                            msg.embeds.sort(key=lambda embed: datetime.fromtimestamp(int(embed.fields[0].value.split('Echéance: <t:')[1].split(':')[0])), reverse=True)
+                            msg.embeds.sort(key=lambda embed: datetime.fromtimestamp(int(embed.fields[-1].value.split('Echéance: <t:')[1].split(':')[0])), reverse=True)
                             await msg.edit(embeds=msg.embeds)
                     except NotFound:
                         embed = Embed(title=course.upper())
@@ -115,6 +116,7 @@ class Calendar(commands.Cog):
                                     if event in field.name:
                                         embed.set_field_at(index, name=f'__{event}__', value=f'{description}Echéance: {reminder_timestamp}{modality}', inline=False)
                                         embed.fields.sort(key=lambda field: datetime.fromtimestamp(int(field.value.split('Echéance: <t:')[1].split(':')[0])), reverse=True)
+                                        msg.embeds.sort(key=lambda embed: datetime.fromtimestamp(int(embed.fields[-1].value.split('Echéance: <t:')[1].split(':')[0])), reverse=True)
                                         await msg.edit(embeds=msg.embeds)
                                         for existing_reminder in self.reminders:
                                             if existing_reminder['name'] == course:
