@@ -89,7 +89,7 @@ class Calendar(commands.Cog):
                         else:
                             embed = Embed(title=course.upper())
                             embed.add_field(name=f'__{event}__', value=f'{description}Echéance: {reminder_timestamp}{modality}', inline=False)
-                            await msg.edit(embeds=msg.embeds + [embed])
+                            msg.embeds.append(embed)
                             msg.embeds.sort(key=lambda embed: datetime.fromtimestamp(int(embed.fields[0].value.split('Echéance: <t:')[1].split(':')[0])), reverse=True)
                             await msg.edit(embeds=msg.embeds)
                     except NotFound:
