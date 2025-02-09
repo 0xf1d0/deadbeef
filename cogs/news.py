@@ -1,6 +1,7 @@
 from discord import Embed, Colour
 from discord.ext import commands, tasks
 from datetime import datetime
+
 import feedparser
 import re
 
@@ -114,7 +115,7 @@ class News(commands.Cog):
             for entry in feed.entries:
                 if entry.id not in self.sent_entries:
                     new_entries.append((entry, feed_url))
-                    self.sent_entries.add(entry.id)
+                    self.sent_entries.append(entry.id)
 
         if new_entries:
             channel = self.bot.get_channel(self.channel_id)
