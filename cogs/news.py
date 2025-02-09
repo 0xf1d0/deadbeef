@@ -27,7 +27,7 @@ class News(commands.Cog):
             for entry in feed.entries:
                 if entry.id not in self.sent_entries:
                     new_entries.append(entry)
-                    self.sent_entries.add(entry.id)
+                    self.sent_entries.append(entry.id)
 
         if new_entries:
             channel = self.bot.get_channel(self.channel_id)
@@ -47,7 +47,7 @@ class News(commands.Cog):
                     await channel.send(embed=embed)
 
             # Update the configuration file with the new set of sent entries
-            self.bot.config.set('feeds', list(self.sent_entries))
+            self.bot.config.set('feeds', self.sent_entries)
 
     @news_update.before_loop
     async def before_news_update(self):
