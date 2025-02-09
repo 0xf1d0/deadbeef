@@ -9,7 +9,7 @@ class Tools(commands.Cog):
     
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.tools = self.bot.config.get('tools', [])
+        self.tools = bot.config.get('tools', [])
         
     def save_tools(self):
         self.bot.config.set('tools', self.tools)

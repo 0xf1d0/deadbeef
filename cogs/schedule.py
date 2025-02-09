@@ -27,20 +27,22 @@ class Schedule(commands.Cog):
     def filter_schedule(self, schedule_data):
         today = datetime.today()
         weekday = today.weekday()
-        february_2025 = datetime(2025, 2, 1)
+        # february_2025 = datetime(2025, 2, 1)
         
         start_of_week = today - timedelta(days=weekday)
         week_updated = False
         days = 2
 
         if weekday > 2:
-            if (next_week := start_of_week + timedelta(days=7)) > february_2025:
+            start_of_week = start_of_week + timedelta(days=7)
+            week_updated = True
+            """if (next_week := start_of_week + timedelta(days=7)) > february_2025:
                 days = 1
                 start_of_week = next_week
                 week_updated = True
             elif next_week < february_2025:
                 start_of_week = next_week
-                week_updated = True
+                week_updated = True"""
 
         for i in range(0, len(schedule_data), 7):
             try:
@@ -92,7 +94,7 @@ class Schedule(commands.Cog):
 
         return changes
 
-    @tasks.loop(hours=1)
+    @tasks.loop(minutes=15)
     async def update_schedule(self):
         channel = self.bot.get_channel(self.schedule_channel_id)
         if channel:
