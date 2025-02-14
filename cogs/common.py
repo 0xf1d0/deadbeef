@@ -12,15 +12,15 @@ class Common(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.welcome_message_id = 1314385676107645010
         self.bot = bot
-        self.mistral_payload = lambda message_content: {
+        self.mistral_payload = lambda msg, author: {
             'model': 'mistral-tiny',
             'messages': [
                 {
                     'role': 'user',
-                    'content': f"Réponds à ce message en français d'un cyber-enthousiat: {message_content}"
+                    'content': f"Salut je suis {author}. Tu te prénommes dorénavant DeadBeef. {msg}"
                 }
             ],
-            'max_tokens': 500
+            'max_tokens': 1000
         }
 
         self.mistral_headers = {
@@ -154,7 +154,7 @@ class Common(commands.Cog):
         if 'deadbeef' in msg or 'mistral' in msg:
             async with message.channel.typing():
                 async with aiohttp.ClientSession() as session:
-                    async with session.post('https://api.mistral.ai/v1/chat/completions', headers=self.mistral_headers, json=self.mistral_payload(message.content)) as response:
+                    async with session.post('https://api.mistral.ai/v1/chat/completions', headers=self.mistral_headers, json=self.mistral_payload(message.content, message.author.display_name)) as response:
                         if response.status == 200:
                             data = await response.json()
                             r = data['choices'][0]['message']['content']
