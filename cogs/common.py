@@ -123,7 +123,7 @@ class Common(commands.Cog):
                     
                     conversation.append({
                         'role': 'user',
-                        'content': message.content
+                        'content': f"Salut je suis {message.author.display_name}. Organise tes réponses au format markdown. Tu te prénommes DeadBeef. Message de l'utilisateur délimité par '---'. Réponds à ce dernier de manière claire, précise en sachant que tu es expert en cybersécurité. Dans ta réponse tu ne répèteras pas ce qui est dit avant le '---' c'est très important. --- {message.content} ---"
                     })
                     
                     if len(conversation) > 10:
@@ -161,12 +161,12 @@ class Common(commands.Cog):
             # Initialiser une nouvelle conversation
             conversation = [{
                 'role': 'user',
-                'content': message.content
+                'content': f"Salut je suis {message.author.display_name}. Organise tes réponses au format markdown. Tu te prénommes DeadBeef. Message de l'utilisateur délimité par '---'. Réponds à ce dernier de manière claire, précise en sachant que tu es expert en cybersécurité. Dans ta réponse tu ne répèteras pas ce qui est dit avant le '---' c'est très important. --- {message.content} ---"
             }]
             self.conversations[channel_id] = conversation
             async with message.channel.typing():
                 async with aiohttp.ClientSession() as session:
-                    async with session.post('https://api.mistral.ai/v1/chat/completions', headers=self.mistral_headers, json=self.mistral_payload(message.content, message.author.display_name)) as response:
+                    async with session.post('https://api.mistral.ai/v1/chat/completions', headers=self.mistral_headers, json=self.mistral_payload(message.content)) as response:
                         if response.status == 200:
                             data = await response.json()
                             r = data['choices'][0]['message']['content']
