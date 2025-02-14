@@ -175,7 +175,7 @@ class Common(commands.Cog):
                         # Ajouter la réponse du bot au contexte
                         conversation.append({
                             'role': 'assistant',
-                            'content': response
+                            'content': r
                         })
                         await message.reply(r)
 
