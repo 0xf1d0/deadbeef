@@ -1,5 +1,5 @@
-import re
-from discord import app_commands, Interaction, ui, SelectOption, ButtonStyle, Member, Embed, File
+import re, aiohttp
+from discord import Message, app_commands, Interaction, ui, SelectOption, ButtonStyle, Member, Embed, File
 from discord.ext import commands
 
 from utils import CYBER, ROLE_FA, ROLE_FI, ROLE_GUEST, read_csv
@@ -12,6 +12,21 @@ class Common(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.welcome_message_id = 1314385676107645010
         self.bot = bot
+        self.mistral_payload = lambda message_content: {
+            'model': 'mistral-tiny',
+            'messages': [
+                {
+                    'role': 'user',
+                    'content': f"Réponds à ce message en français d'un cyber-enthousiat: {message_content}"
+                }
+            ],
+            'max_tokens': 500
+        }
+
+        self.mistral_headers = {
+            'Authorization': f'Bearer {bot.config.get("mistral_key")}',
+            'Content-Type': 'application/json'
+        }
     
     def missing_member_names(self):
         names = {'FI': [], 'FA': []}
@@ -129,6 +144,25 @@ class Common(commands.Cog):
         welcome_message = await welcome.fetch_message(self.welcome_message_id)
         await welcome_message.edit(content=self.bot.config.get('welcome_message'), view=DropDownView(self.missing_member_names()))
         self.bot.add_view(DropDownView(self.missing_member_names()), message_id=self.welcome_message_id)
+        
+    @commands.Cog.listener()
+    async def on_message(self, message: Message):
+        if message.author.bot:
+            return
+
+        msg = message.content.lower()
+        if 'deadbeef' in msg or 'mistral' in msg:
+            async with message.channel.typing():
+                async with aiohttp.ClientSession() as session:
+                    async with session.post('https://api.mistral.ai/v1/chat/completions', headers=self.mistral_headers, json=self.mistral_payload(message.content)) as response:
+                        if response.status == 200:
+                            data = await response.json()
+                            r = data['choices'][0]['message']['content']
+                        else:
+                            r = "Sorry, I couldn't generate a response at this time."
+                        await message.reply(r)
+
+        await self.bot.process_commands(message)
 
     @commands.Cog.listener()
     async def on_member_remove(self, member: Member):
