@@ -1,6 +1,8 @@
 import re, aiohttp
-from discord import Message, app_commands, Interaction, ui, SelectOption, ButtonStyle, Member, Embed, File
+from discord import Message, app_commands, Interaction, ui, SelectOption, ButtonStyle, Member, Embed, File, NotFound
 from discord.ext import commands
+
+from collections import defaultdict
 
 from utils import CYBER, ROLE_FA, ROLE_FI, ROLE_GUEST, read_csv
 
@@ -12,15 +14,10 @@ class Common(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.welcome_message_id = 1314385676107645010
         self.bot = bot
-        self.mistral_payload = lambda msg, author: {
+        self.conversations = defaultdict(dict)
+        self.mistral_payload = lambda messages: {
             'model': 'mistral-tiny',
-            'messages': [
-                {
-                    'role': 'user',
-                    'content': f"Salut je suis {author}. Organise tes réponses au format markdown. Tu te prénommes DeadBeef. Message de l'utilisateur délimité par '---'. Réponds à ce dernier de manière claire, précise en sachant que tu es expert en cybersécurité. Dans ta réponse tu ne répèteras pas ce qui est dit avant le '---' c'est très important. --- {msg} ---"
-                }
-            ],
-            'max_tokens': 1000
+            'messages': messages,
         }
 
         self.mistral_headers = {
@@ -103,55 +100,70 @@ class Common(commands.Cog):
         embed.add_field(name='FA', value=', '.join(missing_members['FA']) or 'Aucun')
         await ctx.response.send_message(embed=embed)
 
-    @app_commands.command(description="Glossaire CYBER.")
-    @app_commands.choices(option=[
-        app_commands.Choice(name="view", value="1"),
-        app_commands.Choice(name="add", value="2"),
-        app_commands.Choice(name="remove", value="3")
-    ])
-    @app_commands.checks.has_any_role(1289241716985040960, 1289241666871627777)
-    async def glossary(self, interaction: Interaction, option: app_commands.Choice[str], term: str = '', definition: str = ''):
-        glossary = self.bot.config.get('glossary', {})
-        term_lower = term.lower()
-
-        if option.value == '1':
-            for key in glossary:
-                if key.lower() == term_lower:
-                    await interaction.response.send_message(glossary[key])
-                    return
-            await interaction.response.send_message('Terme non trouvé.', ephemeral=True)
-
-        elif option.value == '2' and term and definition:
-            glossary[term] = definition
-            self.bot.config.set('glossary', glossary)
-            await interaction.response.send_message(f'{term} ajouté au glossaire.')
-
-        elif option.value == '3':
-            for key in glossary:
-                if key.lower() == term_lower:
-                    del glossary[key]
-                    self.bot.config.set('glossary', glossary)
-                    await interaction.response.send_message(f'{term} retiré du glossaire.')
-                    return
-            await interaction.response.send_message('Terme non trouvé.', ephemeral=True)
-
-        else:
-            await interaction.response.send_message('Paramètres invalides.', ephemeral=True)
-
     @commands.Cog.listener()
     async def on_ready(self):
         welcome = self.bot.get_guild(CYBER.id).get_channel(1291494038427537559)
         welcome_message = await welcome.fetch_message(self.welcome_message_id)
         await welcome_message.edit(content=self.bot.config.get('welcome_message'), view=DropDownView(self.missing_member_names()))
         self.bot.add_view(DropDownView(self.missing_member_names()), message_id=self.welcome_message_id)
-        
+
     @commands.Cog.listener()
     async def on_message(self, message: Message):
         if message.author.bot:
             return
+        
+        channel_id = message.channel.id
+        
+        if message.reference and message.reference.message_id:
+            try:
+                replied_message = await message.channel.fetch_message(message.reference.message_id)
+                
+                if replied_message.author == self.bot.user:
+                    conversation = self.bot.conversations[channel_id]
+                    
+                    conversation.append({
+                        'role': 'user',
+                        'content': message.content
+                    })
+                    
+                    if len(conversation) > 10:
+                        conversation = conversation[-10:]
+                    
+                    async with message.channel.typing():
+                        try:
+                            async with aiohttp.ClientSession() as session:
+                                async with session.post('https://api.mistral.ai/v1/chat/completions', headers=self.mistral_headers, json=self.mistral_payload(conversation)) as response:
+                                    if response.status == 200:
+                                        data = await response.json()
+                                        r = data['choices'][0]['message']['content']
+                                    else:
+                                        raise Exception()
+                            
+                            # Ajouter la réponse du bot au contexte
+                            conversation.append({
+                                'role': 'assistant',
+                                'content': r
+                            })
+                            
+                            # Envoyer la réponse
+                            await message.reply(r)
+                            
+                        except Exception as e:
+                            await message.reply("Sorry, I encountered an error while generating a response.")
+                            
+                    return
+            except NotFound:
+                pass
 
         msg = message.content.lower()
+        # Vérifier si le message contient "DeadBeef" (nouvelle conversation)
         if 'deadbeef' in msg or 'mistral' in msg:
+            # Initialiser une nouvelle conversation
+            conversation = [{
+                'role': 'user',
+                'content': message.content
+            }]
+            self.bot.conversations[channel_id] = conversation
             async with message.channel.typing():
                 async with aiohttp.ClientSession() as session:
                     async with session.post('https://api.mistral.ai/v1/chat/completions', headers=self.mistral_headers, json=self.mistral_payload(message.content, message.author.display_name)) as response:
@@ -160,6 +172,11 @@ class Common(commands.Cog):
                             r = data['choices'][0]['message']['content']
                         else:
                             r = "Sorry, I couldn't generate a response at this time."
+                        # Ajouter la réponse du bot au contexte
+                        conversation.append({
+                            'role': 'assistant',
+                            'content': response
+                        })
                         await message.reply(r)
 
         await self.bot.process_commands(message)
