@@ -119,7 +119,7 @@ class Common(commands.Cog):
                 replied_message = await message.channel.fetch_message(message.reference.message_id)
                 
                 if replied_message.author == self.bot.user:
-                    conversation = self.bot.conversations[channel_id]
+                    conversation = self.conversations[channel_id]
                     
                     conversation.append({
                         'role': 'user',
@@ -163,7 +163,7 @@ class Common(commands.Cog):
                 'role': 'user',
                 'content': message.content
             }]
-            self.bot.conversations[channel_id] = conversation
+            self.conversations[channel_id] = conversation
             async with message.channel.typing():
                 async with aiohttp.ClientSession() as session:
                     async with session.post('https://api.mistral.ai/v1/chat/completions', headers=self.mistral_headers, json=self.mistral_payload(message.content, message.author.display_name)) as response:
