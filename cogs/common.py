@@ -16,8 +16,8 @@ class Common(commands.Cog):
         self.bot = bot
         self.conversations = defaultdict(dict)
         self.mistral_payload = lambda messages: {
-            'agent_id': 'ag:16fd7f20:20250215:deadbeef:d0525161',
             'messages': messages,
+            'agent_id': 'ag:16fd7f20:20250215:deadbeef:d0525161'
         }
 
         self.mistral_headers = {
@@ -139,7 +139,6 @@ class Common(commands.Cog):
                                     else:
                                         raise Exception()
                             
-                            # Ajouter la réponse du bot au contexte
                             conversation.append({
                                 'role': 'assistant',
                                 'content': r
@@ -157,17 +156,17 @@ class Common(commands.Cog):
         msg = message.content.lower()
         # Vérifier si le message contient "DeadBeef" (nouvelle conversation)
         if 'deadbeef' in msg or 'mistral' in msg:
-            # Initialiser une nouvelle conversation
             conversation = [{
                 'role': 'user',
-                'content': message.content
+                'content': msg
             }]
             self.conversations[channel_id] = conversation
             async with message.channel.typing():
                 async with aiohttp.ClientSession() as session:
-                    async with session.post('https://api.mistral.ai/v1/chat/completions', headers=self.mistral_headers, json=self.mistral_payload(conversation)) as response:
+                    async with session.post('https://api.mistral.ai/v1/agents/completions', headers=self.mistral_headers, json=self.mistral_payload(conversation)) as response:
                         if response.status == 200:
                             data = await response.json()
+                            print(data)
                             r = data['choices'][0]['message']['content']
                         else:
                             r = "Sorry, I couldn't generate a response at this time."
