@@ -39,11 +39,8 @@ class Tools(commands.Cog):
 
         formatted_time = interaction.created_at.strftime("%Y-%m-%d %H:%M:%S")
         
-        print(option.name)
-        
         match option.name:
             case "add":
-                print('add')
                 store = {
                     "category": category,
                     "fields": [
@@ -60,8 +57,10 @@ class Tools(commands.Cog):
                         self.update_embed(msg.embeds[0], category, existing_tool['fields'])
                         msg.embeds[0].set_footer(text=f"Last update by {interaction.user.display_name} at {formatted_time}", icon_url=interaction.user.avatar.url)
                         await msg.edit(embeds=msg.embeds)
+                        print('mdr')
                         break
                 else:
+                    print('lol')
                     self.tools.append(store)
                     self.update_embed(msg.embeds[0], category, store['fields'])
                     msg.embeds[0].set_footer(text=f"Last update by {interaction.user.display_name} at {formatted_time}", icon_url=interaction.user.avatar.url)
