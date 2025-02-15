@@ -132,7 +132,7 @@ class Common(commands.Cog):
                     async with message.channel.typing():
                         try:
                             async with aiohttp.ClientSession() as session:
-                                async with session.post('https://api.mistral.ai/v1/agents/completion', headers=self.mistral_headers, json=self.mistral_payload(conversation)) as response:
+                                async with session.post('https://api.mistral.ai/v1/agents/completions', headers=self.mistral_headers, json=self.mistral_payload(conversation)) as response:
                                     if response.status == 200:
                                         data = await response.json()
                                         r = data['choices'][0]['message']['content']
