@@ -136,7 +136,7 @@ class Common(commands.Cog):
                                 if response.status == 200:
                                     data = await response.json()
                                     r = data['choices'][0]['message']['content']
-                                    r = re.sub(r'\<\@\d+>', '', r)
+                                    r = re.sub(r'\<\&?\@\d+>', '', r)
                                     
                                     conversation.append({
                                         'role': 'assistant',
@@ -164,7 +164,7 @@ class Common(commands.Cog):
                         if response.status == 200:
                             data = await response.json()
                             r = data['choices'][0]['message']['content']
-                            r = re.sub(r'\<\@\d+>', '', r)
+                            r = re.sub(r'\<\&?\@\d+>', '', r)
                             conversation.append({
                                 'role': 'assistant',
                                 'content': r
