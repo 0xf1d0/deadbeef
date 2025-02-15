@@ -130,25 +130,20 @@ class Common(commands.Cog):
                         conversation = conversation[-10:]
                     
                     async with message.channel.typing():
-                        try:
-                            async with aiohttp.ClientSession() as session:
-                                async with session.post('https://api.mistral.ai/v1/agents/completions', headers=self.mistral_headers, json=self.mistral_payload(conversation)) as response:
-                                    if response.status == 200:
-                                        data = await response.json()
-                                        r = data['choices'][0]['message']['content']
-                                    else:
-                                        raise Exception()
-                            
-                            conversation.append({
-                                'role': 'assistant',
-                                'content': r
-                            })
-                            
-                            await message.reply(r)
-                            
-                        except Exception:
-                            await message.reply("Sorry, I encountered an error while generating a response.")
-                            
+                        async with aiohttp.ClientSession() as session:
+                            async with session.post('https://api.mistral.ai/v1/agents/completions', headers=self.mistral_headers, json=self.mistral_payload(conversation)) as response:
+                                if response.status == 200:
+                                    data = await response.json()
+                                    r = data['choices'][0]['message']['content']
+                                    
+                                    conversation.append({
+                                        'role': 'assistant',
+                                        'content': r
+                                    })
+                                else:
+                                    r = "Sorry, I couldn't generate a response at this time."
+                    
+                                await message.reply(r)
                     return
             except NotFound:
                 pass
@@ -166,15 +161,14 @@ class Common(commands.Cog):
                     async with session.post('https://api.mistral.ai/v1/agents/completions', headers=self.mistral_headers, json=self.mistral_payload(conversation)) as response:
                         if response.status == 200:
                             data = await response.json()
-                            print(data)
                             r = data['choices'][0]['message']['content']
+                            conversation.append({
+                                'role': 'assistant',
+                                'content': r
+                            })
                         else:
                             r = "Sorry, I couldn't generate a response at this time."
-                        # Ajouter la réponse du bot au contexte
-                        conversation.append({
-                            'role': 'assistant',
-                            'content': r
-                        })
+                        
                         await message.reply(r)
 
         await self.bot.process_commands(message)
