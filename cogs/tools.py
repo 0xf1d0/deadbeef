@@ -58,6 +58,7 @@ class Tools(commands.Cog):
                         msg.embeds[0].set_footer(text=f"Last update by {interaction.user.display_name} at {formatted_time}", icon_url=interaction.user.avatar.url)
                         print(msg.embeds)
                         await msg.edit(embeds=msg.embeds)
+                        print(msg)
                         break
                 else:
                     self.tools.append(store)
