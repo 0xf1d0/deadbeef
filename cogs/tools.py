@@ -2,8 +2,8 @@ from discord.ext import commands
 from discord import Interaction, app_commands
 
 
-def check_if_user_or_roles(interaction: Interaction) -> bool:
-    return interaction.user.id == 454935749767200768 or any(role.id in [1293714448263024650, 1291503961139838987] for role in interaction.user.roles)
+def check_if_user(interaction: Interaction) -> bool:
+    return interaction.user.id in [454935749767200768, 253616158895243264]
 
 class Tools(commands.Cog):
     
@@ -27,7 +27,7 @@ class Tools(commands.Cog):
 
     @app_commands.command(description="Ajouter, modifier ou supprimer un outil.")
     @app_commands.describe(category="Choisir la catégorie.", tool="Nom de l'outil.", description="Description de l'outil.", index="Index de l'outil à modifier ou supprimer.")
-    @app_commands.check(check_if_user_or_roles)
+    @app_commands.check(check_if_user)
     @app_commands.choices(option=[
         app_commands.Choice(name="add", value="1"),
         app_commands.Choice(name="edit", value="modifié"),
