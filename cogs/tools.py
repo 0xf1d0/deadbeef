@@ -56,6 +56,7 @@ class Tools(commands.Cog):
                         existing_tool['fields'].append(store['fields'][0])
                         self.update_embed(msg.embeds[0], category, existing_tool['fields'])
                         msg.embeds[0].set_footer(text=f"Last update by {interaction.user.display_name} at {formatted_time}", icon_url=interaction.user.avatar.url)
+                        print(msg.embeds[0].fields)
                         await msg.edit(embeds=msg.embeds)
                         break
                 else:
