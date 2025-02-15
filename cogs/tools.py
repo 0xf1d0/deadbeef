@@ -39,10 +39,11 @@ class Tools(commands.Cog):
 
         formatted_time = interaction.created_at.strftime("%Y-%m-%d %H:%M:%S")
         
-        print('test')
+        print(option.name)
         
         match option.name:
             case "add":
+                print('add')
                 store = {
                     "category": category,
                     "fields": [
