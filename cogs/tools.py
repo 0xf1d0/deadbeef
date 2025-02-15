@@ -20,9 +20,11 @@ class Tools(commands.Cog):
         )
         for index, field in enumerate(embed.fields):
             if field.name == f'__{category.upper()}__':
+                print('update')
                 embed.set_field_at(index, name=field.name, value=new_value, inline=False)
                 break
         else:
+            print('else')
             embed.add_field(name=f'__{category.upper()}__', value=new_value, inline=False)
 
     @app_commands.command(description="Ajouter, modifier ou supprimer un outil.")
@@ -50,14 +52,12 @@ class Tools(commands.Cog):
                         }
                     ]
                 }
-                print('world')
                 
                 for existing_tool in self.tools:
-                    print(existing_tool)
                     if existing_tool['category'].lower() == category.lower():
-                        print('hello')
                         existing_tool['fields'].append(store['fields'][0])
                         self.update_embed(msg.embeds[0], category, existing_tool['fields'])
+                        print('hello')
                         msg.embeds[0].set_footer(text=f"Last update by {interaction.user.display_name} at {formatted_time}", icon_url=interaction.user.avatar.url)
                         await msg.edit(embeds=msg.embeds)
                         break
