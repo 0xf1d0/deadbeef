@@ -16,7 +16,7 @@ class Common(commands.Cog):
         self.bot = bot
         self.conversations = defaultdict(dict)
         self.mistral_payload = lambda messages: {
-            'model': 'mistral-tiny',
+            'agent_id': 'ag:16fd7f20:20250215:deadbeef:d0525161',
             'messages': messages,
         }
 
@@ -123,7 +123,7 @@ class Common(commands.Cog):
                     
                     conversation.append({
                         'role': 'user',
-                        'content': f"Salut je suis {message.author.display_name}. Organise tes réponses au format markdown. Tu te prénommes DeadBeef. Message de l'utilisateur délimité par '---'. Réponds à ce dernier de manière claire, précise en sachant que tu es expert en cybersécurité. Dans ta réponse tu ne répèteras pas ce qui est dit avant le '---' c'est très important. --- {message.content} ---"
+                        'content': message.content
                     })
                     
                     if len(conversation) > 10:
@@ -132,7 +132,7 @@ class Common(commands.Cog):
                     async with message.channel.typing():
                         try:
                             async with aiohttp.ClientSession() as session:
-                                async with session.post('https://api.mistral.ai/v1/chat/completions', headers=self.mistral_headers, json=self.mistral_payload(conversation)) as response:
+                                async with session.post('https://api.mistral.ai/v1/agents/completion', headers=self.mistral_headers, json=self.mistral_payload(conversation)) as response:
                                     if response.status == 200:
                                         data = await response.json()
                                         r = data['choices'][0]['message']['content']
@@ -145,10 +145,9 @@ class Common(commands.Cog):
                                 'content': r
                             })
                             
-                            # Envoyer la réponse
                             await message.reply(r)
                             
-                        except Exception as e:
+                        except Exception:
                             await message.reply("Sorry, I encountered an error while generating a response.")
                             
                     return
@@ -161,7 +160,7 @@ class Common(commands.Cog):
             # Initialiser une nouvelle conversation
             conversation = [{
                 'role': 'user',
-                'content': f"Salut je suis {message.author.display_name}. Organise tes réponses au format markdown. Tu te prénommes DeadBeef. Message de l'utilisateur délimité par '---'. Réponds à ce dernier de manière claire, précise en sachant que tu es expert en cybersécurité. Dans ta réponse tu ne répèteras pas ce qui est dit avant le '---' c'est très important. --- {message.content} ---"
+                'content': message.content
             }]
             self.conversations[channel_id] = conversation
             async with message.channel.typing():
