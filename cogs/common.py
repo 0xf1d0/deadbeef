@@ -103,9 +103,6 @@ class Common(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        tools_channel = self.bot.get_guild(CYBER.id).get_channel(1294665610093138061)
-        msg = await tools_channel.fetch_message(1294690496815566983)
-        await msg.edit(content="This embed contains a list of many hacking tools and websites to learn ethical hacking. The goal is to sumup in one place all the cybersecurity stuff !", embeds=[])
         welcome = self.bot.get_guild(CYBER.id).get_channel(1291494038427537559)
         welcome_message = await welcome.fetch_message(self.welcome_message_id)
         await welcome_message.edit(content=self.bot.config.get('welcome_message'), view=DropDownView(self.missing_member_names()))
