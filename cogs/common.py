@@ -16,8 +16,8 @@ class Common(commands.Cog):
         self.bot = bot
         self.conversations = defaultdict(dict)
         self.mistral_payload = lambda messages: {
+            'model': 'mistral-tiny-latest',
             'messages': messages,
-            'agent_id': 'ag:16fd7f20:20250215:deadbeef:d0525161'
         }
 
         self.mistral_headers = {
