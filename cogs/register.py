@@ -34,7 +34,7 @@ class Register(commands.Cog):
 
         view = AuthenticationView(self.missing_members)
         await self.welcome_message.edit(content=self.bot.config.get('welcome_message'), view=view)
-        self.bot.add_view(view, message_id=WELCOME_MESSAGE.id)
+        # self.bot.add_view(view, message_id=WELCOME_MESSAGE.id)
 
     @commands.Cog.listener()
     async def on_member_remove(self, member: Member):
