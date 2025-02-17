@@ -14,7 +14,7 @@ class Admin(commands.Cog):
         embed = Embed(title=title, description=message.replace('\\n', '\n'), color=0x8B1538)
         embed.set_footer(text=f"Annoncé par {ctx.user.display_name}", icon_url=ctx.user.avatar.url)
         mentions = re.findall(r'<@\d+>', message)
-        await ctx.response.send_message('Quels rôles voulez-vous mentionner ?', view=Announcement(ctx.guild, embed, mentions), ephemeral=True)
+        await ctx.response.send_message('Quels rôles voulez-vous mentionner ?', view=Announcement(embed, mentions), ephemeral=True)
     
     @announce.error
     async def announce_error(self, interaction: Interaction, error: Exception):
