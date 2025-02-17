@@ -1,4 +1,4 @@
-import yt_dlp, asyncio, re, json, os, csv
+import yt_dlp, asyncio, re, json, os, csv, functools
 from discord import PCMVolumeTransformer, FFmpegPCMAudio, Object, Guild, Role, Message
 
 
@@ -62,6 +62,17 @@ async def send_long_reply(message, content):
     
     for part in parts:
         await message.reply(part)
+        
+def restrict_channel(channel_id):
+    def decorator(func):
+        @functools.wraps(func)
+        async def wrapper(self, interaction, *args, **kwargs):
+            if interaction.channel.id != channel_id:
+                await interaction.response.send_message(f"Cette commande ne peut être utilisée que dans le salon <#{channel_id}>.", ephemeral=True)
+                return
+            return await func(self, interaction, *args, **kwargs)
+        return wrapper
+    return decorator
 
 
 class YTDLSource(PCMVolumeTransformer):

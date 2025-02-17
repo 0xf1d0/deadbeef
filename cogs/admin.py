@@ -1,21 +1,9 @@
 from discord.ext import commands
 from discord import app_commands, Interaction, Embed
 
-import functools, re
+import re
 
 from ui.announce import DropdownView
-
-
-def restrict_channel(channel_id):
-    def decorator(func):
-        @functools.wraps(func)
-        async def wrapper(self, ctx: Interaction, *args, **kwargs):
-            if ctx.channel.id != channel_id:
-                await ctx.response.send_message(f"Cette commande ne peut être utilisée que dans le salon <#{channel_id}>.", ephemeral=True)
-                return
-            return await func(self, ctx, *args, **kwargs)
-        return wrapper
-    return decorator
 
 
 class Admin(commands.Cog):
