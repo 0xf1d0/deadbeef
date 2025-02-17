@@ -15,13 +15,20 @@ class Announcement(ui.View):
         self.embed.add_field(name='Rôles concernés', value=value)
         if self.mentions:
             value += ' ' + ' '.join(self.mentions)
-        await interaction.message.edit(embed=self.embed)
-    
+        await interaction.response.send_message(embed=self.embed, view=Confirm(self.embed, value), ephemeral=True)
+
+
+class Confirm(ui.View):
+    def __init__(self, embed, value):
+        super().__init__(timeout=None)
+        self.value = value
+        self.embed = embed
+
     @ui.button(label='Annuler', style=ButtonStyle.danger)
     async def cancel(self, _: ui.Button, interaction: Interaction):
-        await interaction.message.edit('Annonce annulée.')
-        
+        await interaction.response.edit_message('Action annulée.')
+
     @ui.button(label='Confirmer', style=ButtonStyle.success)
     async def confirm(self, _: ui.Button, interaction: Interaction):
         await interaction.channel.send(f'|| {self.value} ||', embed=self.embed)
-        await interaction.response.send_message('Annonce envoyée.')
+        await interaction.response.edit_message('Annonce envoyée.')
