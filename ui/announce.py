@@ -1,7 +1,5 @@
 from discord import ui, Interaction, ButtonStyle
 
-from utils import ROLE_FI, ROLE_FA
-
 
 class Announcement(ui.View):
     def __init__(self, embed, mentions):
@@ -9,7 +7,7 @@ class Announcement(ui.View):
         self.embed = embed
         self.mentions = mentions
     
-    @ui.select(cls=ui.RoleSelect, placeholder='Choisissez un/des rôle/s', max_values=4, default_values=[ROLE_FI, ROLE_FA])
+    @ui.select(cls=ui.RoleSelect, placeholder='Choisissez un/des rôle/s', max_values=4)
     async def select_roles(self, interaction: Interaction, select: ui.RoleSelect):
         value = ' '.join([role.mention for role in select.values])
         self.embed.add_field(name='Rôles concernés', value=value)
