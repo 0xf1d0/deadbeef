@@ -44,6 +44,21 @@ def read_csv(file_path):
             data.append(row)
     return data
 
+async def send_long_reply(message, content):
+    parts = []
+    while len(content) > 2000:
+        split_index = content.rfind('.', 0, 2000)
+        if split_index == -1:
+            split_index = content.rfind(' ', 0, 2000)
+        if split_index == -1:
+            split_index = 2000
+        parts.append(content[:split_index + 1])
+        content = content[split_index + 1:]
+    parts.append(content)
+    
+    for part in parts:
+        await message.reply(part)
+
 
 class YTDLSource(PCMVolumeTransformer):
     """

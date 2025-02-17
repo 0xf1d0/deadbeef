@@ -4,7 +4,7 @@ from discord.ext import commands
 
 from collections import defaultdict
 
-from utils import CYBER, ROLE_FA, ROLE_FI, ROLE_GUEST, read_csv
+from utils import CYBER, ROLE_FA, ROLE_FI, ROLE_GUEST, read_csv, send_long_reply
 
 
 class Common(commands.Cog):
@@ -16,7 +16,6 @@ class Common(commands.Cog):
         self.bot = bot
         self.conversations = defaultdict(dict)
         self.mistral_payload = lambda messages: {
-            'max_tokens': 500,
             'messages': messages,
             'agent_id': 'ag:16fd7f20:20250215:deadbeef:d0525161'
         }
@@ -145,7 +144,7 @@ class Common(commands.Cog):
                                 else:
                                     r = "Sorry, I couldn't generate a response at this time."
                     
-                                await message.reply(r)
+                                await send_long_reply(message, r)
                     return
             except NotFound:
                 pass
@@ -172,7 +171,7 @@ class Common(commands.Cog):
                         else:
                             r = "Sorry, I couldn't generate a response at this time."
                         
-                        await message.reply(r)
+                        await send_long_reply(message, r)
 
         await self.bot.process_commands(message)
 
