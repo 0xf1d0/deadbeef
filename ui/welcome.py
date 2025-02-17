@@ -2,7 +2,7 @@ from discord import ui, Interaction, ButtonStyle, SelectOption
 
 from utils import ROLE_FA, ROLE_FI, ROLE_GUEST
 
-from cogs.register import Register
+from cogs.register import missing_members
 
 
 class AuthenticationView(ui.View):
@@ -54,7 +54,7 @@ class ConfirmButton(ui.Button):
             dropdown_view.update_options()
             await interaction.user.edit(nick=selected_value)
             await self.based_interaction.message.edit(view=dropdown_view)
-            await interaction.user.add_roles(ROLE_FI if self.view.selected_value in Register.missing_members['FI'] else ROLE_FA)
+            await interaction.user.add_roles(ROLE_FI if self.view.selected_value in missing_members['FI'] else ROLE_FA)
         
         await interaction.response.edit_message(content=f'Sélection confirmée : {selected_value}', view=None)
 
@@ -70,7 +70,7 @@ class CancelButton(ui.Button):
 class DropDownView(ui.View):
     def __init__(self):
         super().__init__(timeout=None)
-        self.options = [SelectOption(label='Invité', value='Invité', emoji='👋')] + [SelectOption(label=f'FI - {name}', value=name, emoji='🎓') for name in Register.missing_members['FI']] + [SelectOption(label=f'FA - {name}', value=name, emoji='🎓') for name in Register.missing_members['FA']]
+        self.options = [SelectOption(label='Invité', value='Invité', emoji='👋')] + [SelectOption(label=f'FI - {name}', value=name, emoji='🎓') for name in missing_members['FI']] + [SelectOption(label=f'FA - {name}', value=name, emoji='🎓') for name in missing_members['FA']]
         self.current_page = 1
         self.per_page = 25
         self.update_options()
@@ -83,7 +83,7 @@ class DropDownView(ui.View):
         end = start + self.per_page
         page_options = self.options[start:end]
         self.clear_items()
-        self.add_item(DropDown(page_options, Register.missing_members))
+        self.add_item(DropDown(page_options, missing_members))
         self.add_item(PreviousButton(disabled=self.current_page == 1))
         self.add_item(NextButton(disabled=self.current_page >= total_pages))
 

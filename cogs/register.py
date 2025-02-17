@@ -5,9 +5,10 @@ from utils import FI, FA, ROLE_FI, ROLE_FA, WELCOME_MESSAGE, WELCOME_CHANNEL, CY
 from ui.welcome import AuthenticationView
 
 
+global missing_members
+
+
 class Register(commands.Cog):
-    missing_members = None
-    
     def __init__(self, bot: commands.Bot):
         self.bot = bot
     
@@ -31,7 +32,7 @@ class Register(commands.Cog):
         welcome = self.bot.cyber.get_channel(WELCOME_CHANNEL.id)
         self.welcome_message = await welcome.fetch_message(WELCOME_MESSAGE.id)
         
-        Register.missing_members = self.missing_member_names()
+        missing_members = self.missing_member_names()
 
         view = AuthenticationView()
         await self.welcome_message.edit(content=self.bot.config.get('welcome_message'), view=view)
@@ -49,7 +50,7 @@ class Register(commands.Cog):
 
         await channel.send(embed=embed)
         
-        Register.missing_members = self.missing_member_names()
+        missing_members = self.missing_member_names()
 
         """view = AuthenticationView()
         await self.welcome_message.edit(content=self.bot.config.get('welcome_message'), view=view)
