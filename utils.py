@@ -1,11 +1,29 @@
 import yt_dlp, asyncio, re, json, os, csv
-from discord import PCMVolumeTransformer, FFmpegPCMAudio, Object, Guild, Role
+from discord import PCMVolumeTransformer, FFmpegPCMAudio, Object, Guild, Role, Message
 
 
 CYBER = Object(1289169690895323167, type=Guild)
 ROLE_FI = Object(1289241716985040960, type=Role)
 ROLE_FA = Object(1289241666871627777, type=Role)
 ROLE_GUEST = Object(1291510062753517649, type=Role)
+WELCOME_MESSAGE = Object(1314385676107645010, type=Message)
+
+def read_csv(file_path):
+    """
+    @brief Reads a CSV file and returns a list of rows.
+    @param file_path The path to the CSV file.
+    @return List of rows, where each row is a list of values.
+    """
+    data = []
+    with open(file_path, newline='', encoding='utf-8') as csvfile:
+        reader = csv.reader(csvfile)
+        next(reader)  # Skip the header row
+        for row in reader:
+            data.append(row)
+    return data
+
+FI = read_csv('assets/cyber_sante.csv')
+FA = read_csv('assets/cyber.csv')
 
 
 yt_dlp.utils.bug_reports_message = lambda: ''
@@ -29,20 +47,6 @@ ytdl_format_options = {
 }
 
 ytdl = yt_dlp.YoutubeDL(ytdl_format_options)
-
-def read_csv(file_path):
-    """
-    @brief Reads a CSV file and returns a list of rows.
-    @param file_path The path to the CSV file.
-    @return List of rows, where each row is a list of values.
-    """
-    data = []
-    with open(file_path, newline='', encoding='utf-8') as csvfile:
-        reader = csv.reader(csvfile)
-        next(reader)  # Skip the header row
-        for row in reader:
-            data.append(row)
-    return data
 
 async def send_long_reply(message, content):
     parts = []
