@@ -23,10 +23,10 @@ class Confirm(ui.View):
         self.embed = embed
 
     @ui.button(label='Annuler', style=ButtonStyle.danger)
-    async def cancel(self, _: ui.Button, interaction: Interaction):
+    async def cancel(self, interaction: Interaction, _: ui.Button):
         await interaction.response.edit_message('Action annulée.')
 
     @ui.button(label='Confirmer', style=ButtonStyle.success)
-    async def confirm(self, _: ui.Button, interaction: Interaction):
+    async def confirm(self, interaction: Interaction, _: ui.Button):
         await interaction.channel.send(f'|| {self.value} ||', embed=self.embed)
         await interaction.response.edit_message('Annonce envoyée.')
