@@ -15,15 +15,13 @@ class Announcement(ui.View):
         self.embed.add_field(name='Rôles concernés', value=value)
         if self.mentions:
             value += ' ' + ' '.join(self.mentions)
-        for child in self.children[1:]:
-            child.disabled = False
         await interaction.message.edit(embed=self.embed)
     
-    @ui.button(label='Annuler', style=ButtonStyle.danger, disabled=True)
+    @ui.button(label='Annuler', style=ButtonStyle.danger)
     async def cancel(self, interaction: Interaction):
         await interaction.message.edit('Annonce annulée.')
         
-    @ui.button(label='Confirmer', style=ButtonStyle.success, disabled=True)
+    @ui.button(label='Confirmer', style=ButtonStyle.success)
     async def confirm(self, interaction: Interaction):
         await interaction.channel.send(f'|| {self.value} ||', embed=self.embed)
         await interaction.response.send_message('Annonce envoyée.')
