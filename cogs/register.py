@@ -19,7 +19,7 @@ class Register(commands.Cog):
             for row in data[key]:
                 name = f'{row[2]} {row[1]}'.title()
                 member = self.bot.cyber.get_member_named(name)
-                if not member and not member.get_role(roles[key]):
+                if not member or not member.get_role(roles[key]):
                     names[key].append(name)
 
         return names
