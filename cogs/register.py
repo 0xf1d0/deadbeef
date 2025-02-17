@@ -5,12 +5,10 @@ from utils import FI, FA, ROLE_FI, ROLE_FA, WELCOME_MESSAGE, WELCOME_CHANNEL, CY
 from ui.welcome import AuthenticationView
 
 
-global missing_members
-
-
 class Register(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
+        self.missing_members = None
     
     def missing_member_names(self):
         names = {'FI': [], 'FA': []}
@@ -32,9 +30,9 @@ class Register(commands.Cog):
         welcome = self.bot.cyber.get_channel(WELCOME_CHANNEL.id)
         self.welcome_message = await welcome.fetch_message(WELCOME_MESSAGE.id)
         
-        missing_members = self.missing_member_names()
+        self.missing_members = self.missing_member_names()
 
-        view = AuthenticationView()
+        view = AuthenticationView(self.missing_members)
         await self.welcome_message.edit(content=self.bot.config.get('welcome_message'), view=view)
         self.bot.add_view(view, message_id=WELCOME_CHANNEL.id)
 
@@ -50,11 +48,11 @@ class Register(commands.Cog):
 
         await channel.send(embed=embed)
         
-        missing_members = self.missing_member_names()
+        self.missing_members = self.missing_member_names()
 
-        """view = AuthenticationView()
+        view = AuthenticationView(self.missing_members)
         await self.welcome_message.edit(content=self.bot.config.get('welcome_message'), view=view)
-        self.bot.add_view(view, message_id=WELCOME_CHANNEL.id)"""
+        self.bot.add_view(view, message_id=WELCOME_CHANNEL.id)
 
 
 async def setup(bot: commands.Bot):

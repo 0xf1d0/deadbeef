@@ -2,21 +2,21 @@ from discord import ui, Interaction, ButtonStyle, SelectOption
 
 from utils import ROLE_FA, ROLE_FI, ROLE_GUEST
 
-from cogs.register import missing_members
-
 
 class AuthenticationView(ui.View):
-    def __init__(self):
+    def __init__(self, missing_members):
         super().__init__(timeout=None)
-        self.add_item(AuthenticationButton(label="Rejoindre", style=ButtonStyle.blurple))
+        self.missing_members = missing_members
+        self.add_item(AuthenticationButton(label="Rejoindre", style=ButtonStyle.blurple, missing_members=missing_members))
     
     
 class AuthenticationButton(ui.Button):
-    def __init__(self, label, style):
+    def __init__(self, label, style, missing_members):
         super().__init__(label=label, style=style)
+        self.missing_members = missing_members
         
     async def callback(self, interaction: Interaction):
-        await interaction.response.send_message(f"Veuillez vous identifier.", view=DropDownView(), ephemeral=True)
+        await interaction.response.send_message(f"Veuillez vous identifier.", view=DropDownView(self.missing_members), ephemeral=True)
 
 
 class DropDown(ui.Select):
@@ -54,7 +54,7 @@ class ConfirmButton(ui.Button):
             dropdown_view.update_options()
             await interaction.user.edit(nick=selected_value)
             await self.based_interaction.message.edit(view=dropdown_view)
-            await interaction.user.add_roles(ROLE_FI if self.view.selected_value in missing_members['FI'] else ROLE_FA)
+            await interaction.user.add_roles(ROLE_FI if self.view.selected_value in self.based_interaction.missing_members['FI'] else ROLE_FA)
         
         await interaction.response.edit_message(content=f'Sélection confirmée : {selected_value}', view=None)
 
@@ -68,8 +68,9 @@ class CancelButton(ui.Button):
 
 
 class DropDownView(ui.View):
-    def __init__(self):
+    def __init__(self, missing_members):
         super().__init__(timeout=None)
+        self.missing_members = missing_members
         self.options = [SelectOption(label='Invité', value='Invité', emoji='👋')] + [SelectOption(label=f'FI - {name}', value=name, emoji='🎓') for name in missing_members['FI']] + [SelectOption(label=f'FA - {name}', value=name, emoji='🎓') for name in missing_members['FA']]
         self.current_page = 1
         self.per_page = 25
@@ -83,7 +84,7 @@ class DropDownView(ui.View):
         end = start + self.per_page
         page_options = self.options[start:end]
         self.clear_items()
-        self.add_item(DropDown(page_options, missing_members))
+        self.add_item(DropDown(page_options))
         self.add_item(PreviousButton(disabled=self.current_page == 1))
         self.add_item(NextButton(disabled=self.current_page >= total_pages))
 
