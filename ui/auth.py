@@ -3,25 +3,26 @@ from discord import ui, Interaction, ButtonStyle, SelectOption
 from utils import ROLE_FA, ROLE_FI, ROLE_GUEST
 
 
-class AuthenticationView(ui.View):
-    def __init__(self, missing_members):
+class Authentication(ui.View):
+    missing_members = None
+
+    def __init__(self, members):
         super().__init__(timeout=None)
-        self.missing_members = missing_members
-        self.add_item(AuthenticationButton(label="Rejoindre", style=ButtonStyle.blurple, missing_members=missing_members))
-    
-    
+        Authentication.missing_members = members
+        self.add_item(AuthenticationButton(label="Rejoindre", style=ButtonStyle.success))
+
+
 class AuthenticationButton(ui.Button):
-    def __init__(self, label, style, missing_members):
+    def __init__(self, label, style):
         super().__init__(label=label, style=style)
-        self.missing_members = missing_members
-        
+
     async def callback(self, interaction: Interaction):
-        await interaction.response.send_message(f"Veuillez vous identifier.", view=DropDownView(self.missing_members), ephemeral=True)
+        await interaction.response.send_message(f"Identifiez-vous via le menu déroulant ci-dessous.", view=DropDownView(), ephemeral=True)
 
 
 class DropDown(ui.Select):
     def __init__(self, options):
-        super().__init__(placeholder='Choisir son statut', custom_id='dropdown', options=options, min_values=1, max_values=1)
+        super().__init__(placeholder='Choisir son identité', custom_id='dropdown', options=options, min_values=1, max_values=1)
     
     async def callback(self, interaction: Interaction):
         selected_value = self.values[0]
@@ -53,8 +54,8 @@ class ConfirmButton(ui.Button):
             dropdown_view.options = [option for option in dropdown_view.options if option.value != selected_value]
             dropdown_view.update_options()
             await interaction.user.edit(nick=selected_value)
-            await self.based_interaction.message.edit(view=dropdown_view)
-            await interaction.user.add_roles(ROLE_FI if self.view.selected_value in self.based_interaction.missing_members['FI'] else ROLE_FA)
+            #  await self.based_interaction.message.edit(view=dropdown_view)
+            await interaction.user.add_roles(ROLE_FI if self.view.selected_value in AuthenticationView.missing_members['FI'] else ROLE_FA)
         
         await interaction.response.edit_message(content=f'Sélection confirmée : {selected_value}', view=None)
 
@@ -67,14 +68,21 @@ class CancelButton(ui.Button):
         await interaction.response.edit_message(content='Sélection annulée.', view=None)
 
 
-class DropDownView(ui.View):
-    def __init__(self, missing_members):
+class Dropdown(ui.View):
+    def __init__(self):
         super().__init__(timeout=None)
-        self.missing_members = missing_members
-        self.options = [SelectOption(label='Invité', value='Invité', emoji='👋')] + [SelectOption(label=f'FI - {name}', value=name, emoji='🎓') for name in missing_members['FI']] + [SelectOption(label=f'FA - {name}', value=name, emoji='🎓') for name in missing_members['FA']]
+        self.options = [SelectOption(label='Invité', value='Invité', emoji='👋')] + [SelectOption(label=f'FI - {name}', value=name, emoji='🎓') for name in AuthenticationView.missing_members['FI']] + [SelectOption(label=f'FA - {name}', value=name, emoji='🎓') for name in AuthenticationView.missing_members['FA']]
         self.current_page = 1
         self.per_page = 25
         self.update_options()
+        
+    @ui.select(placeholder='Choisir son identité')
+    async def select_identity(self, interaction: Interaction, select: ui.Select):
+        selected_value = select.values[0]
+        if selected_value in [option.value for option in self.options]:
+            view = ConfirmView(selected_value, self.view, interaction)
+            await interaction.response.send_message(f"Confirmez-vous la sélection de {selected_value} ?", view=view, ephemeral=True)
+        
     
     def update_options(self):
         total_options = len(self.options)

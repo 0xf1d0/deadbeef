@@ -5,6 +5,8 @@ from discord import Message, NotFound
 
 import aiohttp, re
 
+from utils import ConfigManager
+
 
 async def send_long_reply(message, content):
     parts = []
@@ -27,13 +29,14 @@ class Mistral(commands.Cog):
         self.bot = bot
         self.conversations = defaultdict(dict)
 
-    async def answer(self, message: Message, conversation):
+    @staticmethod
+    async def answer(message: Message, conversation):
         async with message.channel.typing():
             async with aiohttp.ClientSession() as session:
                 async with session.post(
                     'https://api.mistral.ai/v1/chat/completions',
                     headers={
-                        "Authorization": f"Bearer {self.bot.config.get('mistral_key')}",
+                        "Authorization": f"Bearer {ConfigManager.get('mistral_key')}",
                         "Content-Type": "application/json"
                     },
                     json={
@@ -44,7 +47,7 @@ class Mistral(commands.Cog):
                     if response.status == 200:
                         data = await response.json()
                         r = data['choices'][0]['message']['content']
-                        r = re.sub(r'<\@\&?\d+>|@everyone|@here', 'X', r)
+                        r = re.sub(r'<@&?\d+>|@everyone|@here', 'X', r)
                         
                         conversation.append({
                             'role': 'assistant',
@@ -70,13 +73,13 @@ class Mistral(commands.Cog):
                     conversation = self.conversations[channel_id]
                     conversation.append({
                         'role': 'user',
-                        'content': re.sub(r'<\@1291395104023773225>|deadbeef', '', message.content)
+                        'content': re.sub(r'<@1291395104023773225>|deadbeef', '', message.content)
                     })
                     
                     if len(conversation) > 10:
                         conversation = conversation[-10:]
                     
-                    await self.answer(message, conversation)
+                    await Mistral.answer(message, conversation)
                     return
             except NotFound:
                 pass
@@ -86,10 +89,10 @@ class Mistral(commands.Cog):
         if 'deadbeef' in msg or f'<@{self.bot.user.id}>' in msg:
             conversation = [{
                 'role': 'user',
-                'content': re.sub(r'<\@1291395104023773225>|deadbeef', '', msg)
+                'content': re.sub(r'<@1291395104023773225>|deadbeef', '', msg)
             }]
             self.conversations[channel_id] = conversation
-            await self.answer(message, conversation)
+            await Mistral.answer(message, conversation)
 
         await self.bot.process_commands(message)
 

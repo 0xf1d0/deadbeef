@@ -4,20 +4,14 @@ from discord.ext import commands, tasks
 from datetime import datetime, timedelta
 import re
 
+from utils import CALENDAR_CHANNEL, ConfigManager
+
 
 class Calendar(commands.Cog):
-    
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.reminders = bot.config.get('reminders', [])
+        self.reminders = ConfigManager.get('reminders', [])
         self.check_reminders.start()
-
-    @commands.Cog.listener()
-    async def on_ready(self):
-        self.calendar_channel = await self.bot.fetch_channel(1293319532361809986)
-
-    def save_reminders(self):
-        self.bot.config.set('reminders', self.reminders)
     
     async def channel_autocomplete(self, _: Interaction, current: str) -> list[app_commands.Choice[str]]:
         category = self.bot.get_channel(1289244121004900487)
@@ -57,7 +51,8 @@ class Calendar(commands.Cog):
                 date += ' 23:59'
             reminder_date = datetime.strptime(date, "%d/%m/%Y %H:%M")
             reminder_timestamp = f'<t:{int(reminder_date.timestamp())}:R>'
-            calendar_message_id = self.bot.config.get('calendar_message_id', 0)
+            calendar_message_id = ConfigManager.get('calendar_message_id', 0)
+            calendar_channel = self.bot.get_channel(CALENDAR_CHANNEL.id)
             
             if description:
                 description = f'{description}\n\n'
@@ -79,7 +74,7 @@ class Calendar(commands.Cog):
                     }
 
                     try:
-                        msg = await self.calendar_channel.fetch_message(calendar_message_id)
+                        msg = await calendar_channel.fetch_message(calendar_message_id)
                         for embed in msg.embeds:
                             if embed.title == course.upper():
                                 embed.add_field(name=f'__{event}__', value=f'{description}Echéance: {reminder_timestamp}{modality}', inline=False)
@@ -96,8 +91,8 @@ class Calendar(commands.Cog):
                     except NotFound:
                         embed = Embed(title=course.upper())
                         embed.add_field(name=f'__{event}__', value=f'{description}Echéance: {reminder_timestamp}{modality}', inline=False)
-                        msg = await self.calendar_channel.send(embed=embed)
-                        self.bot.config.set('calendar_message_id', msg.id)
+                        msg = await calendar_channel.send(embed=embed)
+                        ConfigManager.set('calendar_message_id', msg.id)
 
                     for existing_reminder in self.reminders:
                         if existing_reminder['name'] == course:
@@ -105,11 +100,11 @@ class Calendar(commands.Cog):
                             break
                     else:
                         self.reminders.append(reminder)
-                    self.save_reminders()
+                    ConfigManager.set('reminders', self.reminders)
                     await interaction.response.send_message(f"Rappel créé pour {reminder_timestamp}", ephemeral=True)
                 case "edit":
                     try:
-                        msg = await self.calendar_channel.fetch_message(calendar_message_id)
+                        msg = await calendar_channel.fetch_message(calendar_message_id)
                         for embed in msg.embeds:
                             if embed.title == course.upper():
                                 for index, field in enumerate(embed.fields):
@@ -128,7 +123,7 @@ class Calendar(commands.Cog):
                                                         break
                                                 break
 
-                                        self.save_reminders()
+                                        ConfigManager.set('reminders', self.reminders)
 
                                         await interaction.response.send_message(f"Rappel pour l'événement '{event}' du cours '{course}' modifié.", ephemeral=True)
                                         break
@@ -144,7 +139,7 @@ class Calendar(commands.Cog):
                         if existing_reminder['name'] == course:
                             for field in existing_reminder['fields']:
                                 if field['name'] == event:
-                                    await self.remove_event(existing_reminder, field)
+                                    await self.remove_event(existing_reminder, field, calendar_channel)
                                     await interaction.response.send_message(f"Rappel pour l'événement '{event}' du cours '{course}' supprimé.", ephemeral=True)
                                     break
                             else:
@@ -166,22 +161,23 @@ class Calendar(commands.Cog):
     @tasks.loop(minutes=1)
     async def check_reminders(self):
         now = datetime.now()
+        calendar_channel = self.bot.get_channel(CALENDAR_CHANNEL.id)
         for reminder in self.reminders:
             for event in reminder['fields']:
                 event_time = datetime.strptime(event['date'], "%Y-%m-%d %H:%M:%S")
                 if now + timedelta(hours=1) - timedelta(seconds=30) <= event_time <= now + timedelta(hours=1) + timedelta(seconds=30):
-                    await self.calendar_channel.send(f":warning: L'échéance *{event['name']}* du cours **{reminder['name'].upper()}** a lieu dans 1 heure !\n|| @everyone ||", delete_after=3600)
+                    await calendar_channel.send(f":warning: L'échéance *{event['name']}* du cours **{reminder['name'].upper()}** a lieu dans 1 heure !\n|| @everyone ||", delete_after=3600)
                 elif now + timedelta(days=1) - timedelta(seconds=30) <= event_time <= now + timedelta(days=1) + timedelta(seconds=30):
-                    await self.calendar_channel.send(f":warning: L'échéance *{event['name']}* du cours **{reminder['name'].upper()}** a lieu dans 1 jour !\n|| @everyone ||", delete_after=3600)
+                    await calendar_channel.send(f":warning: L'échéance *{event['name']}* du cours **{reminder['name'].upper()}** a lieu dans 1 jour !\n|| @everyone ||", delete_after=3600)
                 elif now + timedelta(weeks=1) - timedelta(seconds=30) <= event_time <= now + timedelta(weeks=1) + timedelta(seconds=30):
-                    await self.calendar_channel.send(f":warning: L'échéance *{event['name']}* du cours **{reminder['name'].upper()}** a lieu dans 1 semaine !\n|| @everyone ||", delete_after=3600)
+                    await calendar_channel.send(f":warning: L'échéance *{event['name']}* du cours **{reminder['name'].upper()}** a lieu dans 1 semaine !\n|| @everyone ||", delete_after=3600)
                 elif event_time <= now:
-                    await self.calendar_channel.send(f":warning: L'échéance *{event['name']}* du cours **{reminder['name'].upper()}** vient d'avoir lieu !\n|| @everyone ||", delete_after=60)
-                    await self.remove_event(reminder, event)
+                    await calendar_channel.send(f":warning: L'échéance *{event['name']}* du cours **{reminder['name'].upper()}** vient d'avoir lieu !\n|| @everyone ||", delete_after=60)
+                    await self.remove_event(reminder, event, calendar_channel)
 
-    async def remove_event(self, reminder, event):
+    async def remove_event(self, reminder, event, calendar_channel):
         try:
-            msg = await self.calendar_channel.fetch_message(self.bot.config.get('calendar_message_id', 0))
+            msg = await calendar_channel.fetch_message(ConfigManager.get('calendar_message_id', 0))
             for embed in msg.embeds:
                 if embed.title == reminder['name'].upper():
                     fields_to_remove = [field for field in embed.fields if event['name'] in field.name]
@@ -191,7 +187,7 @@ class Calendar(commands.Cog):
                         msg.embeds.remove(embed)
                         if not msg.embeds:
                             await msg.delete()
-                            self.bot.config.remove('calendar_message_id')
+                            ConfigManager.remove('calendar_message_id')
                             break
                     else:
                         msg.embeds.sort(key=lambda embed: datetime.fromtimestamp(int(embed.fields[-1].value.split('Echéance: <t:')[1].split(':')[0])), reverse=True)
@@ -204,7 +200,7 @@ class Calendar(commands.Cog):
         if not reminder['fields']:
             self.reminders.remove(reminder)
 
-        self.save_reminders()
+        ConfigManager.set('reminders', self.reminders)
 
     @check_reminders.before_loop
     async def before_check_reminders(self):

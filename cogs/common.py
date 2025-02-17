@@ -2,11 +2,10 @@ import re
 from discord import app_commands, Interaction, Member, Embed, File
 from discord.ext import commands
 
+from utils import ConfigManager
+
 
 class Common(commands.Cog):
-    def __init__(self, bot: commands.Bot):
-        self.bot = bot
-
     @app_commands.command(description="Affiche ou inscrit un profil LinkedIn.")
     @app_commands.describe(member='Le profil du membre à afficher', register='Inscrire un profil LinkedIn.')
     async def linkedin(self, ctx: Interaction, member: Member = None, register: str = ''):
@@ -20,16 +19,16 @@ class Common(commands.Cog):
                 user['id'] = member.id
             else:
                 user['id'] = ctx.user.id
-            self.bot.config.append("users", user)
+            ConfigManager.append("users", user)
             await ctx.response.send_message(f'Profil LinkedIn enregistré pour {member.display_name if member else ctx.user.display_name}.')
         elif member:
-            user_profile = next((user for user in self.bot.config.get("users", []) if user["id"] == member.id), None)
+            user_profile = next((user for user in ConfigManager.get("users", []) if user["id"] == member.id), None)
             if user_profile:
                 await ctx.response.send_message(f'Profil LinkedIn de {member.display_name}: {user_profile["linkedin"]}')
             else:
                 await ctx.response.send_message(f'Profil LinkedIn pour {member.display_name} non trouvé.')
         else:
-            user_profile = next((user for user in self.bot.config.get("users", []) if user["id"] == ctx.user.id), None)
+            user_profile = next((user for user in ConfigManager.get("users", []) if user["id"] == ctx.user.id), None)
             if user_profile:
                 await ctx.response.send_message(f'Votre profil LinkedIn: {user_profile["linkedin"]}')
             else:
@@ -62,4 +61,4 @@ class Common(commands.Cog):
 
 
 async def setup(bot: commands.Bot):
-    await bot.add_cog(Common(bot))
+    await bot.add_cog(Common())

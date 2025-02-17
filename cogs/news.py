@@ -2,14 +2,16 @@ from discord import Embed, Colour
 from discord.ext import commands, tasks
 from datetime import datetime
 
-import feedparser
-import re
+import feedparser, re
+
+from utils import ConfigManager
+
 
 class News(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.channel_id = 1329861281427095582
-        self.sent_entries = bot.config.get('feeds', [])
+        self.sent_entries = ConfigManager.get('feeds', [])
         self.feeds = [
             'https://www.cert.ssi.gouv.fr/feed/',
             'https://www.zataz.com/feed/',
@@ -125,7 +127,7 @@ class News(commands.Cog):
                     await channel.send(embed=embed)
 
             # Update the configuration file
-            self.bot.config.set('feeds', list(self.sent_entries))
+            ConfigManager.set('feeds', list(self.sent_entries))
 
     @news_update.before_loop
     async def before_news_update(self):

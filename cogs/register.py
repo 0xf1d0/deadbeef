@@ -1,8 +1,8 @@
 from discord import Embed, Member
 from discord.ext import commands
 
-from utils import FI, FA, ROLE_FI, ROLE_FA, WELCOME_MESSAGE, WELCOME_CHANNEL, CYBER
-from ui.welcome import AuthenticationView
+from utils import FI, FA, ROLE_FI, ROLE_FA, WELCOME_MESSAGE, WELCOME_CHANNEL, CYBER, ConfigManager
+from ui.auth import Authentication
 
 
 class Register(commands.Cog):
@@ -19,7 +19,7 @@ class Register(commands.Cog):
             for row in data[key]:
                 name = f'{row[2]} {row[1]}'.title()
                 member = self.bot.cyber.get_member_named(name)
-                if not member or not member.get_role(roles[key]):
+                if not member and not member.get_role(roles[key]):
                     names[key].append(name)
 
         return names
@@ -29,11 +29,8 @@ class Register(commands.Cog):
         self.bot.cyber = self.bot.get_guild(CYBER.id)
         welcome = self.bot.cyber.get_channel(WELCOME_CHANNEL.id)
         self.welcome_message = await welcome.fetch_message(WELCOME_MESSAGE.id)
-        
-        self.missing_members = self.missing_member_names()
 
-        view = AuthenticationView(self.missing_members)
-        await self.welcome_message.edit(content=self.bot.config.get('welcome_message'), view=view)
+        await self.welcome_message.edit(content=ConfigManager.get('welcome_message'), view=Authentication(self.missing_member_names()))
         # self.bot.add_view(view, message_id=WELCOME_MESSAGE.id)
 
     @commands.Cog.listener()
@@ -48,7 +45,7 @@ class Register(commands.Cog):
 
         await channel.send(embed=embed)
         
-        self.missing_members = self.missing_member_names()
+        # self.missing_members = self.missing_member_names()
 
         """view = AuthenticationView(self.missing_members)
         await self.welcome_message.edit(content=self.bot.config.get('welcome_message'), view=view)

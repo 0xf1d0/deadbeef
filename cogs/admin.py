@@ -3,24 +3,18 @@ from discord import app_commands, Interaction, Embed
 
 import re
 
-from ui.announce import DropdownView
+from ui.announce import Announcement
 
 
-class Admin(commands.Cog):
-    def __init__(self, bot: commands.Bot):
-        self.bot = bot
-    
+class Admin(commands.Cog):    
     @app_commands.command(description="Annoncer un message.")
     @app_commands.describe(title='Le titre de l\'annonce.', message='Le message à annoncer.')
     @app_commands.checks.has_any_role(1291503961139838987, 1293714448263024650)
     async def announce(self, ctx: Interaction, title: str, message: str):
         embed = Embed(title=title, description=message.replace('\\n', '\n'), color=0x8B1538)
         embed.set_footer(text=f"Annoncé par {ctx.user.display_name}", icon_url=ctx.user.avatar.url)
-        matches = []
-        for match in re.finditer(r'<@(\d{17}|\d{18})>', message):
-            if match.group(1) not in matches:
-                matches.append(match)
-        await ctx.response.send_message('Quels rôles voulez-vous mentionner ?', view=DropdownView(ctx.guild, embed, matches), ephemeral=True)
+        mentions = re.findall(r'<@\d+>', message)
+        await ctx.response.send_message('Quels rôles voulez-vous mentionner ?', view=Announcement(ctx.guild, embed, mentions), ephemeral=True)
     
     @announce.error
     async def announce_error(self, interaction: Interaction, error: Exception):
@@ -40,4 +34,4 @@ class Admin(commands.Cog):
 
 
 async def setup(bot: commands.Bot):
-    await bot.add_cog(Admin(bot))
+    await bot.add_cog(Admin())
