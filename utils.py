@@ -1,5 +1,5 @@
 import yt_dlp, asyncio, re, json, os, csv, functools
-from discord import PCMVolumeTransformer, FFmpegPCMAudio, Object, Guild, Role, Message
+from discord import PCMVolumeTransformer, FFmpegPCMAudio, Object, Guild, Role, Message, TextChannel
 
 
 CYBER = Object(1289169690895323167, type=Guild)
@@ -7,6 +7,7 @@ ROLE_FI = Object(1289241716985040960, type=Role)
 ROLE_FA = Object(1289241666871627777, type=Role)
 ROLE_GUEST = Object(1291510062753517649, type=Role)
 WELCOME_MESSAGE = Object(1314385676107645010, type=Message)
+WELCOME_CHANNEL = Object(1291494038427537559, type=TextChannel)
 
 def read_csv(file_path):
     """
@@ -47,21 +48,6 @@ ytdl_format_options = {
 }
 
 ytdl = yt_dlp.YoutubeDL(ytdl_format_options)
-
-async def send_long_reply(message, content):
-    parts = []
-    while len(content) > 2000:
-        split_index = content.rfind('.', 0, 2000)
-        if split_index == -1:
-            split_index = content.rfind(' ', 0, 2000)
-        if split_index == -1:
-            split_index = 2000
-        parts.append(content[:split_index + 1])
-        content = content[split_index + 1:]
-    parts.append(content)
-    
-    for part in parts:
-        await message.reply(part)
         
 def restrict_channel(channel_id):
     def decorator(func):

@@ -1,11 +1,12 @@
 from discord import Embed, Member
 from discord.ext import commands
 
-from utils import FI, FA, ROLE_FI, ROLE_FA, WELCOME_MESSAGE
-from ui.welcome import DropDownView
+from utils import FI, FA, ROLE_FI, ROLE_FA, WELCOME_MESSAGE, WELCOME_CHANNEL, CYBER
+from ui.welcome import AuthenticationView
 
 
 class Register(commands.Cog):
+    missing_members = None
     
     def __init__(self, bot: commands.Bot):
         self.bot = bot
@@ -18,7 +19,7 @@ class Register(commands.Cog):
         for key in data:
             for row in data[key]:
                 name = f'{row[2]} {row[1]}'.title()
-                member = self.bot.guilds[0].get_member_named(name)
+                member = self.bot.cyber.get_member_named(name)
                 if not member or not member.get_role(roles[key]):
                     names[key].append(name)
 
@@ -26,26 +27,34 @@ class Register(commands.Cog):
     
     @commands.Cog.listener()
     async def on_ready(self):
-        welcome = self.bot.guilds[0].get_channel(1291494038427537559)
-        welcome_message = await welcome.fetch_message(self.welcome_message_id)
-        await welcome_message.edit(content=self.bot.config.get('welcome_message'), view=DropDownView(self.missing_member_names()))
-        self.bot.add_view(DropDownView(self.missing_member_names()), message_id=self.welcome_message_id)
+        self.bot.cyber = self.bot.get_guild(CYBER.id)
+        welcome = self.bot.cyber.get_channel(WELCOME_CHANNEL.id)
+        self.welcome_message = await welcome.fetch_message(WELCOME_MESSAGE.id)
         
+        Register.missing_members = self.missing_member_names()
+
+        view = AuthenticationView()
+        await self.welcome_message.edit(content=self.bot.config.get('welcome_message'), view=view)
+        self.bot.add_view(view, message_id=WELCOME_CHANNEL.id)
+
     @commands.Cog.listener()
     async def on_member_remove(self, member: Member):
-        channel = member.guild.get_channel(1292059079287504930)
+        guild = member.guild
+        channel = guild.get_channel(1292059079287504930)
         embed = Embed(title=f'{member} ({member.id}) left')\
             .add_field(name='Name', value=member.name)\
             .add_field(name='Display Name', value=member.display_name)\
             .add_field(name='Nick', value=member.nick)\
             .add_field(name='Roles', value='\n'.join([f"{i+1}. {role.mention if role.name != '@everyone' else role.name} - {role.id}" for i, role in enumerate(member.roles)]))
+
         await channel.send(embed=embed)
-        guild = member.guild
-        welcome = guild.get_channel(1291494038427537559)
-        message_id = self.bot.config.get('welcome_message_id')
-        if not message_id:
-            msg = await welcome.send(self.bot.config.get('welcome_message'), view=DropDownView(self.missing_member_names()))
-            self.bot.config.set('welcome_message_id', msg.id)
-        self.bot.add_view(DropDownView(self.missing_member_names()), message_id=message_id)
         
-    
+        Register.missing_members = self.missing_member_names()
+
+        """view = AuthenticationView()
+        await self.welcome_message.edit(content=self.bot.config.get('welcome_message'), view=view)
+        self.bot.add_view(view, message_id=WELCOME_CHANNEL.id)"""
+
+
+async def setup(bot: commands.Bot):
+    await bot.add_cog(Register(bot))
