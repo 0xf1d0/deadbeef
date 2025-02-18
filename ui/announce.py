@@ -24,9 +24,11 @@ class Confirm(ui.View):
 
     @ui.button(label='Annuler', style=ButtonStyle.danger)
     async def cancel(self, interaction: Interaction, _: ui.Button):
-        await interaction.response.edit_message(content='Action annulée.')
+        await interaction.message.delete()
+        await interaction.response.edit_message(content='Annonce annulée.', embed=None)
 
     @ui.button(label='Confirmer', style=ButtonStyle.success)
     async def confirm(self, interaction: Interaction, _: ui.Button):
         await interaction.channel.send(**self.kwargs)
-        await interaction.response.edit_message(content='Annonce envoyée.')
+        await interaction.message.delete()
+        await interaction.response.edit_message(content='Annonce envoyée.', embed=None)
