@@ -13,7 +13,7 @@ class Admin(commands.Cog):
     async def announce(self, ctx: Interaction, title: str, message: str):
         embed = Embed(title=title, description=message.replace('\\n', '\n'), color=0x8B1538)
         embed.set_footer(text=f"Annoncé par {ctx.user.display_name}", icon_url=ctx.user.avatar.url)
-        mentions = re.findall(r'<@\d+>', message)
+        mentions = set(re.findall(r'<@\d+>', message))
         await ctx.response.send_message('Quels rôles voulez-vous mentionner ?', view=Announcement(embed, mentions), ephemeral=True)
     
     @announce.error
