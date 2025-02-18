@@ -14,7 +14,7 @@ class Authentication(ui.View):
 
 class AuthenticationButton(ui.Button):
     def __init__(self, label, style):
-        super().__init__(label=label, style=style)
+        super().__init__(label=label, style=style, disabled=True)
 
     async def callback(self, interaction: Interaction):
         pass
