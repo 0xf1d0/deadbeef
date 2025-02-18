@@ -15,7 +15,6 @@ class Announcement(ui.View):
             value += ' ' + ' '.join(self.mentions)
         d = {'content': f'|| {value} ||', 'embed': self.embed}
         await interaction.response.send_message(**d, view=Confirm(**d), ephemeral=True)
-        await interaction.message.delete()
         self.stop()
 
 
