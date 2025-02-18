@@ -9,7 +9,7 @@ class Authentication(ui.View):
     def __init__(self, members):
         super().__init__(timeout=None)
         Authentication.missing_members = members
-        self.add_item(AuthenticationButton(label="Rejoindre", style=ButtonStyle.success))
+        self.add_item(AuthenticationButton(label="Maintenance en cours...", style=ButtonStyle.gray))
 
 
 class AuthenticationButton(ui.Button):
@@ -17,10 +17,11 @@ class AuthenticationButton(ui.Button):
         super().__init__(label=label, style=style)
 
     async def callback(self, interaction: Interaction):
-        await interaction.response.send_message(f"Identifiez-vous via le menu déroulant ci-dessous.", view=DropDownView(), ephemeral=True)
+        pass
+        # await interaction.response.send_message(f"Identifiez-vous via le menu déroulant ci-dessous.", view=DropDownView(), ephemeral=True)
 
 
-class DropDown(ui.Select):
+"""class DropDown(ui.Select):
     def __init__(self, options):
         super().__init__(placeholder='Choisir son identité', custom_id='dropdown', options=options, min_values=1, max_values=1)
     
@@ -118,4 +119,4 @@ class NextButton(ui.Button):
         if self.view.current_page < total_pages:
             self.view.current_page += 1
             self.view.update_options()
-            await interaction.response.edit_message(view=self.view)
+            await interaction.response.edit_message(view=self.view)"""
