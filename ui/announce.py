@@ -9,14 +9,13 @@ class Announcement(ui.View):
     
     @ui.select(cls=ui.RoleSelect, placeholder='Choisissez un/des rôle/s', max_values=4)
     async def select_roles(self, interaction: Interaction, select: ui.RoleSelect):
-        if not select.disabled:
-            value = ' '.join([role.mention for role in select.values])
-            self.embed.add_field(name='Rôles concernés', value=value)
-            if self.mentions:
-                value += ' ' + ' '.join(self.mentions)
-            d = {'content': f'|| {value} ||', 'embed': self.embed}
-            await interaction.response.send_message(**d, view=Confirm(**d), ephemeral=True)
-            select.disabled = True
+        value = ' '.join([role.mention for role in select.values])
+        self.embed.add_field(name='Rôles concernés', value=value)
+        if self.mentions:
+            value += ' ' + ' '.join(self.mentions)
+        d = {'content': f'|| {value} ||', 'embed': self.embed}
+        await interaction.response.send_message(**d, view=Confirm(**d), ephemeral=True)
+        self.stop()
 
 
 class Confirm(ui.View):
