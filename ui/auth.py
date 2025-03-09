@@ -102,10 +102,13 @@ class StudentModal(ui.Modal, title="Authentification"):
                                 break
                         else:
                             await interaction.response.send_message("Email non valide.", ephemeral=True)
+                            print('Email non valide 1', self.email.value, explode)
                 else:
                     await interaction.response.send_message("Email non valide.", ephemeral=True)
+                    print('Email non valide 2', self.email.value, explode)
             else:
                 await interaction.response.send_message("Email non valide.", ephemeral=True)
+                print('Email non valide 3', self.email.value, explode)
 
 
 """class AuthenticationButton(ui.Button):
