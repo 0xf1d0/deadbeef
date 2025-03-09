@@ -88,7 +88,7 @@ class StudentModal(ui.Modal, title="Authentification"):
             
             if self.email.value.endswith('@etu.u-paris.fr'):
                 explode = self.email.value.split('@')
-                name = explode[1].split('.')
+                name = explode[0].split('.')
                 if len(name) == 2:
                     name = name[1].lower().replace('-', ' ')
                     for row in FI:
