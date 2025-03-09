@@ -1,11 +1,18 @@
-import yt_dlp, asyncio, re, json, os, csv, functools
+import yt_dlp, asyncio, re, json, os, csv, functools, smtplib, jwt
 from discord import PCMVolumeTransformer, FFmpegPCMAudio, Object, Guild, Role, Message, TextChannel
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from datetime import datetime, timedelta, timezone
 
 
 CYBER = Object(1289169690895323167, type=Guild)
 ROLE_FI = Object(1289241716985040960, type=Role)
 ROLE_FA = Object(1289241666871627777, type=Role)
 ROLE_GUEST = Object(1291510062753517649, type=Role)
+ROLE_STUDENT = Object(1347689082020696217, type=Role)
+ROLE_PRO = Object(1347693508995055639, type=Role)
+ROLE_M1 = Object(1348345997851623585, type=Role)
+ROLE_M2 = Object(1348346037395394752, type=Role)
 WELCOME_MESSAGE = Object(1314385676107645010, type=Message)
 WELCOME_CHANNEL = Object(1291494038427537559, type=TextChannel)
 CALENDAR_CHANNEL = Object(1293319532361809986, type=TextChannel)
@@ -19,13 +26,62 @@ def read_csv(file_path):
     data = []
     with open(file_path, newline='', encoding='utf-8') as csvfile:
         reader = csv.reader(csvfile)
-        next(reader)  # Skip the header row
+        headers = next(reader)  # Skip the header row
         for row in reader:
             data.append(row)
-    return data
+    return headers, data
 
-FI = read_csv('assets/cyber_sante.csv')
-FA = read_csv('assets/cyber.csv')
+
+HEADERS_FI, FI = read_csv('assets/cyber_sante.csv')
+HEADERS_FA, FA = read_csv('assets/cyber.csv')
+
+
+def send_email(subject, body, to_email):
+    msg = MIMEMultipart()
+    from_email = ConfigManager.get('email_address')
+    msg['From'] = from_email
+    msg['To'] = to_email
+    msg['Subject'] = subject
+
+    msg.attach(MIMEText(body, 'plain'))
+
+    try:
+        # Connect to the server
+        server = smtplib.SMTP("smtp.parisdescartes.fr", 465)
+        server.starttls()  # Upgrade the connection to a secure encrypted SSL/TLS connection
+
+        # Login to the email account
+        server.login(from_email, ConfigManager.get('email_password'))
+
+        # Send the email
+        server.sendmail(from_email, to_email, msg.as_string())
+
+        print("Email sent successfully!")
+
+    except Exception as e:
+        print(f"Failed to send email: {e}")
+
+    finally:
+        # Close the connection
+        server.quit()
+
+def create_jwt(email):
+    expiration = datetime.now(timezone.utc) + timedelta(hours=1)
+    payload = {
+        "email": email,
+        "exp": expiration
+    }
+    token = jwt.encode(payload, ConfigManager.get('token'), algorithm="HS256")
+    return token
+
+def verify_jwt(token):
+    try:
+        payload = jwt.decode(token, ConfigManager.get('token'), algorithms=["HS256"])
+        return payload
+    except jwt.ExpiredSignatureError:
+        return None
+    except jwt.InvalidTokenError:
+        return None
 
 
 yt_dlp.utils.bug_reports_message = lambda: ''

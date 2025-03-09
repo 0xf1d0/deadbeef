@@ -8,9 +8,8 @@ from ui.auth import Authentication
 class Register(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.missing_members = None
     
-    def missing_member_names(self):
+    """def missing_students(self):
         names = {'FI': [], 'FA': []}
         roles = {'FI': ROLE_FI.id, 'FA': ROLE_FA.id}
         data = {'FI': FI, 'FA': FA}
@@ -22,7 +21,7 @@ class Register(commands.Cog):
                 if not member or not member.get_role(roles[key]):
                     names[key].append(name)
 
-        return names
+        return names"""
     
     @commands.Cog.listener()
     async def on_ready(self):
@@ -30,7 +29,7 @@ class Register(commands.Cog):
         welcome = self.bot.cyber.get_channel(WELCOME_CHANNEL.id)
         self.welcome_message = await welcome.fetch_message(WELCOME_MESSAGE.id)
 
-        await self.welcome_message.edit(content=ConfigManager.get('welcome_message'), view=Authentication(self.missing_member_names()))
+        await self.welcome_message.edit(content=ConfigManager.get('welcome_message'), view=Authentication())
         # self.bot.add_view(view, message_id=WELCOME_MESSAGE.id)
 
     @commands.Cog.listener()
@@ -45,7 +44,7 @@ class Register(commands.Cog):
 
         await channel.send(embed=embed)
         
-        # self.missing_members = self.missing_member_names()
+        # self.missing_members = self.missing_student_names()
 
         """view = AuthenticationView(self.missing_members)
         await self.welcome_message.edit(content=self.bot.config.get('welcome_message'), view=view)

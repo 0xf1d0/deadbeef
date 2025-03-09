@@ -1,25 +1,100 @@
-from discord import ui, Interaction, ButtonStyle, SelectOption
+from discord import ui, Interaction, ButtonStyle
 
-from utils import ROLE_FA, ROLE_FI, ROLE_GUEST
+from utils import ROLE_FA, ROLE_FI, ROLE_PRO, FI, HEADERS_FI, FA, HEADERS_FA, ROLE_M1, send_email, create_jwt,verify_jwt, ConfigManager
 
 
 class Authentication(ui.View):
-    missing_members = None
-
-    def __init__(self, members):
+    def __init__(self):
         super().__init__(timeout=None)
-        Authentication.missing_members = members
-        self.add_item(AuthenticationButton(label="Maintenance en cours...", style=ButtonStyle.gray))
+    
+    @ui.button(label='Identifiez-vous', style=ButtonStyle.primary)
+    async def authenticate(self, interaction: Interaction, _: ui.Button):
+        if interaction.user.get_role(ROLE_PRO):
+            await interaction.response.send_modal(ProModal())
+        else:
+            await interaction.response.send_modal(StudentModal())
 
 
-class AuthenticationButton(ui.Button):
+class ProModal(ui.Modal, title="Authentification"):
+    email = ui.TextInput(label="Email", placeholder="académique / professionnel")
+    lastname = ui.TextInput(label="Nom", placeholder="Facultatif", required=False)
+    firstname = ui.TextInput(label="Prénom", placeholder="Facultatif", required=False)
+    
+    async def on_submit(self, interaction: Interaction):
+        users = ConfigManager.get('users', [])
+        for user in users:
+            if user['id'] == interaction.user.id:
+                await interaction.response.send_message("Vous êtes déjà authentifié.", ephemeral=True)
+                break
+        else:
+            if self.email not in [user['email'] for user in users]:
+                await interaction.response.send_message("Email non valide.", ephemeral=True)
+            else:
+                await interaction.response.send_modal(Token(self.email))
+
+
+class Token(ui.Modal):
+    token = ui.TextInput(label="Token")
+    
+    def __init__(self, email, role = None):
+        super().__init__(title="Authentification")
+        self.email = email
+        self.role = role
+        
+    async def on_submit(self, interaction: Interaction):
+        if verify_jwt(self.token.value) is not None:
+            users = ConfigManager.get('users', [])
+            users.append({'id': interaction.user.id, 'email': self.email})
+            ConfigManager.set('users', users)
+            if self.role in [ROLE_FI, ROLE_FA]:
+                await interaction.user.add_roles([self.role, ROLE_M1])
+            else:
+                for user in users:
+                    if user['email'] == self.email:
+                        for channel_id in user['courses']:
+                            interaction.guild.get_channel(channel_id).set_permissions(interaction.user, view_channel=True)
+                        break
+            await interaction.response.send_message("Authentification réussie.", ephemeral=True)
+
+
+class StudentModal(ui.Modal, title="Authentification"):
+    email = ui.TextInput(label="Email", placeholder="UPC Cybersécurité")
+    student_id = ui.TextInput(label="Numéro étudiant", placeholder="12345678")
+    lastname = ui.TextInput(label="Nom", placeholder="Facultatif", required=False)
+    firstname = ui.TextInput(label="Prénom", placeholder="Facultatif", required=False)
+    
+    async def on_submit(self, interaction: Interaction):
+        for user in ConfigManager.get('users', []):
+            if user['id'] == interaction.user.id or user.get('studentId') == self.student_id.value:
+                await interaction.response.send_message("Vous êtes déjà authentifié.", ephemeral=True)
+                break
+        else:
+            explode = self.email.split('.')
+            if len(explode) > 1:
+                if self.email.value.endswith('@etu.u-paris.fr'):
+                    name = explode[1].lower().replace('-', ' ')
+                    if name in [row[HEADERS_FI.index('Nom')].lower() for row in FI]:
+                        send_email("UPC Cybersécurité Discord Verification", f"Token de validation: {create_jwt(self.email)}", self.email)
+                        await interaction.response.send_modal(Token(self.email, ROLE_FI))
+                    elif name in [row[HEADERS_FA.index('Nom')].lower() for row in FA]:
+                        send_email("UPC Cybersécurité Discord Verification", f"Token de validation: {create_jwt(self.email)}", self.email)
+                        await interaction.response.send_modal(Token(self.email, ROLE_FA))
+                    else:
+                        await interaction.response.send_message("Email non valide.", ephemeral=True)
+                else:
+                    await interaction.response.send_message("Email non valide.", ephemeral=True)
+            else:
+                await interaction.response.send_message("Email non valide.", ephemeral=True)
+
+
+"""class AuthenticationButton(ui.Button):
     def __init__(self, label, style):
         super().__init__(label=label, style=style, disabled=True)
 
     async def callback(self, interaction: Interaction):
         pass
         # await interaction.response.send_message(f"Identifiez-vous via le menu déroulant ci-dessous.", view=DropDownView(), ephemeral=True)
-
+"""
 
 """class DropDown(ui.Select):
     def __init__(self, options):
