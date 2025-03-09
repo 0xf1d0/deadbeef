@@ -85,10 +85,12 @@ class StudentModal(ui.Modal, title="Authentification"):
                 await interaction.response.send_message("Vous êtes déjà authentifié.", ephemeral=True)
                 break
         else:
-            explode = self.email.value.split('.')
-            if len(explode) > 1:
-                if self.email.value.endswith('@etu.u-paris.fr'):
-                    name = explode[1].lower().replace('-', ' ')
+            
+            if self.email.value.endswith('@etu.u-paris.fr'):
+                explode = self.email.value.split('@')
+                name = explode[1].split('.')
+                if len(name) == 2:
+                    name = name[1].lower().replace('-', ' ')
                     for row in FI:
                         if row[HEADERS_FI.index('Nom')].lower() == name and row[HEADERS_FI.index('N° étudiant')] == self.student_id.value:
                             send_email("UPC Cybersécurité Discord Verification", f"Token de validation: {create_jwt(self.email.value)}", self.email.value)
@@ -105,7 +107,7 @@ class StudentModal(ui.Modal, title="Authentification"):
                             print('Email non valide 1', self.email.value, explode)
                 else:
                     await interaction.response.send_message("Email non valide.", ephemeral=True)
-                    print('Email non valide 2', self.email.value, explode)
+                    print('Email non valide 1', self.email.value, explode)
             else:
                 await interaction.response.send_message("Email non valide.", ephemeral=True)
                 print('Email non valide 3', self.email.value, explode)
