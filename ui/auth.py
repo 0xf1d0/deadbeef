@@ -47,22 +47,31 @@ class Token(ui.Modal):
         self.firstname = firstname
         
     async def on_submit(self, interaction: Interaction):
-        if verify_jwt(self.token.value) is not None:
-            users = ConfigManager.get('users', [])
-            
-            if self.role in [ROLE_FI, ROLE_FA]:
+        if self.role in [ROLE_FI, ROLE_FA]:
+            if verify_jwt(self.token.value) is not None:
                 await interaction.user.add_roles([self.role, ROLE_M1])
+                interaction.user.edit(nick=f"{self.firstname} {self.lastname}")
+                users = ConfigManager.get('users', [])
                 users.append({'id': interaction.user.id, 'email': self.email, 'studentId': self.student_id})
                 ConfigManager.set('users', users)
             else:
-                for user in users:
-                    if user['email'] == self.email:
+                await interaction.response.send_message("Token non valide.", ephemeral=True)
+                return
+        else:
+            users = ConfigManager.get('users', [])
+            for user in users:
+                if user['email'] == self.email:
+                    if verify_jwt(self.token.value) is not None:
                         for channel_id in user['courses']:
                             interaction.guild.get_channel(channel_id).set_permissions(interaction.user, view_channel=True)
                         user['id'] = interaction.user.id
+                        interaction.user.edit(nick=f"{self.firstname} {self.lastname}")
                         ConfigManager.set('users', users)
                         break
-            await interaction.response.send_message("Authentification réussie.", ephemeral=True)
+            else:
+                await interaction.response.send_message("Token non valide.", ephemeral=True)
+                return
+        await interaction.response.send_message("Authentification réussie.", ephemeral=True)
 
 
 class StudentModal(ui.Modal, title="Authentification"):
