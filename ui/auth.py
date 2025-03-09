@@ -36,23 +36,27 @@ class ProModal(ui.Modal, title="Authentification"):
 class Token(ui.Modal):
     token = ui.TextInput(label="Token")
     
-    def __init__(self, email, role = None):
+    def __init__(self, email, role = None, student_id = None):
         super().__init__(title="Authentification")
         self.email = email
         self.role = role
+        self.student_id = student_id
         
     async def on_submit(self, interaction: Interaction):
         if verify_jwt(self.token.value) is not None:
             users = ConfigManager.get('users', [])
-            users.append({'id': interaction.user.id, 'email': self.email})
-            ConfigManager.set('users', users)
+            
             if self.role in [ROLE_FI, ROLE_FA]:
                 await interaction.user.add_roles([self.role, ROLE_M1])
+                users.append({'id': interaction.user.id, 'email': self.email, 'studentId': self.student_id})
+                ConfigManager.set('users', users)
             else:
                 for user in users:
                     if user['email'] == self.email:
                         for channel_id in user['courses']:
                             interaction.guild.get_channel(channel_id).set_permissions(interaction.user, view_channel=True)
+                        user['id'] = interaction.user.id
+                        ConfigManager.set('users', users)
                         break
             await interaction.response.send_message("Authentification réussie.", ephemeral=True)
 
