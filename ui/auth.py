@@ -11,7 +11,7 @@ class Authentication(ui.View):
     async def authenticate(self, interaction: Interaction, _: ui.Button):
         if interaction.user.get_role(ROLE_PRO.id):
             await interaction.response.send_modal(ProModal())
-        elif interaction.user.get_role(ROLE_STUDENT):
+        elif interaction.user.get_role(ROLE_STUDENT.id):
             await interaction.response.send_modal(StudentModal())
         else:
             await interaction.response.send_message("Vous n'avez pas le profil requis.", ephemeral=True)
