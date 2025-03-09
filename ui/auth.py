@@ -63,7 +63,7 @@ class Token(ui.Modal):
         if self.role in [ROLE_FI, ROLE_FA]:
             if verify_jwt(self.token.value) is not None:
                 await interaction.user.add_roles(self.role, ROLE_M1)
-                interaction.user.edit(nick=self.nick)
+                await interaction.user.edit(nick=self.nick)
                 users = ConfigManager.get('users', [])
                 users.append({'id': interaction.user.id, 'email': self.email, 'studentId': self.student_id})
                 ConfigManager.set('users', users)
@@ -78,7 +78,7 @@ class Token(ui.Modal):
                         for channel_id in user['courses']:
                             interaction.guild.get_channel(channel_id).set_permissions(interaction.user, view_channel=True)
                         user['id'] = interaction.user.id
-                        interaction.user.edit(nick=self.nick)
+                        await interaction.user.edit(nick=self.nick)
                         ConfigManager.set('users', users)
                         break
             else:
