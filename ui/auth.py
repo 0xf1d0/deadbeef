@@ -19,8 +19,8 @@ class Authentication(ui.View):
 
 class ProModal(ui.Modal, title="Authentification"):
     email = ui.TextInput(label="Email", placeholder="académique / professionnel")
-    lastname = ui.TextInput(label="Nom", placeholder="Facultatif", required=False)
     firstname = ui.TextInput(label="Prénom", placeholder="Facultatif", required=False)
+    lastname = ui.TextInput(label="Nom", placeholder="Facultatif", required=False)
     
     async def on_submit(self, interaction: Interaction):
         users = ConfigManager.get('users', [])
@@ -33,25 +33,25 @@ class ProModal(ui.Modal, title="Authentification"):
                 await interaction.response.send_message("Email non valide.", ephemeral=True)
             else:
                 send_email("UPC Cybersécurité Discord Verification", f"Token de validation: {create_jwt(self.email.value)}", self.email.value)
-                await interaction.response.send_modal(Token(self.email.value, self.lastname.value, self.firstname.value))
+                await interaction.response.send_modal(Token(self.email.value, f'{self.firstname.value} {self.lastname.value}'.title()))
 
 
 class Token(ui.Modal):
     token = ui.TextInput(label="Token")
     
-    def __init__(self, email, lastname = None, firstname = None, role = None, student_id = None):
+    def __init__(self, email, nick = None, role = None, student_id = None):
         super().__init__(title="Authentification")
         self.email = email
         self.role = role
         self.student_id = student_id
-        self.lastname = lastname
-        self.firstname = firstname
-        
+        self.nick = nick
+
     async def on_submit(self, interaction: Interaction):
+        self.role = interaction.guild.get_role(self.role)
         if self.role in [ROLE_FI, ROLE_FA]:
             if verify_jwt(self.token.value) is not None:
                 await interaction.user.add_roles([self.role, ROLE_M1])
-                interaction.user.edit(nick=f"{self.firstname} {self.lastname}")
+                interaction.user.edit(nick=self.nick)
                 users = ConfigManager.get('users', [])
                 users.append({'id': interaction.user.id, 'email': self.email, 'studentId': self.student_id})
                 ConfigManager.set('users', users)
@@ -66,7 +66,7 @@ class Token(ui.Modal):
                         for channel_id in user['courses']:
                             interaction.guild.get_channel(channel_id).set_permissions(interaction.user, view_channel=True)
                         user['id'] = interaction.user.id
-                        interaction.user.edit(nick=f"{self.firstname} {self.lastname}")
+                        interaction.user.edit(nick=self.nick)
                         ConfigManager.set('users', users)
                         break
             else:
@@ -76,7 +76,7 @@ class Token(ui.Modal):
 
 
 class StudentModal(ui.Modal, title="Authentification"):
-    email = ui.TextInput(label="Email", placeholder="UPC Cybersécurité")
+    email = ui.TextInput(label="Email", placeholder="prenom.nom@etu.u-paris.fr")
     student_id = ui.TextInput(label="Numéro étudiant", placeholder="12345678")
     
     async def on_submit(self, interaction: Interaction):
@@ -85,7 +85,6 @@ class StudentModal(ui.Modal, title="Authentification"):
                 await interaction.response.send_message("Vous êtes déjà authentifié.", ephemeral=True)
                 break
         else:
-            
             if self.email.value.endswith('@etu.u-paris.fr'):
                 explode = self.email.value.split('@')
                 name = explode[0].split('.')
@@ -95,13 +94,13 @@ class StudentModal(ui.Modal, title="Authentification"):
                         if row[HEADERS_FI.index('Nom')].lower() == name and row[HEADERS_FI.index('N° étudiant')] == self.student_id.value:
                             send_email("UPC Cybersécurité Discord Verification", f"Token de validation: {create_jwt(self.email.value)}", self.email.value)
                             print(row[HEADERS_FI.index('Nom')], row[HEADERS_FI.index('Prénom')], ROLE_FI, self.student_id.value)
-                            await interaction.response.send_modal(Token(self.email.value, row[HEADERS_FI.index('Nom')], row[HEADERS_FI.index('Prénom')], ROLE_FI, self.student_id.value))
+                            await interaction.response.send_modal(Token(self.email.value, f"{row[HEADERS_FI.index('Prénom')]} {row[HEADERS_FI.index('Nom')]}".title(), ROLE_FI.id, self.student_id.value))
                             break
                     else:
                         for row in FA:
                             if row[HEADERS_FA.index('Nom')].lower() == name and row[HEADERS_FA.index('N° étudiant')] == self.student_id.value:
                                 send_email("UPC Cybersécurité Discord Verification", f"Token de validation: {create_jwt(self.email.value)}", self.email.value)
-                                await interaction.response.send_modal(Token(self.email.value, row[HEADERS_FI.index('Nom')], row[HEADERS_FI.index('Prénom')], ROLE_FA, self.student_id.value))
+                                await interaction.response.send_modal(Token(self.email.value, f"{row[HEADERS_FI.index('Prénom')]} {row[HEADERS_FI.index('Nom')]}".title(), ROLE_FA.id, self.student_id.value))
                                 break
                         else:
                             await interaction.response.send_message("Email non valide.", ephemeral=True)

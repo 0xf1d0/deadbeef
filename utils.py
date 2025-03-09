@@ -47,7 +47,8 @@ def send_email(subject, body, to_email):
 
     try:
         # Connect to the server
-        server = smtplib.SMTP_SSL("smtp.parisdescartes.fr", 465)
+        server = smtplib.SMTP("smtp.gmail.com", 587)
+        server.starttls()   # Utiliser TLS pour sécuriser la connexion
 
         # Login to the email account
         server.login(from_email, ConfigManager.get('email_password'))
