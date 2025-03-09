@@ -33,11 +33,24 @@ class ProModal(ui.Modal, title="Authentification"):
                 await interaction.response.send_message("Email non valide.", ephemeral=True)
             else:
                 send_email("UPC Cybersécurité Discord Verification", f"Token de validation: {create_jwt(self.email.value)}", self.email.value)
-                await interaction.response.send_modal(Token(self.email.value, f'{self.firstname.value} {self.lastname.value}'.title()))
+                await interaction.response.send_message(f"Vous allez recevoir un mail à l'adresse {self.email.value} contenant le jeton de validation.", view=Feedback(self.email.value, f'{self.firstname.value} {self.lastname.value}'.title()), ephemeral=True)
+
+
+class Feedback(ui.View):
+    def __init__(self, email, nick = None, role = None, student_id = None):
+        super().__init__(timeout=None)
+        self.email = email
+        self.role = role
+        self.student_id = student_id
+        self.nick = nick
+    
+    @ui.button(label='Entrer le jeton', style=ButtonStyle.primary)
+    async def feedback(self, interaction: Interaction, _: ui.Button):
+        await interaction.response.send_modal(Token(self.email, self.nick, self.role, self.student_id))
 
 
 class Token(ui.Modal):
-    token = ui.TextInput(label="Token")
+    token = ui.TextInput(label="Jeton", placeholder="Jeton de validation")
     
     def __init__(self, email, nick = None, role = None, student_id = None):
         super().__init__(title="Authentification")
@@ -47,7 +60,6 @@ class Token(ui.Modal):
         self.nick = nick
 
     async def on_submit(self, interaction: Interaction):
-        self.role = interaction.guild.get_role(self.role)
         if self.role in [ROLE_FI, ROLE_FA]:
             if verify_jwt(self.token.value) is not None:
                 await interaction.user.add_roles([self.role, ROLE_M1])
@@ -92,15 +104,14 @@ class StudentModal(ui.Modal, title="Authentification"):
                     name = name[1].lower().replace('-', ' ')
                     for row in FI:
                         if row[HEADERS_FI.index('Nom')].lower() == name and row[HEADERS_FI.index('N° étudiant')] == self.student_id.value:
-                            send_email("UPC Cybersécurité Discord Verification", f"Token de validation: {create_jwt(self.email.value)}", self.email.value)
-                            print(row[HEADERS_FI.index('Nom')], row[HEADERS_FI.index('Prénom')], ROLE_FI, self.student_id.value)
-                            await interaction.response.send_modal(Token(self.email.value, f"{row[HEADERS_FI.index('Prénom')]} {row[HEADERS_FI.index('Nom')]}".title(), ROLE_FI.id, self.student_id.value))
+                            send_email("UPC Cybersécurité Discord Verification", f"Jeton de validation: {create_jwt(self.email.value)}", self.email.value)
+                            await interaction.response.send_message(f"Vous allez recevoir un mail à l'adresse {self.email.value} contenant le jeton de validation.", view=Feedback(self.email.value, f"{row[HEADERS_FI.index('Prénom')]} {row[HEADERS_FI.index('Nom')]}".title(), ROLE_FI, self.student_id.value), ephemeral=True)
                             break
                     else:
                         for row in FA:
                             if row[HEADERS_FA.index('Nom')].lower() == name and row[HEADERS_FA.index('N° étudiant')] == self.student_id.value:
-                                send_email("UPC Cybersécurité Discord Verification", f"Token de validation: {create_jwt(self.email.value)}", self.email.value)
-                                await interaction.response.send_modal(Token(self.email.value, f"{row[HEADERS_FI.index('Prénom')]} {row[HEADERS_FI.index('Nom')]}".title(), ROLE_FA.id, self.student_id.value))
+                                send_email("UPC Cybersécurité Discord Verification", f"Jeton de validation: {create_jwt(self.email.value)}", self.email.value)
+                                await interaction.response.send_message(f"Vous allez recevoir un mail à l'adresse {self.email.value} contenant le jeton de validation.", view=Feedback(self.email.value, f"{row[HEADERS_FA.index('Prénom')]} {row[HEADERS_FA.index('Nom')]}".title(), ROLE_FA, self.student_id.value), ephemeral=True)
                                 break
                         else:
                             await interaction.response.send_message("Email non valide.", ephemeral=True)
