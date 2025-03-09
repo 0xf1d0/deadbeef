@@ -48,6 +48,7 @@ def send_email(subject, body, to_email):
     try:
         # Connect to the server
         server = smtplib.SMTP("smtp.gmail.com", 587)
+        server.ehlo()   # Identify yourself to an ESMTP server
         server.starttls()   # Utiliser TLS pour sécuriser la connexion
 
         # Login to the email account
