@@ -62,7 +62,7 @@ class Token(ui.Modal):
     async def on_submit(self, interaction: Interaction):
         if self.role in [ROLE_FI, ROLE_FA]:
             if verify_jwt(self.token.value) is not None:
-                await interaction.user.add_roles([self.role, interaction.guild.get_role(ROLE_M1.id)])
+                await interaction.user.add_roles(self.role, ROLE_M1)
                 interaction.user.edit(nick=self.nick)
                 users = ConfigManager.get('users', [])
                 users.append({'id': interaction.user.id, 'email': self.email, 'studentId': self.student_id})

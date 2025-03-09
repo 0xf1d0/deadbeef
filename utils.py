@@ -57,8 +57,6 @@ def send_email(subject, body, to_email):
         # Send the email
         server.sendmail(from_email, to_email, msg.as_string())
 
-        print("Email sent successfully!")
-
     except Exception as e:
         print(f"Failed to send email: {e}")
 
