@@ -9,7 +9,7 @@ class Authentication(ui.View):
     
     @ui.button(label='Identifiez-vous', style=ButtonStyle.primary)
     async def authenticate(self, interaction: Interaction, _: ui.Button):
-        if interaction.user.get_role(ROLE_PRO):
+        if interaction.user.get_role(ROLE_PRO.id):
             await interaction.response.send_modal(ProModal())
         else:
             await interaction.response.send_modal(StudentModal())
