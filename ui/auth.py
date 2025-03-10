@@ -27,15 +27,15 @@ class ProModal(ui.Modal, title="Authentification"):
     async def on_submit(self, interaction: Interaction):
         users = ConfigManager.get('users', [])
         for user in users:
-            if user['id'] == interaction.user.id:
+            if user.get('id') == interaction.user.id:
                 await interaction.response.send_message("Vous êtes déjà authentifié.", ephemeral=True)
                 return
-            if user['email'] == self.email.value and user['id'] is not None:
+            if user.get('email') == self.email.value and user.get('id') is not None:
                 await interaction.response.send_message("Cet email a déjà été enregistré.", ephemeral=True)
                 return
 
         for user in users:
-            if user['email'] == self.email.value:
+            if user.get('email') == self.email.value:
                 last_request = user.get('last_auth_request')
                 if last_request:
                     last_request_time = datetime.fromisoformat(last_request)
@@ -91,7 +91,7 @@ class Token(ui.Modal):
         else:
             users = ConfigManager.get('users', [])
             for user in users:
-                if user['email'] == self.email:
+                if user.get('email') == self.email:
                     if verify_jwt(self.token.value, self.email) is not None:
                         for channel_id in user['courses']:
                             interaction.guild.get_channel(channel_id).set_permissions(interaction.user, view_channel=True)
@@ -113,10 +113,10 @@ class StudentModal(ui.Modal, title="Authentification"):
     async def on_submit(self, interaction: Interaction):
         users = ConfigManager.get('users', [])
         for user in users:
-            if user['id'] == interaction.user.id and user.get('studentId') == self.student_id.value:
+            if user.get('id') == interaction.user.id and user.get('studentId') == self.student_id.value:
                 await interaction.response.send_message("Vous êtes déjà authentifié.", ephemeral=True)
                 return
-            if user['email'] == self.email.value:
+            if user.get('email') == self.email.value:
                 await interaction.response.send_message("Cet email a déjà été enregistré.", ephemeral=True)
                 return
 
