@@ -137,6 +137,11 @@ class StudentModal(ui.Modal, title="Authentification"):
         if current_user and current_user.get('studentId') == self.student_id.value:
             await interaction.response.send_message("Vous êtes déjà authentifié.", ephemeral=True)
             return
+        
+        existing_email_user = next((u for u in users if u['email'] == self.email.value and u['id'] is not None), None)
+        if existing_email_user:
+            await interaction.response.send_message("Cet email a déjà été enregistré.", ephemeral=True)
+            return
             
         if not self.email.value.endswith('@etu.u-paris.fr'):
             await interaction.response.send_message("Email non valide.", ephemeral=True)
