@@ -5,18 +5,22 @@ from utils import ROLE_FA, ROLE_FI, ROLE_PRO, FI, HEADERS_FI, FA, HEADERS_FA, RO
 
 COOLDOWN_PERIOD = timedelta(weeks=1)  # Cooldown de 1 semaine
 
+
 class Authentication(ui.View):
     def __init__(self):
         super().__init__(timeout=None)
     
     @ui.button(label='Identifiez-vous', style=ButtonStyle.primary)
     async def authenticate(self, interaction: Interaction, _: ui.Button):
-        if interaction.user.get_role(ROLE_PRO.id):
-            await interaction.response.send_modal(ProModal())
-        elif interaction.user.get_role(ROLE_STUDENT.id):
-            await interaction.response.send_modal(StudentModal())
-        else:
+        roles = [ROLE_PRO.id, ROLE_STUDENT.id]
+        user_roles = [role.id for role in interaction.user.roles]
+        
+        if not any(role in user_roles for role in roles):
             await interaction.response.send_message("Vous n'avez pas le profil requis.", ephemeral=True)
+            return
+            
+        modal = ProModal() if ROLE_PRO.id in user_roles else StudentModal()
+        await interaction.response.send_modal(modal)
 
 
 class ProModal(ui.Modal, title="Authentification"):
@@ -26,28 +30,43 @@ class ProModal(ui.Modal, title="Authentification"):
     
     async def on_submit(self, interaction: Interaction):
         users = ConfigManager.get('users', [])
-        for user in users:
-            if user.get('id') == interaction.user.id:
-                await interaction.response.send_message("Vous êtes déjà authentifié.", ephemeral=True)
-                return
-            if user.get('email') == self.email.value and user.get('id') is not None:
-                await interaction.response.send_message("Cet email a déjà été enregistré.", ephemeral=True)
+        current_user = next((u for u in users if u['id'] == interaction.user.id), None)
+        if current_user:
+            await interaction.response.send_message("Vous êtes déjà authentifié.", ephemeral=True)
+            return
+        
+        existing_email_user = next((u for u in users if u['email'] == self.email.value and u['id'] is not None), None)
+        if existing_email_user:
+            await interaction.response.send_message("Cet email a déjà été enregistré.", ephemeral=True)
+            return
+        
+        email_user = next((u for u in users if u['email'] == self.email.value), None)
+        if not email_user:
+            await interaction.response.send_message("Email non valide.", ephemeral=True)
+            return
+        
+        if 'last_auth_request' in email_user:
+            last_request = datetime.fromisoformat(email_user['last_auth_request'])
+            if datetime.now() - last_request < COOLDOWN_PERIOD:
+                await interaction.response.send_message("Veuillez attendre avant de demander un nouveau jeton.", ephemeral=True)
                 return
 
-        for user in users:
-            if user.get('email') == self.email.value:
-                last_request = user.get('last_auth_request')
-                if last_request:
-                    last_request_time = datetime.fromisoformat(last_request)
-                    if datetime.now() - last_request_time < COOLDOWN_PERIOD:
-                        await interaction.response.send_message("Veuillez attendre avant de demander un nouveau jeton.", ephemeral=True)
-                        return
-                send_email(ConfigManager.get('email_object'), ConfigManager.get('email_body').format(create_jwt(self.email.value)), self.email.value)
-                user['last_auth_request'] = datetime.now().isoformat()
-                ConfigManager.set('users', users)
-                await interaction.response.send_message(f"Vous allez recevoir un mail à l'adresse {self.email.value} contenant le jeton de validation.", view=Feedback(self.email.value, f'{self.firstname.value} {self.lastname.value}'.title()), ephemeral=True)
-                return
-        await interaction.response.send_message("Email non valide.", ephemeral=True)
+        await interaction.response.defer()
+
+        email_user['last_auth_request'] = datetime.now().isoformat()
+        ConfigManager.set('users', users)
+        
+        send_email(
+            ConfigManager.get('email_object'),
+            ConfigManager.get('email_body').format(create_jwt(self.email.value)),
+            self.email.value
+        )
+
+        await interaction.followup.send(
+            f"Mail envoyé à {self.email.value}",
+            view=Feedback(self.email.value, f'{self.firstname.value} {self.lastname.value}'.title()),
+            ephemeral=True
+        )
 
 
 class Feedback(ui.View):
@@ -75,39 +94,34 @@ class Token(ui.Modal):
         self.nick = nick
 
     async def on_submit(self, interaction: Interaction):
+        users = ConfigManager.get('users', [])
+        user = next((u for u in users if u['id'] == interaction.user.id), None)
+        if not user or not verify_jwt(self.token.value, self.email):
+            await interaction.response.send_message("Token non valide.", ephemeral=True)
+            return
+        
+        # Mise à jour des rôles et permissions
         if self.role in [ROLE_FI, ROLE_FA]:
-            if verify_jwt(self.token.value, self.email) is not None:
-                await interaction.user.add_roles(self.role, ROLE_M1)
-                try:
-                    await interaction.user.edit(nick=self.nick)
-                except Forbidden:
-                    pass
-                users = ConfigManager.get('users', [])
-                user = next((u for u in users if u["id"] == interaction.user.id), None)
-                if user:
-                    user['email'] = self.email
-                    user['studentId'] = self.student_id
-                else:
-                    users.append({'id': interaction.user.id, 'email': self.email, 'studentId': self.student_id})
-                ConfigManager.set('users', users)
-            else:
-                await interaction.response.send_message("Token non valide.", ephemeral=True)
-                return
+            await interaction.user.add_roles(self.role, ROLE_M1)
+            try:
+                await interaction.user.edit(nick=self.nick)
+            except Forbidden:
+                pass
         else:
-            users = ConfigManager.get('users', [])
-            for user in users:
-                if user.get('email') == self.email:
-                    if verify_jwt(self.token.value, self.email) is not None:
-                        for channel_id in user['courses']:
-                            interaction.guild.get_channel(channel_id).set_permissions(interaction.user, view_channel=True)
-                        user['id'] = interaction.user.id
-                        await interaction.user.edit(nick=self.nick)
-                        await interaction.user.add_roles(ROLE_NOTABLE)
-                        ConfigManager.set('users', users)
-                        break
-            else:
-                await interaction.response.send_message("Token non valide.", ephemeral=True)
-                return
+            await interaction.user.add_roles(ROLE_NOTABLE)
+            try:
+                await interaction.user.edit(nick=self.nick)
+            except Forbidden:
+                pass
+            
+            # Mise à jour des permissions des cours
+            if 'courses' in user:
+                guild = interaction.guild
+                for channel_id in user['courses']:
+                    channel = guild.get_channel(channel_id)
+                    if channel:
+                        await channel.set_permissions(interaction.user, view_channel=True)
+                        
         await interaction.response.send_message("Authentification réussie.", ephemeral=True)
         self.view.stop()
 
@@ -118,42 +132,69 @@ class StudentModal(ui.Modal, title="Authentification"):
 
     async def on_submit(self, interaction: Interaction):
         users = ConfigManager.get('users', [])
-        for user in users:
-            if user.get('id') == interaction.user.id and user.get('studentId') == self.student_id.value:
-                await interaction.response.send_message("Vous êtes déjà authentifié.", ephemeral=True)
-                return
-            if user.get('email') == self.email.value:
-                await interaction.response.send_message("Cet email a déjà été enregistré.", ephemeral=True)
-                return
-            if user.get('id') == interaction.user.id:
-                last_request = user.get('last_auth_request')
-                if last_request:
-                    last_request_time = datetime.fromisoformat(last_request)
-                    if datetime.now() - last_request_time < COOLDOWN_PERIOD:
-                        await interaction.response.send_message("Veuillez attendre avant de demander un nouveau jeton.", ephemeral=True)
-                        return
+        current_user = next((u for u in users if u['id'] == interaction.user.id), None)
+        
+        if current_user and current_user.get('studentId') == self.student_id.value:
+            await interaction.response.send_message("Vous êtes déjà authentifié.", ephemeral=True)
+            return
+            
+        if not self.email.value.endswith('@etu.u-paris.fr'):
+            await interaction.response.send_message("Email non valide.", ephemeral=True)
+            return
+        
+        # Vérification des listes FI/FA
+        valid_user = None
+        for data in [FI, FA]:
+            headers = HEADERS_FI if data == FI else HEADERS_FA
+            role = ROLE_FI if data == FI else ROLE_FA
+            
+            for row in data:
+                if (f"{row[headers.index('Email')]}@etu.u-paris.fr" == self.email.value and
+                    row[headers.index('N° étudiant')] == self.student_id.value):
+                    
+                    valid_user = {
+                        'role': role,
+                        'prenom': row[headers.index('Prénom')],
+                        'nom': row[headers.index('Nom')]
+                    }
+                    break
+            if valid_user:
+                break
 
-        if self.email.value.endswith('@etu.u-paris.fr'):
-            for row in FI:
-                if f"{row[HEADERS_FI.index('Email')]}@etu.u-paris.fr" == self.email.value and row[HEADERS_FI.index('N° étudiant')] == self.student_id.value:
-                    send_email(ConfigManager.get('email_object'), ConfigManager.get('email_body').format(create_jwt(self.email.value)), self.email.value)
-                    for user in users:
-                        if user.get('id') == interaction.user.id:
-                            user['last_auth_request'] = datetime.now().isoformat()
-                            ConfigManager.set('users', users)
-                            break
-                    await interaction.response.send_message(f"Vous allez recevoir un mail à l'adresse {self.email.value} contenant le jeton de validation.", view=Feedback(self.email.value, f"{row[HEADERS_FI.index('Prénom')]} {row[HEADERS_FI.index('Nom')]}".title(), ROLE_FI, self.student_id.value), ephemeral=True)
-                    return
-            for row in FA:
-                if f"{row[HEADERS_FA.index('Email')]}@etu.u-paris.fr" == self.email.value and row[HEADERS_FA.index('N° étudiant')] == self.student_id.value:
-                    send_email(ConfigManager.get('email_object'), ConfigManager.get('email_body').format(create_jwt(self.email.value)), self.email.value)
-                    for user in users:
-                        if user.get('id') == interaction.user.id:
-                            user['last_auth_request'] = datetime.now().isoformat()
-                            ConfigManager.set('users', users)
-                            break
-                    await interaction.response.send_message(f"Vous allez recevoir un mail à l'adresse {self.email.value} contenant le jeton de validation.", view=Feedback(self.email.value, f"{row[HEADERS_FA.index('Prénom')]} {row[HEADERS_FA.index('Nom')]}".title(), ROLE_FA, self.student_id.value), ephemeral=True)
-                    return
-            await interaction.response.send_message("Email non valide.", ephemeral=True)
-        else:
-            await interaction.response.send_message("Email non valide.", ephemeral=True)
+        if not valid_user:
+            await interaction.response.send_message("Email ou numéro étudiant invalide.", ephemeral=True)
+            return
+        
+        # Vérification du cooldown
+        if current_user and 'last_auth_request' in current_user:
+            last_request = datetime.fromisoformat(current_user['last_auth_request'])
+            if datetime.now() - last_request < COOLDOWN_PERIOD:
+                await interaction.response.send_message("Veuillez attendre avant de demander un nouveau jeton.", ephemeral=True)
+                return
+        
+        await interaction.response.defer()
+        
+        # Mise à jour ou création de l'utilisateur
+        if not current_user:
+            current_user = {'id': interaction.user.id}
+            users.append(current_user)
+            
+        current_user.update({
+            'email': self.email.value,
+            'studentId': self.student_id.value,
+            'last_auth_request': datetime.now().isoformat()
+        })
+        ConfigManager.set('users', users)
+        
+        send_email(
+            ConfigManager.get('email_object'),
+            ConfigManager.get('email_body').format(create_jwt(self.email.value)),
+            self.email.value
+        )
+
+        await interaction.followup.send(
+            f"Mail envoyé à {self.email.value}",
+            view=Feedback(self.email.value, f"{valid_user['prenom']} {valid_user['nom']}".title(), 
+                          valid_user['role'], self.student_id.value),
+            ephemeral=True
+        )
