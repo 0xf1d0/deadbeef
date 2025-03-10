@@ -23,7 +23,7 @@ class ProModal(ui.Modal, title="Authentification"):
     email = ui.TextInput(label="Email", placeholder="académique / professionnel")
     firstname = ui.TextInput(label="Prénom", placeholder="Facultatif", required=False)
     lastname = ui.TextInput(label="Nom", placeholder="Facultatif", required=False)
-    
+
     async def on_submit(self, interaction: Interaction):
         users = ConfigManager.get('users', [])
         for user in users:
@@ -63,7 +63,7 @@ class Feedback(ui.View):
 
 class Token(ui.Modal):
     token = ui.TextInput(label="Jeton", placeholder="Jeton de validation")
-    
+
     def __init__(self, email, nick=None, role=None, student_id=None):
         super().__init__(title="Authentification")
         self.email = email
@@ -73,7 +73,7 @@ class Token(ui.Modal):
 
     async def on_submit(self, interaction: Interaction):
         if self.role in [ROLE_FI, ROLE_FA]:
-            if verify_jwt(self.token.value) is not None:
+            if verify_jwt(self.token.value, self.email) is not None:
                 await interaction.user.add_roles(self.role, ROLE_M1)
                 await interaction.user.edit(nick=self.nick)
                 users = ConfigManager.get('users', [])
@@ -86,7 +86,7 @@ class Token(ui.Modal):
             users = ConfigManager.get('users', [])
             for user in users:
                 if user['email'] == self.email:
-                    if verify_jwt(self.token.value) is not None:
+                    if verify_jwt(self.token.value, self.email) is not None:
                         for channel_id in user['courses']:
                             interaction.guild.get_channel(channel_id).set_permissions(interaction.user, view_channel=True)
                         user['id'] = interaction.user.id
@@ -102,7 +102,7 @@ class Token(ui.Modal):
 class StudentModal(ui.Modal, title="Authentification"):
     email = ui.TextInput(label="Email", placeholder="prenom.nom@etu.u-paris.fr")
     student_id = ui.TextInput(label="Numéro étudiant", placeholder="12345678")
-    
+
     async def on_submit(self, interaction: Interaction):
         users = ConfigManager.get('users', [])
         for user in users:

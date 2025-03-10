@@ -73,9 +73,11 @@ def create_jwt(email):
     token = jwt.encode(payload, ConfigManager.get('token'), algorithm="HS256")
     return token
 
-def verify_jwt(token):
+def verify_jwt(token, email):
     try:
         payload = jwt.decode(token, ConfigManager.get('token'), algorithms=["HS256"])
+        if payload.get("email") != email:
+            return None
         return payload
     except jwt.ExpiredSignatureError:
         return None
