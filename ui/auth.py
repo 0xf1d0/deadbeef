@@ -83,7 +83,12 @@ class Token(ui.Modal):
                 except Forbidden:
                     pass
                 users = ConfigManager.get('users', [])
-                users.append({'id': interaction.user.id, 'email': self.email, 'studentId': self.student_id})
+                user = next((u for u in users if u["id"] == interaction.user.id), None)
+                if user:
+                    user['email'] = self.email
+                    user['studentId'] = self.student_id
+                else:
+                    users.append({'id': interaction.user.id, 'email': self.email, 'studentId': self.student_id})
                 ConfigManager.set('users', users)
             else:
                 await interaction.response.send_message("Token non valide.", ephemeral=True)
