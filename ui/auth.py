@@ -58,14 +58,15 @@ class Feedback(ui.View):
     
     @ui.button(label='Entrer le jeton', style=ButtonStyle.primary)
     async def feedback(self, interaction: Interaction, _: ui.Button):
-        await interaction.response.send_modal(Token(self.email, self.nick, self.role, self.student_id))
+        await interaction.response.send_modal(Token(self, self.email, self.nick, self.role, self.student_id))
 
 
 class Token(ui.Modal):
     token = ui.TextInput(label="Jeton", placeholder="Jeton de validation")
 
-    def __init__(self, email, nick=None, role=None, student_id=None):
+    def __init__(self, view, email, nick=None, role=None, student_id=None):
         super().__init__(title="Authentification")
+        self.view = view
         self.email = email
         self.role = role
         self.student_id = student_id
@@ -100,7 +101,7 @@ class Token(ui.Modal):
                 await interaction.response.send_message("Token non valide.", ephemeral=True)
                 return
         await interaction.response.send_message("Authentification réussie.", ephemeral=True)
-        self.clear_items()
+        self.view.stop()
 
 
 class StudentModal(ui.Modal, title="Authentification"):
