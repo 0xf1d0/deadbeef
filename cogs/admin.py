@@ -47,7 +47,7 @@ class Admin(commands.Cog):
                 roles = [role for role in member.roles if role not in [ROLE_FI, ROLE_FA, ROLE_M1, ROLE_M2]]
                 await member.edit(roles=roles)
                 await member.remove_roles(ROLE_FI, ROLE_FA, ROLE_M1, ROLE_M2)
-        await ctx.response.send_message(f'Les rôles de **{len(members)}** membres ont été réinitialisés.', ephemeral=True)
+            await ctx.response.send_message(f'Les rôles de **{len(members)}** membres ont été réinitialisés.', ephemeral=True)
 
     @reset.error
     async def reset_error(self, interaction: Interaction, error: Exception):
