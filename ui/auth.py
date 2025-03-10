@@ -1,4 +1,4 @@
-from discord import ui, Interaction, ButtonStyle
+from discord import ui, Interaction, ButtonStyle, Forbidden
 from datetime import datetime, timedelta
 
 from utils import ROLE_FA, ROLE_FI, ROLE_PRO, FI, HEADERS_FI, FA, HEADERS_FA, ROLE_M1, ROLE_STUDENT, send_email, create_jwt, verify_jwt, ConfigManager
@@ -75,7 +75,10 @@ class Token(ui.Modal):
         if self.role in [ROLE_FI, ROLE_FA]:
             if verify_jwt(self.token.value, self.email) is not None:
                 await interaction.user.add_roles(self.role, ROLE_M1)
-                await interaction.user.edit(nick=self.nick)
+                try:
+                    await interaction.user.edit(nick=self.nick)
+                except Forbidden:
+                    pass
                 users = ConfigManager.get('users', [])
                 users.append({'id': interaction.user.id, 'email': self.email, 'studentId': self.student_id})
                 ConfigManager.set('users', users)
