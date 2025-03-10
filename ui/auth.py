@@ -125,32 +125,33 @@ class StudentModal(ui.Modal, title="Authentification"):
             if user.get('email') == self.email.value:
                 await interaction.response.send_message("Cet email a déjà été enregistré.", ephemeral=True)
                 return
+            if user.get('id') == interaction.user.id:
+                last_request = user.get('last_auth_request')
+                if last_request:
+                    last_request_time = datetime.fromisoformat(last_request)
+                    if datetime.now() - last_request_time < COOLDOWN_PERIOD:
+                        await interaction.response.send_message("Veuillez attendre avant de demander un nouveau jeton.", ephemeral=True)
+                        return
 
         if self.email.value.endswith('@etu.u-paris.fr'):
             for row in FI:
                 if f"{row[HEADERS_FI.index('Email')]}@etu.u-paris.fr" == self.email.value and row[HEADERS_FI.index('N° étudiant')] == self.student_id.value:
-                    last_request = user.get('last_auth_request')
-                    if last_request:
-                        last_request_time = datetime.fromisoformat(last_request)
-                        if datetime.now() - last_request_time < COOLDOWN_PERIOD:
-                            await interaction.response.send_message("Veuillez attendre avant de demander un nouveau jeton.", ephemeral=True)
-                            return
                     send_email(ConfigManager.get('email_object'), ConfigManager.get('email_body').format(create_jwt(self.email.value)), self.email.value)
-                    user['last_auth_request'] = datetime.now().isoformat()
-                    ConfigManager.set('users', users)
+                    for user in users:
+                        if user.get('id') == interaction.user.id:
+                            user['last_auth_request'] = datetime.now().isoformat()
+                            ConfigManager.set('users', users)
+                            break
                     await interaction.response.send_message(f"Vous allez recevoir un mail à l'adresse {self.email.value} contenant le jeton de validation.", view=Feedback(self.email.value, f"{row[HEADERS_FI.index('Prénom')]} {row[HEADERS_FI.index('Nom')]}".title(), ROLE_FI, self.student_id.value), ephemeral=True)
                     return
             for row in FA:
                 if f"{row[HEADERS_FA.index('Email')]}@etu.u-paris.fr" == self.email.value and row[HEADERS_FA.index('N° étudiant')] == self.student_id.value:
-                    last_request = user.get('last_auth_request')
-                    if last_request:
-                        last_request_time = datetime.fromisoformat(last_request)
-                        if datetime.now() - last_request_time < COOLDOWN_PERIOD:
-                            await interaction.response.send_message("Veuillez attendre avant de demander un nouveau jeton.", ephemeral=True)
-                            return
                     send_email(ConfigManager.get('email_object'), ConfigManager.get('email_body').format(create_jwt(self.email.value)), self.email.value)
-                    user['last_auth_request'] = datetime.now().isoformat()
-                    ConfigManager.set('users', users)
+                    for user in users:
+                        if user.get('id') == interaction.user.id:
+                            user['last_auth_request'] = datetime.now().isoformat()
+                            ConfigManager.set('users', users)
+                            break
                     await interaction.response.send_message(f"Vous allez recevoir un mail à l'adresse {self.email.value} contenant le jeton de validation.", view=Feedback(self.email.value, f"{row[HEADERS_FA.index('Prénom')]} {row[HEADERS_FA.index('Nom')]}".title(), ROLE_FA, self.student_id.value), ephemeral=True)
                     return
             await interaction.response.send_message("Email non valide.", ephemeral=True)
