@@ -1,7 +1,7 @@
 from discord import ui, Interaction, ButtonStyle, Forbidden
 from datetime import datetime, timedelta
 
-from utils import ROLE_FA, ROLE_FI, ROLE_PRO, FI, HEADERS_FI, FA, HEADERS_FA, ROLE_M1, ROLE_STUDENT, send_email, create_jwt, verify_jwt, ConfigManager
+from utils import ROLE_FA, ROLE_FI, ROLE_PRO, FI, HEADERS_FI, FA, HEADERS_FA, ROLE_M1, ROLE_STUDENT, ROLE_NOTABLE, send_email, create_jwt, verify_jwt, ConfigManager
 
 COOLDOWN_PERIOD = timedelta(weeks=1)  # Cooldown de 1 semaine
 
@@ -102,6 +102,7 @@ class Token(ui.Modal):
                             interaction.guild.get_channel(channel_id).set_permissions(interaction.user, view_channel=True)
                         user['id'] = interaction.user.id
                         await interaction.user.edit(nick=self.nick)
+                        await interaction.user.add_roles(ROLE_NOTABLE)
                         ConfigManager.set('users', users)
                         break
             else:
