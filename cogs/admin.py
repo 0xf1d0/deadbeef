@@ -38,11 +38,14 @@ class Admin(commands.Cog):
     @app_commands.checks.has_permissions(administrator=True)
     async def reset(self, ctx: Interaction, member: Member = None):
         if member:
-            await member.remove_roles(ROLE_FI, ROLE_FA, ROLE_M1, ROLE_M2)
+            roles = [role for role in member.roles if role not in [ROLE_FI, ROLE_FA, ROLE_M1, ROLE_M2]]
+            await member.edit(roles=roles)
             await ctx.response.send_message(f'Les rôles de {member.display_name} ont été réinitialisés.', ephemeral=True)
         else:
             members = ctx.guild.members
             for member in members:
+                roles = [role for role in member.roles if role not in [ROLE_FI, ROLE_FA, ROLE_M1, ROLE_M2]]
+                await member.edit(roles=roles)
                 await member.remove_roles(ROLE_FI, ROLE_FA, ROLE_M1, ROLE_M2)
         await ctx.response.send_message(f'Les rôles de **{len(members)}** membres ont été réinitialisés.', ephemeral=True)
 
@@ -50,8 +53,6 @@ class Admin(commands.Cog):
     async def reset_error(self, interaction: Interaction, error: Exception):
         if isinstance(error, app_commands.MissingPermissions):
             await interaction.response.send_message("Vous n'avez pas la permission d'utiliser cette commande.", ephemeral=True)
-            
-            
 
 
 async def setup(bot: commands.Bot):
