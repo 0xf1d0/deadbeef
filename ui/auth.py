@@ -39,7 +39,7 @@ class ProModal(ui.Modal, title="Authentification"):
                         if datetime.now() - last_request_time < COOLDOWN_PERIOD:
                             await interaction.response.send_message("Veuillez attendre avant de demander un nouveau jeton.", ephemeral=True)
                             return
-                    send_email("UPC Cybersécurité Discord Verification", f"Token de validation: {create_jwt(self.email.value)}", self.email.value)
+                    send_email(ConfigManager.get('email_object'), ConfigManager.get('email_body').format(create_jwt(self.email.value)), self.email.value)
                     user['last_auth_request'] = datetime.now().isoformat()
                     ConfigManager.set('users', users)
                     await interaction.response.send_message(f"Vous allez recevoir un mail à l'adresse {self.email.value} contenant le jeton de validation.", view=Feedback(self.email.value, f'{self.firstname.value} {self.lastname.value}'.title()), ephemeral=True)
@@ -122,7 +122,7 @@ class StudentModal(ui.Modal, title="Authentification"):
                             if datetime.now() - last_request_time < COOLDOWN_PERIOD:
                                 await interaction.response.send_message("Veuillez attendre avant de demander un nouveau jeton.", ephemeral=True)
                                 return
-                        send_email("UPC Cybersécurité Discord Verification", f"Jeton de validation: {create_jwt(self.email.value)}", self.email.value)
+                        send_email(ConfigManager.get('email_object'), ConfigManager.get('email_body').format(create_jwt(self.email.value)), self.email.value)
                         user['last_auth_request'] = datetime.now().isoformat()
                         ConfigManager.set('users', users)
                         await interaction.response.send_message(f"Vous allez recevoir un mail à l'adresse {self.email.value} contenant le jeton de validation.", view=Feedback(self.email.value, f"{row[HEADERS_FI.index('Prénom')]} {row[HEADERS_FI.index('Nom')]}".title(), ROLE_FI, self.student_id.value), ephemeral=True)
@@ -136,7 +136,7 @@ class StudentModal(ui.Modal, title="Authentification"):
                                 if datetime.now() - last_request_time < COOLDOWN_PERIOD:
                                     await interaction.response.send_message("Veuillez attendre avant de demander un nouveau jeton.", ephemeral=True)
                                     return
-                            send_email("UPC Cybersécurité Discord Verification", f"Jeton de validation: {create_jwt(self.email.value)}", self.email.value)
+                            send_email(ConfigManager.get('email_object'), ConfigManager.get('email_body').format(create_jwt(self.email.value)), self.email.value)
                             user['last_auth_request'] = datetime.now().isoformat()
                             ConfigManager.set('users', users)
                             await interaction.response.send_message(f"Vous allez recevoir un mail à l'adresse {self.email.value} contenant le jeton de validation.", view=Feedback(self.email.value, f"{row[HEADERS_FA.index('Prénom')]} {row[HEADERS_FA.index('Nom')]}".title(), ROLE_FA, self.student_id.value), ephemeral=True)
