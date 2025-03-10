@@ -14,12 +14,15 @@ class Common(commands.Cog):
             if not re.match(pattern, register):
                 await ctx.response.send_message('Le lien LinkedIn est invalide', ephemeral=True)
                 return
-            user = {'linkedin': register}
-            if member and ctx.user.guild_permissions.manage_roles:
-                user['id'] = member.id
+            user_id = member.id if member and ctx.user.guild_permissions.manage_roles else ctx.user.id
+            users = ConfigManager.get("users", [])
+            user = next((u for u in users if u["id"] == user_id), None)
+            if user:
+                user['linkedin'] = register
             else:
-                user['id'] = ctx.user.id
-            ConfigManager.append("users", user)
+                user = {'id': user_id, 'linkedin': register}
+                users.append(user)
+            ConfigManager.set("users", users)
             await ctx.response.send_message(f'Profil LinkedIn enregistré pour {member.display_name if member else ctx.user.display_name}.')
         elif member:
             user_profile = next((user for user in ConfigManager.get("users", []) if user["id"] == member.id), None)

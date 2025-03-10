@@ -113,7 +113,7 @@ class StudentModal(ui.Modal, title="Authentification"):
     async def on_submit(self, interaction: Interaction):
         users = ConfigManager.get('users', [])
         for user in users:
-            if user['id'] == interaction.user.id or user.get('studentId') == self.student_id.value:
+            if user['id'] == interaction.user.id and user.get('studentId') == self.student_id.value:
                 await interaction.response.send_message("Vous êtes déjà authentifié.", ephemeral=True)
                 return
             if user['email'] == self.email.value:
