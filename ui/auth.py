@@ -111,12 +111,22 @@ class StudentModal(ui.Modal, title="Authentification"):
                 break
         else:
             if self.email.value.endswith('@etu.u-paris.fr'):
-                explode = self.email.value.split('@')
-                name = explode[0].split('.')
-                if len(name) == 2:
-                    name = name[1].lower().replace('-', ' ')
-                    for row in FI:
-                        if row[HEADERS_FI.index('Nom')].lower() == name and row[HEADERS_FI.index('N° étudiant')] == self.student_id.value:
+                for row in FI:
+                    if f'{row[HEADERS_FI.index('Email')].lower()}@etu.u-paris.fr' == self.email.value and row[HEADERS_FI.index('N° étudiant')] == self.student_id.value:
+                        last_request = user.get('last_auth_request')
+                        if last_request:
+                            last_request_time = datetime.fromisoformat(last_request)
+                            if datetime.now() - last_request_time < COOLDOWN_PERIOD:
+                                await interaction.response.send_message("Veuillez attendre avant de demander un nouveau jeton.", ephemeral=True)
+                                return
+                        send_email("UPC Cybersécurité Discord Verification", f"Jeton de validation: {create_jwt(self.email.value)}", self.email.value)
+                        user['last_auth_request'] = datetime.now().isoformat()
+                        ConfigManager.set('users', users)
+                        await interaction.response.send_message(f"Vous allez recevoir un mail à l'adresse {self.email.value} contenant le jeton de validation.", view=Feedback(self.email.value, f"{row[HEADERS_FI.index('Prénom')]} {row[HEADERS_FI.index('Nom')]}".title(), ROLE_FI, self.student_id.value), ephemeral=True)
+                        break
+                else:
+                    for row in FA:
+                        if f'{row[HEADERS_FA.index('Email')].lower()}@etu.u-paris.fr' == self.email.value and row[HEADERS_FA.index('N° étudiant')] == self.student_id.value:
                             last_request = user.get('last_auth_request')
                             if last_request:
                                 last_request_time = datetime.fromisoformat(last_request)
@@ -126,25 +136,9 @@ class StudentModal(ui.Modal, title="Authentification"):
                             send_email("UPC Cybersécurité Discord Verification", f"Jeton de validation: {create_jwt(self.email.value)}", self.email.value)
                             user['last_auth_request'] = datetime.now().isoformat()
                             ConfigManager.set('users', users)
-                            await interaction.response.send_message(f"Vous allez recevoir un mail à l'adresse {self.email.value} contenant le jeton de validation.", view=Feedback(self.email.value, f"{row[HEADERS_FI.index('Prénom')]} {row[HEADERS_FI.index('Nom')]}".title(), ROLE_FI, self.student_id.value), ephemeral=True)
+                            await interaction.response.send_message(f"Vous allez recevoir un mail à l'adresse {self.email.value} contenant le jeton de validation.", view=Feedback(self.email.value, f"{row[HEADERS_FA.index('Prénom')]} {row[HEADERS_FA.index('Nom')]}".title(), ROLE_FA, self.student_id.value), ephemeral=True)
                             break
                     else:
-                        for row in FA:
-                            if row[HEADERS_FA.index('Nom')].lower() == name and row[HEADERS_FA.index('N° étudiant')] == self.student_id.value:
-                                last_request = user.get('last_auth_request')
-                                if last_request:
-                                    last_request_time = datetime.fromisoformat(last_request)
-                                    if datetime.now() - last_request_time < COOLDOWN_PERIOD:
-                                        await interaction.response.send_message("Veuillez attendre avant de demander un nouveau jeton.", ephemeral=True)
-                                        return
-                                send_email("UPC Cybersécurité Discord Verification", f"Jeton de validation: {create_jwt(self.email.value)}", self.email.value)
-                                user['last_auth_request'] = datetime.now().isoformat()
-                                ConfigManager.set('users', users)
-                                await interaction.response.send_message(f"Vous allez recevoir un mail à l'adresse {self.email.value} contenant le jeton de validation.", view=Feedback(self.email.value, f"{row[HEADERS_FA.index('Prénom')]} {row[HEADERS_FA.index('Nom')]}".title(), ROLE_FA, self.student_id.value), ephemeral=True)
-                                break
-                        else:
-                            await interaction.response.send_message("Email non valide.", ephemeral=True)
-                else:
-                    await interaction.response.send_message("Email non valide.", ephemeral=True)
+                        await interaction.response.send_message("Email non valide.", ephemeral=True)
             else:
                 await interaction.response.send_message("Email non valide.", ephemeral=True)
