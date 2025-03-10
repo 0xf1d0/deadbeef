@@ -1,9 +1,10 @@
 from discord.ext import commands
-from discord import app_commands, Interaction, Embed
+from discord import app_commands, Interaction, Embed, Member
 
 import re
 
 from ui.announce import Announcement
+from utils import ROLE_FI, ROLE_FA, ROLE_M1, ROLE_M2
 
 
 class Admin(commands.Cog):    
@@ -31,6 +32,26 @@ class Admin(commands.Cog):
     async def purge_error(self, interaction: Interaction, error: Exception):
         if isinstance(error, app_commands.MissingPermissions):
             await interaction.response.send_message("Vous n'avez pas la permission d'utiliser cette commande.", ephemeral=True)
+            
+    
+    @app_commands.command(description="Réinitialise les grades.")
+    @app_commands.checks.has_permissions(administrator=True)
+    async def reset(self, ctx: Interaction, member: Member = None):
+        if member:
+            await member.remove_roles(ROLE_FI, ROLE_FA, ROLE_M1, ROLE_M2)
+            await ctx.response.send_message(f'Les rôles de {member.display_name} ont été réinitialisés.', ephemeral=True)
+        else:
+            members = ctx.guild.members
+            for member in members:
+                await member.remove_roles(ROLE_FI, ROLE_FA, ROLE_M1, ROLE_M2)
+        await ctx.response.send_message(f'Les rôles de **{len(members)}** membres ont été réinitialisés.', ephemeral=True)
+
+    @reset.error
+    async def reset_error(self, interaction: Interaction, error: Exception):
+        if isinstance(error, app_commands.MissingPermissions):
+            await interaction.response.send_message("Vous n'avez pas la permission d'utiliser cette commande.", ephemeral=True)
+            
+            
 
 
 async def setup(bot: commands.Bot):
