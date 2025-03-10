@@ -100,7 +100,7 @@ class Token(ui.Modal):
                 await interaction.response.send_message("Token non valide.", ephemeral=True)
                 return
         await interaction.response.send_message("Authentification réussie.", ephemeral=True)
-        self.stop()
+        self.clear_items()
 
 
 class StudentModal(ui.Modal, title="Authentification"):
