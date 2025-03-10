@@ -112,7 +112,7 @@ class StudentModal(ui.Modal, title="Authentification"):
         else:
             if self.email.value.endswith('@etu.u-paris.fr'):
                 for row in FI:
-                    if f"{row[HEADERS_FI.index('Email')].lower()}@etu.u-paris.fr" == self.email.value and row[HEADERS_FI.index('N° étudiant')] == self.student_id.value:
+                    if f"{row[HEADERS_FI.index('Email')]}@etu.u-paris.fr" == self.email.value and row[HEADERS_FI.index('N° étudiant')] == self.student_id.value:
                         last_request = user.get('last_auth_request')
                         if last_request:
                             last_request_time = datetime.fromisoformat(last_request)
@@ -126,7 +126,7 @@ class StudentModal(ui.Modal, title="Authentification"):
                         break
                 else:
                     for row in FA:
-                        if f"{row[HEADERS_FA.index('Email')].lower()}@etu.u-paris.fr" == self.email.value and row[HEADERS_FA.index('N° étudiant')] == self.student_id.value:
+                        if f"{row[HEADERS_FA.index('Email')]}@etu.u-paris.fr" == self.email.value and row[HEADERS_FA.index('N° étudiant')] == self.student_id.value:
                             last_request = user.get('last_auth_request')
                             if last_request:
                                 last_request_time = datetime.fromisoformat(last_request)
