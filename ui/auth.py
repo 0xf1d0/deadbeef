@@ -1,4 +1,4 @@
-from discord import ui, Interaction, ButtonStyle, Forbidden
+from discord import ui, Interaction, ButtonStyle, Forbidden, Object, Role
 from datetime import datetime, timedelta
 
 from utils import ROLE_FA, ROLE_FI, ROLE_PRO, FI, HEADERS_FI, FA, HEADERS_FA, ROLE_M1, ROLE_STUDENT, ROLE_NOTABLE, send_email, create_jwt, verify_jwt, ConfigManager
@@ -119,7 +119,14 @@ class Token(ui.Modal):
         
         await interaction.response.defer()
         
-        await interaction.user.add_roles(self.role, ROLE_M1)
+        
+        role = Object(self.role, type=Role)
+        
+        await interaction.user.add_roles(role)
+        
+        if role in [ROLE_FA, ROLE_FI]:
+            await interaction.user.add_roles(ROLE_M1)
+
         if self.nick:
             try:
                 await interaction.user.edit(nick=self.nick)
@@ -166,7 +173,7 @@ class StudentModal(ui.Modal, title="Authentification"):
                         'last_auth_request': datetime.now().isoformat(),
                         'studentId': self.student_id.value,
                         'email': f"{row[headers.index('Email')]}@etu.u-paris.fr",
-                        'role': role,
+                        'role': role.id,
                         'nick': f"{row[headers.index('Prénom')]} {row[headers.index('Nom')]}".title(),
                     }
                     break
