@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 
 from utils import ROLE_FA, ROLE_FI, ROLE_PRO, FI, HEADERS_FI, FA, HEADERS_FA, ROLE_M1, ROLE_STUDENT, ROLE_NOTABLE, send_email, create_jwt, verify_jwt, ConfigManager
 
-COOLDOWN_PERIOD = timedelta(weeks=1)  # Cooldown de 1 semaine
+COOLDOWN_PERIOD = timedelta(hours=24)
 
 
 class Authentication(ui.View):
@@ -100,6 +100,8 @@ class Token(ui.Modal):
             await interaction.response.send_message("Token non valide.", ephemeral=True)
             return
         
+        await interaction.response.defer()
+        
         # Mise à jour des rôles et permissions
         if self.role in [ROLE_FI, ROLE_FA]:
             await interaction.user.add_roles(self.role, ROLE_M1)
@@ -122,7 +124,7 @@ class Token(ui.Modal):
                     if channel:
                         await channel.set_permissions(interaction.user, view_channel=True)
                         
-        await interaction.response.send_message("Authentification réussie.", ephemeral=True)
+        await interaction.followup.send("Authentification réussie.", ephemeral=True)
         self.view.stop()
 
 
