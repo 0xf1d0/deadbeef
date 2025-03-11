@@ -24,7 +24,7 @@ class Authentication(ui.View):
             if user and 'last_auth_request' in user:
                 last_request = datetime.fromisoformat(user['last_auth_request'])
                 if datetime.now() - last_request < COOLDOWN_PERIOD:
-                    await interaction.response.send_modal(Token(self, user['email'], user['nick']))
+                    await interaction.response.send_modal(Token(self, user['email'], user['nick'], user['role']))
                     return
             
             await interaction.response.send_modal(ProModal())
