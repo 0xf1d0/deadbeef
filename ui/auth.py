@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 
 from utils import ROLE_FA, ROLE_FI, ROLE_PRO, FI, HEADERS_FI, FA, HEADERS_FA, ROLE_M1, ROLE_STUDENT, ROLE_NOTABLE, send_email, create_jwt, verify_jwt, ConfigManager
 
-COOLDOWN_PERIOD = timedelta(hours=24)
+COOLDOWN_PERIOD = timedelta(hours=1)
 
 
 class Authentication(ui.View):
@@ -18,9 +18,25 @@ class Authentication(ui.View):
         if not any(role in user_roles for role in roles):
             await interaction.response.send_message("Vous n'avez pas le profil requis.", ephemeral=True)
             return
+        
+        if ROLE_PRO.id in user_roles:
+            user = next((u for u in ConfigManager.get('users', []) if u['id'] == interaction.user.id), None)
+            if user and 'last_auth_request' in user:
+                last_request = datetime.fromisoformat(user['last_auth_request'])
+                if datetime.now() - last_request < COOLDOWN_PERIOD:
+                    await interaction.response.send_modal(Token(self, user['email'], user['nick']))
+                    return
             
-        modal = ProModal() if ROLE_PRO.id in user_roles else StudentModal()
-        await interaction.response.send_modal(modal)
+            await interaction.response.send_modal(ProModal())
+        elif ROLE_STUDENT.id in user_roles:
+            user = next((u for u in ConfigManager.get('users', []) if u['id'] == interaction.user.id), None)
+            if user and 'last_auth_request' in user:
+                last_request = datetime.fromisoformat(user['last_auth_request'])
+                if datetime.now() - last_request < COOLDOWN_PERIOD:
+                    await interaction.response.send_modal(Token(self, user['email'], user['nick'], user['role']))
+                    return
+
+            await interaction.response.send_modal(StudentModal())
 
 
 class ProModal(ui.Modal, title="Authentification"):
@@ -31,7 +47,7 @@ class ProModal(ui.Modal, title="Authentification"):
     async def on_submit(self, interaction: Interaction):
         users = ConfigManager.get('users', [])
         current_user = next((u for u in users if u['id'] == interaction.user.id), None)
-        if current_user:
+        if current_user and current_user.get('last_auth_request') is None:
             await interaction.response.send_message("Vous êtes déjà authentifié.", ephemeral=True)
             return
         
@@ -48,12 +64,15 @@ class ProModal(ui.Modal, title="Authentification"):
         if 'last_auth_request' in email_user:
             last_request = datetime.fromisoformat(email_user['last_auth_request'])
             if datetime.now() - last_request < COOLDOWN_PERIOD:
-                await interaction.response.send_message("Veuillez attendre avant de demander un nouveau jeton.", ephemeral=True)
+                await interaction.response.send_modal(Token(self, self.email.value, f'{self.firstname.value} {self.lastname.value}'.title()))
                 return
 
         await interaction.response.defer()
 
         email_user['last_auth_request'] = datetime.now().isoformat()
+        email_user['id'] = interaction.user.id
+        email_user['role'] = ROLE_NOTABLE
+        email_user['nick'] = f'{self.firstname} {self.lastname}'.title() if self.firstname.value or self.lastname.value else None
         ConfigManager.set('users', users)
         
         send_email(
@@ -70,27 +89,25 @@ class ProModal(ui.Modal, title="Authentification"):
 
 
 class Feedback(ui.View):
-    def __init__(self, email, nick=None, role=None, student_id=None):
+    def __init__(self, email, nick, role):
         super().__init__(timeout=None)
         self.email = email
         self.role = role
-        self.student_id = student_id
         self.nick = nick
     
     @ui.button(label='Entrer le jeton', style=ButtonStyle.primary)
     async def feedback(self, interaction: Interaction, _: ui.Button):
-        await interaction.response.send_modal(Token(self, self.email, self.nick, self.role, self.student_id))
+        await interaction.response.send_modal(Token(self, self.email, self.nick, self.role))
 
 
 class Token(ui.Modal):
     token = ui.TextInput(label="Jeton", placeholder="Jeton de validation")
 
-    def __init__(self, view, email, nick=None, role=None, student_id=None):
+    def __init__(self, view, email, nick, role):
         super().__init__(title="Authentification")
         self.view = view
         self.email = email
         self.role = role
-        self.student_id = student_id
         self.nick = nick
 
     async def on_submit(self, interaction: Interaction):
@@ -102,25 +119,14 @@ class Token(ui.Modal):
         
         await interaction.response.defer()
         
-        # Mise à jour des rôles et permissions
-        if self.role in [ROLE_FI, ROLE_FA]:
-            user.update({
-                'studentId': self.student_id,
-                'email': self.email,
-            })
-            await interaction.user.add_roles(self.role, ROLE_M1)
-            try:
-                await interaction.user.edit(nick=self.nick)
-            except Forbidden:
-                pass
-        else:
-            user['id'] = interaction.user.id
-            await interaction.user.add_roles(ROLE_NOTABLE)
+        await interaction.user.add_roles(self.role, ROLE_M1)
+        if self.nick:
             try:
                 await interaction.user.edit(nick=self.nick)
             except Forbidden:
                 pass
 
+        if self.role == ROLE_NOTABLE:
             # Mise à jour des permissions des cours
             if 'courses' in user:
                 guild = interaction.guild
@@ -130,6 +136,10 @@ class Token(ui.Modal):
                         await channel.set_permissions(interaction.user, view_channel=True)
                         
         await interaction.followup.send("Authentification réussie.", ephemeral=True)
+        if 'nick' in user: del user['nick']
+        if 'role' in user: del user['role']
+        del user['last_auth_request']
+        ConfigManager.set('users', users)
         self.view.stop()
 
 
@@ -140,7 +150,7 @@ class StudentModal(ui.Modal, title="Authentification"):
         users = ConfigManager.get('users', [])
         current_user = next((u for u in users if u['id'] == interaction.user.id), None)
         
-        if current_user and current_user.get('studentId'):
+        if current_user and current_user.get('last_auth_request') is None:
             await interaction.response.send_message("Vous êtes déjà authentifié.", ephemeral=True)
             return
         
@@ -153,10 +163,11 @@ class StudentModal(ui.Modal, title="Authentification"):
             for row in data:
                 if row[headers.index('N° étudiant')] == self.student_id.value:
                     valid_user = {
+                        'last_auth_request': datetime.now().isoformat(),
+                        'studentId': self.student_id,
+                        'email': f"{row[headers.index('Email')]}@etu.u-paris.fr",
                         'role': role,
-                        'prenom': row[headers.index('Prénom')],
-                        'nom': row[headers.index('Nom')],
-                        'email': f"{row[headers.index('Email')]}@etu.u-paris.fr"
+                        'nick': f'{row[headers.index('Prénom')]} {row[headers.index("Nom")]}'.title(),
                     }
                     break
             if valid_user:
@@ -166,13 +177,6 @@ class StudentModal(ui.Modal, title="Authentification"):
             await interaction.response.send_message("Numéro étudiant invalide.", ephemeral=True)
             return
         
-        # Vérification du cooldown
-        if current_user and 'last_auth_request' in current_user:
-            last_request = datetime.fromisoformat(current_user['last_auth_request'])
-            if datetime.now() - last_request < COOLDOWN_PERIOD:
-                await interaction.response.send_message("Veuillez attendre avant de demander un nouveau jeton.", ephemeral=True)
-                return
-        
         await interaction.response.defer()
         
         # Mise à jour ou création de l'utilisateur
@@ -180,9 +184,7 @@ class StudentModal(ui.Modal, title="Authentification"):
             current_user = {'id': interaction.user.id}
             users.append(current_user)
             
-        current_user.update({
-            'last_auth_request': datetime.now().isoformat()
-        })
+        current_user.update(valid_user)
         ConfigManager.set('users', users)
         
         send_email(
@@ -193,7 +195,6 @@ class StudentModal(ui.Modal, title="Authentification"):
 
         await interaction.followup.send(
             f"Mail envoyé à {valid_user['email']}",
-            view=Feedback(valid_user['email'], f"{valid_user['prenom']} {valid_user['nom']}".title(), 
-                          valid_user['role'], self.student_id.value),
+            view=Feedback(valid_user['email'], valid_user['nick'], valid_user['role']),
             ephemeral=True
         )
