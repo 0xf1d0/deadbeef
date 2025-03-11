@@ -164,7 +164,7 @@ class StudentModal(ui.Modal, title="Authentification"):
                 if row[headers.index('N° étudiant')] == self.student_id.value:
                     valid_user = {
                         'last_auth_request': datetime.now().isoformat(),
-                        'studentId': self.student_id,
+                        'studentId': self.student_id.value,
                         'email': f"{row[headers.index('Email')]}@etu.u-paris.fr",
                         'role': role,
                         'nick': f"{row[headers.index('Prénom')]} {row[headers.index('Nom')]}".title(),
