@@ -167,7 +167,7 @@ class StudentModal(ui.Modal, title="Authentification"):
                         'studentId': self.student_id,
                         'email': f"{row[headers.index('Email')]}@etu.u-paris.fr",
                         'role': role,
-                        'nick': f'{row[headers.index('Prénom')]} {row[headers.index("Nom")]}'.title(),
+                        'nick': f"{row[headers.index('Prénom')]} {row[headers.index('Nom')]}".title(),
                     }
                     break
             if valid_user:
