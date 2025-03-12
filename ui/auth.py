@@ -12,12 +12,7 @@ class Authentication(ui.View):
     
     @ui.button(label='Identifiez-vous', style=ButtonStyle.primary)
     async def authenticate(self, interaction: Interaction, _: ui.Button):
-        roles = [ROLE_PRO.id, ROLE_STUDENT.id]
         user_roles = [role.id for role in interaction.user.roles]
-        
-        if not any(role in user_roles for role in roles):
-            await interaction.response.send_message("Vous n'avez pas le profil requis.", ephemeral=True)
-            return
         
         if ROLE_PRO.id in user_roles:
             user = next((u for u in ConfigManager.get('users', []) if u['id'] == interaction.user.id), None)
@@ -37,6 +32,8 @@ class Authentication(ui.View):
                     return
 
             await interaction.response.send_modal(StudentModal())
+        else:
+            await interaction.response.send_message("Vous n'avez pas le profil requis.", ephemeral=True)
 
 
 class ProModal(ui.Modal, title="Authentification"):
@@ -47,7 +44,7 @@ class ProModal(ui.Modal, title="Authentification"):
     async def on_submit(self, interaction: Interaction):
         users = ConfigManager.get('users', [])
         current_user = next((u for u in users if u['id'] == interaction.user.id), None)
-        if current_user and current_user.get('last_auth_request') is None:
+        if current_user and not current_user.get('last_auth_request'):
             await interaction.response.send_message("Vous êtes déjà authentifié.", ephemeral=True)
             return
         
@@ -157,7 +154,7 @@ class StudentModal(ui.Modal, title="Authentification"):
         users = ConfigManager.get('users', [])
         current_user = next((u for u in users if u['id'] == interaction.user.id), None)
         
-        if current_user and current_user.get('last_auth_request') is None:
+        if current_user and not current_user.get('last_auth_request'):
             await interaction.response.send_message("Vous êtes déjà authentifié.", ephemeral=True)
             return
         
