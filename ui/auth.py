@@ -154,8 +154,6 @@ class StudentModal(ui.Modal, title="Authentification"):
         users = ConfigManager.get('users', [])
         current_user = next((u for u in users if u['id'] == interaction.user.id), None)
         
-        print(current_user.get('last_auth_request'))
-        
         if current_user and current_user.get('last_auth_request') is None:
             await interaction.response.send_message("Vous êtes déjà authentifié.", ephemeral=True)
             return
