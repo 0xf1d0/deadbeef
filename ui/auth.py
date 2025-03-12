@@ -71,8 +71,8 @@ class ProModal(ui.Modal, title="Authentification"):
 
         email_user['last_auth_request'] = datetime.now().isoformat()
         email_user['id'] = interaction.user.id
-        email_user['role'] = ROLE_NOTABLE
-        email_user['nick'] = f'{self.firstname} {self.lastname}'.title() if self.firstname.value or self.lastname.value else None
+        email_user['role'] = ROLE_NOTABLE.id
+        email_user['nick'] = f'{self.firstname.value} {self.lastname.value}'.title() if self.firstname.value or self.lastname.value else None
         ConfigManager.set('users', users)
         
         send_email(
@@ -133,7 +133,7 @@ class Token(ui.Modal):
             except Forbidden:
                 pass
 
-        if self.role == ROLE_NOTABLE:
+        if role == ROLE_NOTABLE:
             # Mise à jour des permissions des cours
             if 'courses' in user:
                 guild = interaction.guild
