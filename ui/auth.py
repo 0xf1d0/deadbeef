@@ -15,20 +15,26 @@ class Authentication(ui.View):
         user_roles = [role.id for role in interaction.user.roles]
         
         if ROLE_PRO.id in user_roles:
-            user = next((u for u in ConfigManager.get('users', []) if u['id'] == interaction.user.id), None)
-            if user and 'last_auth_request' in user:
-                last_request = datetime.fromisoformat(user['last_auth_request'])
-                if datetime.now() - last_request < COOLDOWN_PERIOD:
-                    await interaction.response.send_modal(Token(self, user['email'], user['nick'], user['role']))
+            if user := next((u for u in ConfigManager.get('users', []) if u['id'] == interaction.user.id), None):
+                if 'last_auth_request' in user:
+                    last_request = datetime.fromisoformat(user['last_auth_request'])
+                    if datetime.now() - last_request < COOLDOWN_PERIOD:
+                        await interaction.response.send_modal(Token(self, user['email'], user['nick'], user['role']))
+                        return
+                else:
+                    await interaction.response.send_message("Vous êtes déjà authentifié.", ephemeral=True)
                     return
             
             await interaction.response.send_modal(ProModal())
         elif ROLE_STUDENT.id in user_roles:
-            user = next((u for u in ConfigManager.get('users', []) if u['id'] == interaction.user.id), None)
-            if user and 'last_auth_request' in user:
-                last_request = datetime.fromisoformat(user['last_auth_request'])
-                if datetime.now() - last_request < COOLDOWN_PERIOD:
-                    await interaction.response.send_modal(Token(self, user['email'], user['nick'], user['role']))
+            if user := next((u for u in ConfigManager.get('users', []) if u['id'] == interaction.user.id), None):
+                if 'last_auth_request' in user:
+                    last_request = datetime.fromisoformat(user['last_auth_request'])
+                    if datetime.now() - last_request < COOLDOWN_PERIOD:
+                        await interaction.response.send_modal(Token(self, user['email'], user['nick'], user['role']))
+                        return
+                else:
+                    await interaction.response.send_message("Vous êtes déjà authentifié.", ephemeral=True)
                     return
 
             await interaction.response.send_modal(StudentModal())
@@ -43,10 +49,6 @@ class ProModal(ui.Modal, title="Authentification"):
     
     async def on_submit(self, interaction: Interaction):
         users = ConfigManager.get('users', [])
-        current_user = next((u for u in users if u['id'] == interaction.user.id), None)
-        if current_user and current_user.get('last_auth_request') is None:
-            await interaction.response.send_message("Vous êtes déjà authentifié.", ephemeral=True)
-            return
         
         existing_email_user = next((u for u in users if u['email'] == self.email.value and u['id'] is not None), None)
         if existing_email_user:
@@ -153,10 +155,6 @@ class StudentModal(ui.Modal, title="Authentification"):
     async def on_submit(self, interaction: Interaction):
         users = ConfigManager.get('users', [])
         current_user = next((u for u in users if u['id'] == interaction.user.id), None)
-        
-        if current_user and current_user.get('last_auth_request') is None:
-            await interaction.response.send_message("Vous êtes déjà authentifié.", ephemeral=True)
-            return
         
         # Vérification des listes FI/FA
         valid_user = None
