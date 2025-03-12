@@ -19,7 +19,7 @@ class Authentication(ui.View):
                 if 'last_auth_request' in user:
                     last_request = datetime.fromisoformat(user['last_auth_request'])
                     if datetime.now() - last_request < COOLDOWN_PERIOD:
-                        await interaction.response.send_modal(Token(self, user['email'], user['nick'], user['role']))
+                        await interaction.response.send_modal(Token(self, user['email']))
                         return
                 else:
                     await interaction.response.send_message("Vous êtes déjà authentifié.", ephemeral=True)
@@ -31,7 +31,7 @@ class Authentication(ui.View):
                 if 'last_auth_request' in user:
                     last_request = datetime.fromisoformat(user['last_auth_request'])
                     if datetime.now() - last_request < COOLDOWN_PERIOD:
-                        await interaction.response.send_modal(Token(self, user['email'], user['nick'], user['role']))
+                        await interaction.response.send_modal(Token(self, user['email']))
                         return
                 else:
                     await interaction.response.send_message("Vous êtes déjà authentifié.", ephemeral=True)
@@ -59,12 +59,6 @@ class ProModal(ui.Modal, title="Authentification"):
         if not email_user:
             await interaction.response.send_message("Email non valide.", ephemeral=True)
             return
-        
-        if 'last_auth_request' in email_user:
-            last_request = datetime.fromisoformat(email_user['last_auth_request'])
-            if datetime.now() - last_request < COOLDOWN_PERIOD:
-                await interaction.response.send_modal(Token(self, self.email.value, f'{self.firstname.value} {self.lastname.value}'.title()))
-                return
 
         await interaction.response.defer()
 
@@ -82,53 +76,47 @@ class ProModal(ui.Modal, title="Authentification"):
 
         await interaction.followup.send(
             f"Mail envoyé à {self.email.value}",
-            view=Feedback(self.email.value, f'{self.firstname.value} {self.lastname.value}'.title()),
+            view=Feedback(),
             ephemeral=True
         )
 
 
 class Feedback(ui.View):
-    def __init__(self, email, nick, role):
+    def __init__(self):
         super().__init__(timeout=None)
-        self.email = email
-        self.role = role
-        self.nick = nick
     
     @ui.button(label='Entrer le jeton', style=ButtonStyle.primary)
     async def feedback(self, interaction: Interaction, _: ui.Button):
-        await interaction.response.send_modal(Token(self, self.email, self.nick, self.role))
+        await interaction.response.send_modal(Token(self))
 
 
 class Token(ui.Modal):
     token = ui.TextInput(label="Jeton", placeholder="Jeton de validation")
 
-    def __init__(self, view, email, nick, role):
+    def __init__(self, view):
         super().__init__(title="Authentification")
         self.view = view
-        self.email = email
-        self.role = role
-        self.nick = nick
 
     async def on_submit(self, interaction: Interaction):
         users = ConfigManager.get('users', [])
         user = next((u for u in users if u['id'] == interaction.user.id), None)
-        if not user or not verify_jwt(self.token.value, self.email):
+        if not user or not verify_jwt(self.token.value, user['email']):
             await interaction.response.send_message("Token non valide.", ephemeral=True)
             return
         
         await interaction.response.defer()
         
         
-        role = Object(self.role, type=Role)
+        role = Object(user['role'], type=Role)
         
         await interaction.user.add_roles(role)
         
         if role in [ROLE_FA, ROLE_FI]:
             await interaction.user.add_roles(ROLE_M1)
 
-        if self.nick:
+        if user['nick']:
             try:
-                await interaction.user.edit(nick=self.nick)
+                await interaction.user.edit(nick=user['nick'])
             except Forbidden:
                 pass
 
@@ -197,6 +185,6 @@ class StudentModal(ui.Modal, title="Authentification"):
 
         await interaction.followup.send(
             f"Mail envoyé à {valid_user['email']}",
-            view=Feedback(valid_user['email'], valid_user['nick'], valid_user['role']),
+            view=Feedback(),
             ephemeral=True
         )
