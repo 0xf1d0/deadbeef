@@ -19,7 +19,7 @@ class Authentication(ui.View):
                 if 'last_auth_request' in user:
                     last_request = datetime.fromisoformat(user['last_auth_request'])
                     if datetime.now() - last_request < COOLDOWN_PERIOD:
-                        await interaction.response.send_modal(Token(self))
+                        await interaction.response.send_modal(Token())
                         return
                 else:
                     await interaction.response.send_message("Vous êtes déjà authentifié.", ephemeral=True)
@@ -31,7 +31,7 @@ class Authentication(ui.View):
                 if 'last_auth_request' in user:
                     last_request = datetime.fromisoformat(user['last_auth_request'])
                     if datetime.now() - last_request < COOLDOWN_PERIOD:
-                        await interaction.response.send_modal(Token(self))
+                        await interaction.response.send_modal(Token())
                         return
                 else:
                     await interaction.response.send_message("Vous êtes déjà authentifié.", ephemeral=True)
@@ -93,7 +93,7 @@ class Feedback(ui.View):
 class Token(ui.Modal):
     token = ui.TextInput(label="Jeton", placeholder="Jeton de validation")
 
-    def __init__(self, view):
+    def __init__(self, view=None):
         super().__init__(title="Authentification")
         self.view = view
 
@@ -134,7 +134,8 @@ class Token(ui.Modal):
         if 'role' in user: del user['role']
         del user['last_auth_request']
         ConfigManager.set('users', users)
-        self.view.stop()
+        if self.view:
+            self.view.stop()
 
 
 class StudentModal(ui.Modal, title="Authentification"):
