@@ -19,7 +19,7 @@ class Authentication(ui.View):
                 if 'last_auth_request' in user:
                     last_request = datetime.fromisoformat(user['last_auth_request'])
                     if datetime.now() - last_request < COOLDOWN_PERIOD:
-                        await interaction.response.send_modal(Token(self, user['email']))
+                        await interaction.response.send_modal(Token(self))
                         return
                 else:
                     await interaction.response.send_message("Vous êtes déjà authentifié.", ephemeral=True)
@@ -31,7 +31,7 @@ class Authentication(ui.View):
                 if 'last_auth_request' in user:
                     last_request = datetime.fromisoformat(user['last_auth_request'])
                     if datetime.now() - last_request < COOLDOWN_PERIOD:
-                        await interaction.response.send_modal(Token(self, user['email']))
+                        await interaction.response.send_modal(Token(self))
                         return
                 else:
                     await interaction.response.send_message("Vous êtes déjà authentifié.", ephemeral=True)
