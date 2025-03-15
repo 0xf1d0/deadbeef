@@ -27,9 +27,6 @@ class Mistral(commands.Cog):
         self.bot = bot
         self.conversations = defaultdict(dict)
         self.mistral = MistralAI()
-        
-    async def cog_unload(self):
-        await self.mistral.session.close()
 
     @commands.Cog.listener()
     async def on_message(self, message: Message):
