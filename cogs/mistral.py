@@ -52,13 +52,14 @@ class Mistral(commands.Cog):
                         conversation = conversation[-10:]
                     async with message.channel.typing():
                         try:
-                            answer = self.mistral.ask(messages=conversation, model='codestral-latest')
-                            conversation.append({
-                                'role': 'assistant',
-                                'content': answer
-                            })
-                            for part in divide_msg(answer):
-                                await message.reply(part)
+                            async with self.mistral:
+                                answer = await self.mistral.ask(messages=conversation, model='codestral-latest')
+                                conversation.append({
+                                    'role': 'assistant',
+                                    'content': answer
+                                })
+                                for part in divide_msg(answer):
+                                    await message.reply(part)
                         except Exception as e:
                             await message.reply(str(e))
                     return
@@ -76,13 +77,14 @@ class Mistral(commands.Cog):
             
             async with message.channel.typing():
                 try:
-                    answer = self.mistral.ask(messages=conversation, model='codestral-latest')
-                    conversation.append({
-                        'role': 'assistant',
-                        'content': answer
-                    })
-                    for part in divide_msg(answer):
-                        await message.reply(part)
+                    async with self.mistral:
+                        answer = await self.mistral.ask(messages=conversation, model='codestral-latest')
+                        conversation.append({
+                            'role': 'assistant',
+                            'content': answer
+                        })
+                        for part in divide_msg(answer):
+                            await message.reply(part)
                 except Exception as e:
                     await message.reply(str(e))
 
