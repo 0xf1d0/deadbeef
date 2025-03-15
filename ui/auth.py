@@ -198,7 +198,7 @@ class StudentModal(ui.Modal, title="Authentification"):
         
 
 class RootMeModal(ui.Modal):
-    id = ui.TextInput(label="Identifiant", placeholder="123456")
+    uuid = ui.TextInput(label="Identifiant", placeholder="123456")
     
     def __init__(self, rootme):
         super().__init__(title="Lier son compte Root-Me")
@@ -215,9 +215,9 @@ class RootMeModal(ui.Modal):
         
         try:
             async with self.rootme:
-                await self.rootme.get_authors(self.id.value)
+                await self.rootme.get_authors(self.uuid.value)
             
-            user['rootme'] = self.id.value
+            user['rootme'] = self.uuid.value
             ConfigManager.set('users', users)
             
             await interaction.followup.send("Compte Root-Me lié.", ephemeral=True)
