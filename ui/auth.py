@@ -2,6 +2,7 @@ from discord import ui, Interaction, ButtonStyle, Forbidden, Object, Role
 from datetime import datetime, timedelta
 
 from utils import ROLE_FA, ROLE_FI, ROLE_PRO, FI, HEADERS_FI, FA, HEADERS_FA, ROLE_M1, ROLE_STUDENT, ROLE_NOTABLE, send_email, create_jwt, verify_jwt, ConfigManager
+from api.api import RootMe
 
 COOLDOWN_PERIOD = timedelta(hours=1)
 
@@ -10,7 +11,7 @@ class Authentication(ui.View):
     def __init__(self):
         super().__init__(timeout=None)
     
-    @ui.button(label='Identifiez-vous', style=ButtonStyle.primary)
+    @ui.button(label="S'authentifier", style=ButtonStyle.primary, emoji="🔒")
     async def authenticate(self, interaction: Interaction, _: ui.Button):
         user_roles = [role.id for role in interaction.user.roles]
         
@@ -40,6 +41,10 @@ class Authentication(ui.View):
             await interaction.response.send_modal(StudentModal())
         else:
             await interaction.response.send_message("Vous n'avez pas le profil requis.", ephemeral=True)
+    
+    @ui.button(label='Root-Me', style=ButtonStyle.primary, emoji="💀")
+    async def rootme(self, interaction: Interaction, _: ui.Button):
+        await interaction.response.send_modal(RootMeModal())
 
 
 class ProModal(ui.Modal, title="Authentification"):
@@ -189,3 +194,27 @@ class StudentModal(ui.Modal, title="Authentification"):
             view=Feedback(),
             ephemeral=True
         )
+        
+
+class RootMeModal(ui.Modal, title="Lier son compte Root-Me"):
+    id = ui.TextInput(label="Identifiant", placeholder="rootme")
+    
+    async def on_submit(self, interaction: Interaction):
+        users = ConfigManager.get('users', [])
+        user = next((u for u in users if u['id'] == interaction.user.id), None)
+        if not user:
+            await interaction.response.send_message("Vous n'êtes pas authentifié.", ephemeral=True)
+            return
+        
+        await interaction.response.defer()
+        
+        try:
+            rootme = RootMe()
+            rootme.get_authors(self.id.value)
+            
+            user['rootme'] = self.id.value
+            ConfigManager.set('users', users)
+            
+            await interaction.followup.send("Compte Root-Me lié.", ephemeral=True)
+        except Exception as e:
+            await interaction.followup.send(str(e), ephemeral=True)

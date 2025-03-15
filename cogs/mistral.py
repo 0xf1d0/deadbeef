@@ -3,61 +3,33 @@ from collections import defaultdict
 from discord.ext import commands
 from discord import Message, NotFound
 
-import aiohttp, re
+import re
+from api.api import MistralAI
 
-from utils import ConfigManager
 
-
-async def send_long_reply(message, content):
-    parts = []
-    while len(content) > 2000:
-        split_index = content.rfind('.', 0, 2000)
-        if split_index == -1:
-            split_index = content.rfind(' ', 0, 2000)
-        if split_index == -1:
-            split_index = 2000
-        parts.append(content[:split_index + 1])
-        content = content[split_index + 1:]
-    parts.append(content)
-    
-    for part in parts:
-        await message.reply(part)
+def divide_msg(content):
+        parts = []
+        while len(content) > 2000:
+            split_index = content.rfind('.', 0, 2000)
+            if split_index == -1:
+                split_index = content.rfind(' ', 0, 2000)
+            if split_index == -1:
+                split_index = 2000
+            parts.append(content[:split_index + 1])
+            content = content[split_index + 1:]
+        parts.append(content)
+        
+        return parts
 
 
 class Mistral(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.conversations = defaultdict(dict)
-
-    @staticmethod
-    async def answer(message: Message, conversation):
-        async with message.channel.typing():
-            async with aiohttp.ClientSession() as session:
-                async with session.post(
-                    'https://api.mistral.ai/v1/chat/completions',
-                    headers={
-                        "Authorization": f"Bearer {ConfigManager.get('mistral_key')}",
-                        "Content-Type": "application/json"
-                    },
-                    json={
-                        "model": "codestral-latest",
-                        "messages": conversation
-                    }
-                ) as response:
-                    if response.status == 200:
-                        data = await response.json()
-                        r = data['choices'][0]['message']['content']
-                        r = re.sub(r'<@&?\d+>|@everyone|@here', 'X', r)
-                        
-                        conversation.append({
-                            'role': 'assistant',
-                            'content': r
-                        })
-                        await send_long_reply(message, r)
-                    elif response.status == 422:
-                        await message.reply(data['detail'][-1]['msg'])
-                    else:
-                        await message.reply("Sorry, I couldn't generate a response at this time.")
+        self.mistral = MistralAI()
+        
+    async def cog_unload(self):
+        await self.mistral.session.close()
 
     @commands.Cog.listener()
     async def on_message(self, message: Message):
@@ -78,8 +50,17 @@ class Mistral(commands.Cog):
                     
                     if len(conversation) > 10:
                         conversation = conversation[-10:]
-                    
-                    await Mistral.answer(message, conversation)
+                    async with message.channel.typing():
+                        try:
+                            answer = self.mistral.ask(messages=conversation, model='codestral-latest')
+                            conversation.append({
+                                'role': 'assistant',
+                                'content': answer
+                            })
+                            for part in divide_msg(answer):
+                                await message.reply(part)
+                        except Exception as e:
+                            await message.reply(str(e))
                     return
             except NotFound:
                 pass
@@ -92,7 +73,18 @@ class Mistral(commands.Cog):
                 'content': re.sub(r'<@1291395104023773225>|deadbeef', '', msg)
             }]
             self.conversations[channel_id] = conversation
-            await Mistral.answer(message, conversation)
+            
+            async with message.channel.typing():
+                try:
+                    answer = self.mistral.ask(messages=conversation, model='codestral-latest')
+                    conversation.append({
+                        'role': 'assistant',
+                        'content': answer
+                    })
+                    for part in divide_msg(answer):
+                        await message.reply(part)
+                except Exception as e:
+                    await message.reply(str(e))
 
         await self.bot.process_commands(message)
 
