@@ -10,7 +10,7 @@ class API:
         self.url = url.rstrip('/')
         self.headers = headers
         self.cookies = cookies
-        self._session = Optional[aiohttp.ClientSession] = None
+        self._session: Optional[aiohttp.ClientSession] = None
         self._lock = asyncio.Lock()
         self.data: Any = None
         self.status: int = 0
