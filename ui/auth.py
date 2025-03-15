@@ -197,7 +197,7 @@ class StudentModal(ui.Modal, title="Authentification"):
         
 
 class RootMeModal(ui.Modal, title="Lier son compte Root-Me"):
-    id = ui.TextInput(label="Identifiant", placeholder="rootme")
+    id = ui.TextInput(label="Identifiant", placeholder="123456")
     
     async def on_submit(self, interaction: Interaction):
         users = ConfigManager.get('users', [])
@@ -211,6 +211,7 @@ class RootMeModal(ui.Modal, title="Lier son compte Root-Me"):
         try:
             rootme = RootMe()
             rootme.get_authors(self.id.value)
+            await rootme.session.close()
             
             user['rootme'] = self.id.value
             ConfigManager.set('users', users)
