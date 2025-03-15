@@ -38,7 +38,7 @@ class API:
             
     async def _request(self, method: str, route: str, *args, **kwargs):
         await self._ensure_session()
-        url = f"{self.base_url}/{route.strip('/')}"
+        url = f"{self.url}/{route.strip('/')}"
         
         try:
             async with self._session.request(method, url, json=kwargs) as response:
