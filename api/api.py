@@ -49,13 +49,14 @@ class API:
             await self.close()
             raise ConnectionError(f"Session expired: {str(e)}") from e
 
-    def endpoint(self, route: str, method: str = 'GET') -> Callable:
+    @staticmethod
+    def endpoint(route: str, method: str = 'GET') -> Callable:
         """Décorateur pour les endpoints API"""
         def decorator(func: Callable):
             @wraps(func)
-            async def wrapper(self_api: 'API', *args, **kwargs):
-                await self_api._request(method, route, *args, **kwargs)
-                return func(self_api, *args, **kwargs)
+            async def wrapper(self: 'API', *args, **kwargs):
+                await self._request(method, route, *args, **kwargs)
+                return func(self, *args, **kwargs)
             return wrapper
         return decorator
 
