@@ -72,7 +72,7 @@ class MistralAI(API):
             }
         )
 
-    @API.endpoint('/chat/completions', method='POST')
+    @API.endpoint('/v1/chat/completions', method='POST')
     def ask(self, **kwargs):
         if self.status == 200:
             content = self.data['choices'][0]['message']['content']
