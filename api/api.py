@@ -38,7 +38,8 @@ class API:
             
     async def _request(self, method: str, route: str, *args, **kwargs):
         await self._ensure_session()
-        url = f"{self.url}/{route.strip('/')}"
+        url = f"{self.url}/{route.strip('/')}{'/'.join(args)}"
+        print(url, kwargs)
         
         try:
             async with self._session.request(method, url, json=kwargs) as response:
@@ -51,10 +52,9 @@ class API:
 
     @staticmethod
     def endpoint(route: str, method: str = 'GET') -> Callable:
-        """Décorateur pour les endpoints API"""
         def decorator(func: Callable):
             @wraps(func)
-            async def wrapper(self: 'API', *args, **kwargs):
+            async def wrapper(self, *args, **kwargs):
                 await self._request(method, route, *args, **kwargs)
                 return func(self, *args, **kwargs)
             return wrapper
