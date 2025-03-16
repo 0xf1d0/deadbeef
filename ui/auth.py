@@ -2,15 +2,14 @@ from discord import ui, Interaction, ButtonStyle, Forbidden, Object, Role
 from datetime import datetime, timedelta
 
 from utils import ROLE_FA, ROLE_FI, ROLE_PRO, FI, HEADERS_FI, FA, HEADERS_FA, ROLE_M1, ROLE_STUDENT, ROLE_NOTABLE, send_email, create_jwt, verify_jwt, ConfigManager
-from api.api import RootMe
 
 COOLDOWN_PERIOD = timedelta(hours=1)
 
 
 class Authentication(ui.View):
-    def __init__(self):
+    def __init__(self, rootme):
         super().__init__(timeout=None)
-        self.rootme = RootMe()
+        self.rootme = rootme
     
     @ui.button(label="S'authentifier", style=ButtonStyle.primary, emoji="🔒")
     async def authenticate(self, interaction: Interaction, _: ui.Button):

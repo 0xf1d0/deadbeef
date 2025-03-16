@@ -49,10 +49,10 @@ class Common(commands.Cog):
 
     @app_commands.command(description="Affiche le lien d'invitation du serveur.")
     async def invite(self, ctx: Interaction):
-        embed = Embed(title='Invitation', description='Scannez ce QR Code et rejoignez le serveur discord du Master Cybersécurité de Paris Cité.\n\nTous profils acceptés, curieux, intéressés ou experts en cybersécurité ! Bot multifonction intégré afin de dynamiser au maximum le serveur.', color=0x8B1538)
+        embed = Embed(title='Invitation', description='Scannez ce QR Code et rejoignez le serveur discord de la communauté Cybersécurité Paris.\n\nTous profils acceptés, curieux, intéressés ou experts en cybersécurité !', color=0x8B1538)
         file = File("assets/qrcode.png", filename="invite.png")
         embed.set_image(url='attachment://invite.png')
-        embed.set_footer(text=f'Master Cybersécurité - Université Paris Cité - {len([member for member in ctx.guild.members if not member.bot])} membres', icon_url=ctx.guild.icon.url)
+        embed.set_footer(text=f'Cybersécurité Paris - {len([member for member in ctx.guild.members if not member.bot])} membres', icon_url=ctx.guild.icon.url)
         await ctx.response.send_message(file=file, embed=embed)
 
     @app_commands.command(description="Affiche les informations sur le bot.")
@@ -61,6 +61,35 @@ class Common(commands.Cog):
         file = File("assets/f1d0.png", filename="f1d0.png")
         embed.set_thumbnail(url='attachment://f1d0.png')
         await ctx.response.send_message(file=file, embed=embed)
+
+    @app_commands.command(description="Affiche le profil root-me d'un utilisateur.")
+    async def profile(self, ctx: Interaction, rootme_id: str = None, discord_user: Member = None):
+        users = ConfigManager.get("users", [])
+        
+        async def fetch_and_send(rootme_id: str, user: Member = None):
+            async with self.bot.rootme:
+                try:
+                    await self.bot.rootme.get_authors(rootme_id)  # Appel API
+                    base_msg = f"Profil root-me de {rootme_id}: https://www.root-me.org/{rootme_id}"
+                    if user:
+                        base_msg = f"Profil root-me de {user.display_name}: " + base_msg.split(':', 1)[1]
+                    await ctx.response.send_message(base_msg)
+                except Exception as e:
+                    await ctx.response.send_message(f"Erreur: {str(e)}", ephemeral=True)
+        
+        # Logique de sélection des cibles
+        if rootme_id:
+            await fetch_and_send(rootme_id)
+            return
+        
+        target_user = discord_user or ctx.user
+        user_data = next((u for u in users if u["id"] == target_user.id), None)
+        
+        if user_data and user_data.get("rootme"):
+            await fetch_and_send(user_data["rootme"], target_user)
+        else:
+            msg = "Votre profil root-me non trouvé." if target_user == ctx.user else f"Profil root-me pour {target_user.display_name} non trouvé."
+            await ctx.response.send_message(msg)
 
 
 async def setup(bot: commands.Bot):

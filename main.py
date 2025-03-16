@@ -3,6 +3,7 @@ from discord import Intents
 import os, re
 
 from utils import ConfigManager, CYBER
+from api.api import MistralAI, RootMe
 
 
 class DeadBeef(commands.Bot):
@@ -10,6 +11,8 @@ class DeadBeef(commands.Bot):
         intents = Intents.default()
         intents.message_content = True
         intents.members = True
+        self.mistral = MistralAI()
+        self.rootme = RootMe()
         ConfigManager.load()
         super().__init__(command_prefix='!', intents=intents)
 

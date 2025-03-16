@@ -15,7 +15,7 @@ class Register(commands.Cog):
         welcome = self.bot.cyber.get_channel(WELCOME_CHANNEL.id)
         self.welcome_message = await welcome.fetch_message(WELCOME_MESSAGE.id)
 
-        await self.welcome_message.edit(content=ConfigManager.get('welcome_message'), view=Authentication())
+        await self.welcome_message.edit(content=ConfigManager.get('welcome_message'), view=Authentication(self.bot.rootme))
 
     @commands.Cog.listener()
     async def on_member_remove(self, member: Member):

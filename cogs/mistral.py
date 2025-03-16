@@ -4,7 +4,6 @@ from discord.ext import commands
 from discord import Message, NotFound
 
 import re
-from api.api import MistralAI
 
 
 def divide_msg(content):
@@ -26,7 +25,6 @@ class Mistral(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.conversations = defaultdict(dict)
-        self.mistral = MistralAI()
 
     @commands.Cog.listener()
     async def on_message(self, message: Message):
@@ -49,8 +47,8 @@ class Mistral(commands.Cog):
                         conversation = conversation[-10:]
                     async with message.channel.typing():
                         try:
-                            async with self.mistral:
-                                answer = await self.mistral.ask(messages=conversation, model='codestral-latest')
+                            async with self.bot.mistral:
+                                answer = await self.bot.mistral.ask(messages=conversation, model='codestral-latest')
                                 conversation.append({
                                     'role': 'assistant',
                                     'content': answer
@@ -74,8 +72,8 @@ class Mistral(commands.Cog):
             
             async with message.channel.typing():
                 try:
-                    async with self.mistral:
-                        answer = await self.mistral.ask(messages=conversation, model='codestral-latest')
+                    async with self.bot.mistral:
+                        answer = await self.bot.mistral.ask(messages=conversation, model='codestral-latest')
                         conversation.append({
                             'role': 'assistant',
                             'content': answer
