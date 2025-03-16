@@ -27,7 +27,7 @@ class API:
             async with self._lock:
                 if self._session is None or self._session.closed:
                     self._session = aiohttp.ClientSession(
-                        connector=aiohttp.TCPConnector(ssl=False, limit=10),
+                        connector=aiohttp.TCPConnector(limit=10),
                         headers=self.headers,
                         cookies=self.cookies
                     )
@@ -85,7 +85,7 @@ class MistralAI(API):
 class RootMe(API):
     def __init__(self):
         super().__init__(
-            url='https://api.root-me.org',
+            url='https://api.www.root-me.org',
             cookies={'api_key': ConfigManager.get('rootme_key')}
         )
 
