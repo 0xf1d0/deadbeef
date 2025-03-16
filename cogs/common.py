@@ -6,6 +6,9 @@ from utils import ConfigManager
 
 
 class Common(commands.Cog):
+    def __init__(self, bot: commands.Bot):
+        self.bot = bot
+
     @app_commands.command(description="Affiche ou inscrit un profil LinkedIn.")
     @app_commands.describe(member='Le profil du membre à afficher', register='Inscrire un profil LinkedIn.')
     async def linkedin(self, ctx: Interaction, member: Member = None, register: str = ''):
@@ -93,4 +96,4 @@ class Common(commands.Cog):
 
 
 async def setup(bot: commands.Bot):
-    await bot.add_cog(Common())
+    await bot.add_cog(Common(bot))
