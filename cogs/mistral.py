@@ -38,8 +38,11 @@ class Mistral(commands.Cog):
             try:
                 replied_message = await message.channel.fetch_message(message.reference.message_id)
 
-                if replied_message.author == self.bot.user and channel_id in self.conversations:
-                    conversation = self.conversations[channel_id]
+                if replied_message.author == self.bot.user:
+                    if channel_id not in self.conversations:
+                        self.conversations[channel_id] = []
+                    else:
+                        conversation = self.conversations[channel_id]
                     conversation.append({
                         'role': 'user',
                         'content': re.sub(r'<@1291395104023773225>|deadbeef', '', message.content)
