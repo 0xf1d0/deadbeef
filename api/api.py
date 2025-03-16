@@ -85,11 +85,7 @@ class MistralAI(API):
 class RootMe(API):
     def __init__(self):
         super().__init__(
-            url='https://api.root-me.org', 
-            headers={
-                "Accept-Encoding": "gzip",
-                "Content-Type": "application/json"
-            },
+            url='https://api.root-me.org',
             cookies={'api_key': ConfigManager.get('rootme_key')}
         )
 
