@@ -3,6 +3,7 @@ from discord.ext import commands
 
 from utils import WELCOME_MESSAGE, WELCOME_CHANNEL, CYBER, ConfigManager
 from ui.auth import Authentication
+from api.api import MistralAI, RootMe
 
 
 class Register(commands.Cog):
@@ -14,6 +15,9 @@ class Register(commands.Cog):
         self.bot.cyber = self.bot.get_guild(CYBER.id)
         welcome = self.bot.cyber.get_channel(WELCOME_CHANNEL.id)
         self.welcome_message = await welcome.fetch_message(WELCOME_MESSAGE.id)
+        
+        self.mistral = MistralAI()
+        self.rootme = RootMe()
 
         await self.welcome_message.edit(content=ConfigManager.get('welcome_message'), view=Authentication(self.bot.rootme))
 
