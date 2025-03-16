@@ -38,7 +38,9 @@ class API:
             
     async def _request(self, method: str, route: str, *args, **kwargs):
         await self._ensure_session()
-        url = f"{self.url}/{route.strip('/')}/{'/'.join(args)}"
+        url = f"{self.url}/{route.strip('/')}"
+        if args:
+            url = f"{url}/{'/'.join(args)}"
         
         try:
             async with self._session.request(method, url, json=kwargs) as response:
@@ -66,7 +68,6 @@ class MistralAI(API):
             url='https://api.mistral.ai',
             headers={
                 "Authorization": f"Bearer {ConfigManager.get('mistral_key')}",
-                "Accept-Encoding": "gzip",
                 "Content-Type": "application/json"
             }
         )
