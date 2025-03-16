@@ -38,8 +38,7 @@ class API:
             
     async def _request(self, method: str, route: str, *args, **kwargs):
         await self._ensure_session()
-        url = f"{self.url}/{route.strip('/')}{'/'.join(args)}"
-        print(url)
+        url = f"{self.url}/{route.strip('/')}/{'/'.join(args)}"
         
         try:
             async with self._session.request(method, url, json=kwargs) as response:
