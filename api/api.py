@@ -27,7 +27,7 @@ class API:
             async with self._lock:
                 if self._session is None or self._session.closed:
                     ssl_context = ssl.create_default_context()
-                    ssl_context.minimum_version = ssl.TLSVersion.TLSv1_2
+                    ssl_context.minimum_version = ssl.TLSVersion.TLSv1
                     self._session = aiohttp.ClientSession(
                         connector=aiohttp.TCPConnector(ssl_context=ssl_context, limit=10),
                         headers=self.headers,
