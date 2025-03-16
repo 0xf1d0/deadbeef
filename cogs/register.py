@@ -16,8 +16,8 @@ class Register(commands.Cog):
         welcome = self.bot.cyber.get_channel(WELCOME_CHANNEL.id)
         self.welcome_message = await welcome.fetch_message(WELCOME_MESSAGE.id)
         
-        self.mistral = MistralAI()
-        self.rootme = RootMe()
+        self.bot.mistral = MistralAI()
+        self.bot.rootme = RootMe()
 
         await self.welcome_message.edit(content=ConfigManager.get('welcome_message'), view=Authentication(self.bot.rootme))
 
