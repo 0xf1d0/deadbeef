@@ -38,7 +38,7 @@ class Mistral(commands.Cog):
             try:
                 replied_message = await message.channel.fetch_message(message.reference.message_id)
 
-                if replied_message.author == self.bot.user:
+                if replied_message.author == self.bot.user and channel_id in self.conversations:
                     conversation = self.conversations[channel_id]
                     conversation.append({
                         'role': 'user',
