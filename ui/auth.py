@@ -209,13 +209,17 @@ class RootMeModal(ui.Modal):
         if not user:
             await interaction.response.send_message("Vous n'êtes pas authentifié.", ephemeral=True)
             return
+
+        if user.get('rootme'):
+            await interaction.response.send_message("Compte Root-Me déjà lié.", ephemeral=True)
+            return
         
         await interaction.response.defer()
         
         try:
             async with self.rootme:
                 await self.rootme.get_authors(self.uuid.value)
-            
+
             user['rootme'] = self.uuid.value
             ConfigManager.set('users', users)
             
