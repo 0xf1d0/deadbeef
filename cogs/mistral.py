@@ -33,6 +33,7 @@ class Mistral(commands.Cog):
         
         channel_id = message.channel.id
         ref = message.reference
+        replied_message = None
         if ref and ref.message_id:
             try:
                 replied_message = await message.channel.fetch_message(ref.message_id)
