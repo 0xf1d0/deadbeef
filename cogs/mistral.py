@@ -32,44 +32,26 @@ class Mistral(commands.Cog):
             return
         
         channel_id = message.channel.id
-        if message.reference and message.reference.message_id:
+        ref = message.reference
+        if ref and ref.message_id:
             try:
-                replied_message = await message.channel.fetch_message(message.reference.message_id)
-
-                if replied_message.author == self.bot.user and channel_id in self.conversations:
-                    conversation = self.conversations[channel_id]
-                    conversation.append({
-                        'role': 'user',
-                        'content': re.sub(r'<@1291395104023773225>|deadbeef', '', message.content)
-                    })
-                    
-                    if len(conversation) > 10:
-                        conversation = conversation[-10:]
-                    async with message.channel.typing():
-                        try:
-                            async with self.bot.mistral:
-                                answer = await self.bot.mistral.ask(messages=conversation, model='codestral-latest')
-                                conversation.append({
-                                    'role': 'assistant',
-                                    'content': answer
-                                })
-                                for part in divide_msg(answer):
-                                    await message.reply(part)
-                        except Exception as e:
-                            await message.reply(str(e))
-                    return
+                replied_message = await message.channel.fetch_message(ref.message_id)
             except NotFound:
                 pass
 
-        # New Conversation
         msg = message.content.lower()
-        if 'deadbeef' in msg or f'<@{self.bot.user.id}>' in msg or channel_id not in self.conversations:
-            conversation = [{
+        if replied_message and replied_message.author == self.bot.user or 'deadbeef' in msg or f'<@{self.bot.user.id}>' in msg:
+            if channel_id in self.conversations:
+                conversation = self.conversations[channel_id]
+            else:
+                conversation = self.conversations[channel_id] = conversation
+            conversation.append({
                 'role': 'user',
-                'content': re.sub(r'<@1291395104023773225>|deadbeef', '', msg)
-            }]
-            self.conversations[channel_id] = conversation
+                'content': re.sub(r'<@1291395104023773225>|deadbeef', '', message.content)
+            })
             
+            if len(conversation) > 10:
+                conversation = conversation[-10:]
             async with message.channel.typing():
                 try:
                     async with self.bot.mistral:
@@ -82,6 +64,7 @@ class Mistral(commands.Cog):
                             await message.reply(part)
                 except Exception as e:
                     await message.reply(str(e))
+            return
 
         await self.bot.process_commands(message)
 
