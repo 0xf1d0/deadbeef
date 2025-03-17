@@ -24,7 +24,7 @@ def divide_msg(content):
 class Mistral(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.conversations = defaultdict(dict)
+        self.conversations = defaultdict(list)
 
     @commands.Cog.listener()
     async def on_message(self, message: Message):
@@ -47,9 +47,11 @@ class Mistral(commands.Cog):
                 'content': re.sub(r'<@1291395104023773225>|deadbeef', '', message.content)
             }
             if channel_id in self.conversations:
-                conversation = self.conversations[channel_id] + [new]
+                self.conversations[channel_id].append(new)
             else:
-                conversation = self.conversations[channel_id] = [new]
+                self.conversations[channel_id] = [new]
+            
+            conversation = self.conversations[channel_id]
             
             if len(conversation) > 10:
                 conversation = conversation[-10:]
