@@ -96,7 +96,7 @@ class Common(commands.Cog):
             .set_footer(text=f'{guild.name} - {len([member for member in guild.members if not member.bot])} membres', icon_url=guild.icon.url)
         permanent_invite = next((inv for inv in invites if inv.max_age == 0), None)
         if permanent_invite:
-            embed.add_field(name="Lien", value=f'[{permanent_invite.url}]({permanent_invite.url})', inline=False)
+            embed.add_field(name="Lien", value=f'{permanent_invite.url}')
             
         file = File("assets/qrcode.png", filename="invite.png")
         await interaction.response.send_message(file=file, embed=embed)
