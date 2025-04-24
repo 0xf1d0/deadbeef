@@ -11,7 +11,7 @@ class DeadBeef(commands.Bot):
         intents.message_content = True
         intents.members = True
         ConfigManager.load()
-        super().__init__(command_prefix=commands.when_mentioned_or('!'), intents=intents)
+        super().__init__(command_prefix='!', intents=intents)
 
     async def setup_hook(self) -> None:
         for file in os.listdir("cogs"):
