@@ -1,14 +1,27 @@
-from discord import ui, Interaction, ButtonStyle
+import discord, re
+
+from utils import CYBER_COLOR
 
 
-class Announcement(ui.View):
+class Announcement(discord.ui.Modal, title="Annonce"):
+    Title = discord.ui.TextInput(label="Titre", placeholder="Hello World !")
+    Description = discord.ui.TextInput(label="Description", placeholder="<@id> to mention someone", style=discord.TextStyle.long)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        embed = discord.Embed(title=self.Title.value, description=self.Description.value, color=CYBER_COLOR)
+        embed.set_footer(text=f"Annoncé par {interaction.user.display_name}", icon_url=interaction.user.avatar.url)
+        mentions = set(re.findall(r'<@\d+>', self.Description.value))
+        interaction.response.send_message('Quels rôles voulez-vous mentionner ?', view=Announcement(embed, mentions), ephemeral=True)
+
+
+class ProcessAnnouncement(discord.ui.View):
     def __init__(self, embed, mentions):
         super().__init__(timeout=None)
         self.embed = embed
         self.mentions = mentions
     
-    @ui.select(cls=ui.RoleSelect, placeholder='Choisissez un/des rôle/s', max_values=4)
-    async def select_roles(self, interaction: Interaction, select: ui.RoleSelect):
+    @discord.ui.select(cls=discord.ui.RoleSelect, placeholder='Choisissez un/des rôle/s', max_values=4)
+    async def select_roles(self, interaction: discord.Interaction, select: discord.ui.RoleSelect):
         value = ' '.join([role.mention for role in select.values])
         self.embed.add_field(name='Rôles concernés', value=value)
         if self.mentions:
@@ -18,18 +31,18 @@ class Announcement(ui.View):
         self.stop()
 
 
-class Confirm(ui.View):
+class Confirm(discord.ui.View):
     def __init__(self, **kwargs):
         super().__init__(timeout=None)
         self.kwargs = kwargs
 
-    @ui.button(label='Annuler', style=ButtonStyle.danger)
-    async def cancel(self, interaction: Interaction, _: ui.Button):
+    @discord.ui.button(label='Annuler', style=discord.ButtonStyle.danger)
+    async def cancel(self, interaction: discord.Interaction, _: discord.ui.Button):
         await interaction.response.edit_message(content='Annonce annulée.', suppress_embeds=True, view=None)
         self.stop()
 
-    @ui.button(label='Confirmer', style=ButtonStyle.success)
-    async def confirm(self, interaction: Interaction, _: ui.Button):
+    @discord.ui.button(label='Confirmer', style=discord.ButtonStyle.success)
+    async def confirm(self, interaction: discord.Interaction, _: discord.ui.Button):
         await interaction.channel.send(**self.kwargs)
         await interaction.response.edit_message(content='Annonce envoyée.', suppress_embeds=True, view=None)
         self.stop()

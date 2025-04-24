@@ -2,7 +2,7 @@ import re
 from discord import app_commands, Interaction, Member, Embed, File, Color
 from discord.ext import commands
 
-from utils import ConfigManager, WELCOME_MESSAGE, WELCOME_CHANNEL, LOG_CHANNEL, CYBER
+from utils import ConfigManager, WELCOME_MESSAGE, WELCOME_CHANNEL, LOG_CHANNEL, CYBER_COLOR, CYBER
 from ui.auth import Authentication
 
 from api.api import RootMe
@@ -87,12 +87,14 @@ class Common(commands.Cog):
             await ctx.response.send_message('Rôle de joueur attribué.', ephemeral=True)
 
     @app_commands.command(description="Affiche le lien d'invitation du serveur.")
-    async def invite(self, ctx: Interaction):
-        embed = Embed(title='Invitation', description='Scannez ce QR Code et rejoignez le serveur discord de la communauté Cybersécurité Paris.\n\nTous profils acceptés, curieux, intéressés ou experts en cybersécurité !', color=0x8B1538)
+    async def invite(self, interaction: Interaction):
+        guild = interaction.guild
+        embed = Embed(title='Invitation', description=f'Scannez ce QR Code et rejoignez le serveur discord de la communauté {guild.name}.', color=CYBER_COLOR)\
+            .set_image(url='attachment://invite.png')\
+            .set_footer(text=f'{guild.name} - {len([member for member in guild.members if not member.bot])} membres', icon_url=guild.icon.url)
+            
         file = File("assets/qrcode.png", filename="invite.png")
-        embed.set_image(url='attachment://invite.png')
-        embed.set_footer(text=f'Cybersécurité Paris - {len([member for member in ctx.guild.members if not member.bot])} membres', icon_url=ctx.guild.icon.url)
-        await ctx.response.send_message(file=file, embed=embed)
+        await interaction.response.send_message(file=file, embed=embed)
 
     @app_commands.command(description="Affiche les informations sur le bot.")
     async def about(self, ctx: Interaction):
