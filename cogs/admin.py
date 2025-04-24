@@ -5,7 +5,13 @@ from ui.announce import Announcement
 from utils import ROLE_FI, ROLE_FA, ROLE_M1, ROLE_M2, ROLE_DELEGATE, ROLE_MANAGER, ROLE_NOTABLE
 
 
-class Admin(commands.Cog):    
+class Admin(commands.Cog):
+    @app_commands.command(name="ping", description="Afficher la latence du bot.")
+    @app_commands.checks.has_permissions(administrator=True)
+    async def ping(self, interaction: Interaction):
+        """Check the bot's latency."""
+        await interaction.response.send_message(f"Pong! {round(self.bot.latency * 1000)}ms")
+   
     @app_commands.command(description="Annoncer un message.")
     @app_commands.checks.has_any_role(ROLE_DELEGATE.id, ROLE_MANAGER.id, ROLE_NOTABLE.id)
     async def announce(self, interaction: Interaction):

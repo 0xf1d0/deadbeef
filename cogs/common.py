@@ -1,5 +1,6 @@
 import re
-from discord import app_commands, Interaction, Member, Embed, File, Color
+from discord import app_commands, Interaction, Member, Embed, File, Color, Activity, ActivityType
+from discord.ext import tasks
 from discord.ext import commands
 
 from utils import ConfigManager, WELCOME_MESSAGE, WELCOME_CHANNEL, LOG_CHANNEL, CYBER_COLOR, CYBER
@@ -11,6 +12,7 @@ from api.api import RootMe
 class Common(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
+        self.update_status.start()
     
     @commands.Cog.listener()
     async def on_ready(self):
@@ -76,16 +78,6 @@ class Common(commands.Cog):
             else:
                 await ctx.response.send_message('Votre profil LinkedIn non trouvé.')
 
-    @app_commands.command(description="S'attribuer ou s'enlever le rôle de joueur.")
-    async def gaming(self, ctx: Interaction):
-        role = ctx.guild.get_role(1291867840067932304)
-        if role in ctx.user.roles:
-            await ctx.user.remove_roles(role)
-            await ctx.response.send_message('Rôle de joueur retiré.', ephemeral=True)
-        else:
-            await ctx.user.add_roles(role)
-            await ctx.response.send_message('Rôle de joueur attribué.', ephemeral=True)
-
     @app_commands.command(description="Affiche le QR Code d'invitation au serveur.")
     async def invite(self, interaction: Interaction):
         guild = interaction.guild
@@ -135,6 +127,22 @@ class Common(commands.Cog):
         else:
             msg = "Votre profil root-me non trouvé." if target_user == ctx.user else f"Profil root-me pour {target_user.display_name} non trouvé."
             await ctx.response.send_message(msg)
+    
+    @tasks.loop(hours=1)
+    async def update_status(self):
+        """Update the bot's status."""
+        guild = self.bot.get_guild(CYBER.id)
+        if guild:
+            await self.bot.change_presence(
+                activity=Activity(
+                    type=ActivityType.watching,
+                    name=f"{len([member for member in guild.members if not member.bot])} members"
+                )
+            )
+    
+    @update_status.before_loop
+    async def before_update_status(self):
+        await self.bot.wait_until_ready()
 
 
 async def setup(bot: commands.Bot):
