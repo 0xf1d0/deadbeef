@@ -86,10 +86,14 @@ class Common(commands.Cog):
             await ctx.user.add_roles(role)
             await ctx.response.send_message('Rôle de joueur attribué.', ephemeral=True)
 
-    @app_commands.command(description="Affiche le lien d'invitation du serveur.")
+    @app_commands.command(description="Affiche le QR Code d'invitation au serveur.")
     async def invite(self, interaction: Interaction):
         guild = interaction.guild
-        embed = Embed(title='Invitation', description=f'Scannez ce QR Code et rejoignez le serveur discord de la communauté {guild.name}.', color=CYBER_COLOR)\
+        invites = await guild.invites()
+        permanent_invite = next([inv for inv in invites if inv.max_age == 0])
+
+        embed = Embed(title=f'{guild.name}', description=f'Scannez ce QR Code et rejoignez le serveur discord de la communauté {guild.name}.', color=CYBER_COLOR)\
+            .add_field(name='Lien', value=f'{permanent_invite.url}', inline=False)\
             .set_image(url='attachment://invite.png')\
             .set_footer(text=f'{guild.name} - {len([member for member in guild.members if not member.bot])} membres', icon_url=guild.icon.url)
             
