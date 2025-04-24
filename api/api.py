@@ -143,7 +143,9 @@ class API:
         """Decorator to easily create API endpoints."""
         def decorator(func: Callable):
             @wraps(func)
-            @classmethod
+            def wrapped(cls, data, status, *args, **kwargs):
+                return func(cls, data, status, *args, **kwargs)
+            
             async def wrapper(cls: Type[T], *args, **kwargs) -> Any:
                 # Extract request-specific parameters
                 request_kwargs = {}
@@ -159,9 +161,9 @@ class API:
                     kwargs = {}  # Clear kwargs to avoid duplicates
                 
                 data, status = await cls._request(method, route, *args, **request_kwargs)
-                return func(cls, data, status, *args, **kwargs)
+                return wrapped(cls, data, status, *args, **kwargs)
             
-            return wrapper
+            return classmethod(wrapper)
         return decorator
 
 
