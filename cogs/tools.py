@@ -57,13 +57,13 @@ class Tools(commands.Cog):
                 for existing_tool in tools:
                     if existing_tool['category'].lower() == category.lower():
                         existing_tool['fields'].append(store['fields'][0])
-                        self.update_embed(msg.embeds, category, existing_tool['fields'])
+                        update_embed(msg.embeds, category, existing_tool['fields'])
                         msg.embeds[-1].set_footer(text=f"Last update by {interaction.user.display_name} at {formatted_time}", icon_url=interaction.user.avatar.url)
                         await msg.edit(embeds=msg.embeds)
                         break
                 else:
                     tools.append(store)
-                    self.update_embed(msg.embeds, category, store['fields'])
+                    update_embed(msg.embeds, category, store['fields'])
                     msg.embeds[-1].set_footer(text=f"Last update by {interaction.user.display_name} at {formatted_time}", icon_url=interaction.user.avatar.url)
                     await msg.edit(embeds=msg.embeds)
                 
@@ -80,11 +80,11 @@ class Tools(commands.Cog):
                                 if tool is not None:
                                     existing_tool['fields'][index - 1]['tool'] = tool
                                 existing_tool['fields'][index - 1]['description'] = description if description else existing_tool['fields'][index - 1]['description']
-                                self.update_embed(msg.embeds, category, existing_tool['fields'])
+                                update_embed(msg.embeds, category, existing_tool['fields'])
                             else:
                                 del existing_tool['fields'][index - 1]
                                 if existing_tool['fields']:
-                                    self.update_embed(msg.embeds, category, existing_tool['fields'])
+                                    update_embed(msg.embeds, category, existing_tool['fields'])
                                 else:
                                     for embed in msg.embeds:
                                         for field_index, field in enumerate(embed.fields):
@@ -100,11 +100,6 @@ class Tools(commands.Cog):
                         break
                 else:
                     await interaction.response.send_message("Catégorie non trouvée.", ephemeral=True)
-
-    @tool.error
-    async def calendar_error(self, interaction: Interaction, error: Exception):
-        if isinstance(error, app_commands.CheckFailure):
-            await interaction.response.send_message("Vous n'avez pas la permission d'utiliser cette commande.", ephemeral=True)
 
 
 async def setup(bot: commands.Bot):

@@ -27,12 +27,6 @@ class Admin(commands.Cog):
     async def purge(self, ctx: Interaction, limit: int):
         await ctx.response.send_message(f'{limit} messages ont été effacés.', ephemeral=True)
         await ctx.channel.purge(limit=limit)
-
-    @purge.error
-    async def purge_error(self, interaction: Interaction, error: Exception):
-        if isinstance(error, app_commands.MissingPermissions):
-            await interaction.response.send_message("Vous n'avez pas la permission d'utiliser cette commande.", ephemeral=True)
-            
     
     @app_commands.command(description="Réinitialise les grades.")
     @app_commands.checks.has_permissions(administrator=True)
@@ -48,12 +42,6 @@ class Admin(commands.Cog):
                 await member.edit(roles=roles)
                 await member.remove_roles(ROLE_FI, ROLE_FA, ROLE_M1, ROLE_M2)
             await ctx.response.send_message(f'Les rôles de **{len(members)}** membres ont été réinitialisés.', ephemeral=True)
-
-    @reset.error
-    async def reset_error(self, interaction: Interaction, error: Exception):
-        if isinstance(error, app_commands.MissingPermissions):
-            await interaction.response.send_message("Vous n'avez pas la permission d'utiliser cette commande.", ephemeral=True)
-
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Admin())

@@ -5,6 +5,8 @@ from discord import Message, NotFound
 
 import re
 
+from api.api import MistralAI
+
 
 def divide_msg(content):
         parts = []
@@ -57,14 +59,13 @@ class Mistral(commands.Cog):
                 conversation = conversation[-10:]
             async with message.channel.typing():
                 try:
-                    async with self.bot.mistral:
-                        answer = await self.bot.mistral.ask(messages=conversation, model='codestral-latest')
-                        conversation.append({
-                            'role': 'assistant',
-                            'content': answer
-                        })
-                        for part in divide_msg(answer):
-                            await message.reply(part)
+                    answer = await MistralAI.chat_completion(messages=conversation, model='codestral-latest')
+                    conversation.append({
+                        'role': 'assistant',
+                        'content': answer
+                    })
+                    for part in divide_msg(answer):
+                        await message.reply(part)
                 except Exception as e:
                     await message.reply(str(e))
             return

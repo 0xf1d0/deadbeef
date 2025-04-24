@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 
 
 CYBER = Object(1289169690895323167, type=Guild)
+
 ROLE_FI = Object(1289241716985040960, type=Role)
 ROLE_FA = Object(1289241666871627777, type=Role)
 ROLE_GUEST = Object(1291510062753517649, type=Role)
@@ -14,9 +15,12 @@ ROLE_PRO = Object(1347693508995055639, type=Role)
 ROLE_M1 = Object(1348345997851623585, type=Role)
 ROLE_M2 = Object(1348346037395394752, type=Role)
 ROLE_NOTABLE = Object(1293714448263024650, type=Role)
+
 WELCOME_MESSAGE = Object(1314385676107645010, type=Message)
+
 WELCOME_CHANNEL = Object(1291494038427537559, type=TextChannel)
 CALENDAR_CHANNEL = Object(1293319532361809986, type=TextChannel)
+LOG_CHANNEL = Object(1292059079287504930, type=TextChannel)
 
 def read_csv(file_path):
     """

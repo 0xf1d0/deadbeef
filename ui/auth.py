@@ -3,13 +3,14 @@ from datetime import datetime, timedelta
 
 from utils import ROLE_FA, ROLE_FI, ROLE_PRO, FI, HEADERS_FI, FA, HEADERS_FA, ROLE_M1, ROLE_STUDENT, ROLE_NOTABLE, send_email, create_jwt, verify_jwt, ConfigManager
 
+from api.api import RootMe
+
 COOLDOWN_PERIOD = timedelta(hours=1)
 
 
 class Authentication(ui.View):
-    def __init__(self, rootme):
+    def __init__(self):
         super().__init__(timeout=None)
-        self.rootme = rootme
     
     @ui.button(label="S'authentifier", style=ButtonStyle.primary, emoji="🔒")
     async def authenticate(self, interaction: Interaction, _: ui.Button):
@@ -44,7 +45,7 @@ class Authentication(ui.View):
     
     @ui.button(label='Root-Me', style=ButtonStyle.primary, emoji="💀")
     async def rootme(self, interaction: Interaction, _: ui.Button):
-        await interaction.response.send_modal(RootMeModal(self.rootme))
+        await interaction.response.send_modal(RootMeModal())
 
 
 class ProModal(ui.Modal, title="Authentification"):
@@ -199,9 +200,8 @@ class StudentModal(ui.Modal, title="Authentification"):
 class RootMeModal(ui.Modal):
     uuid = ui.TextInput(label="Identifiant", placeholder="123456")
     
-    def __init__(self, rootme):
+    def __init__(self):
         super().__init__(title="Lier son compte Root-Me")
-        self.rootme = rootme
     
     async def on_submit(self, interaction: Interaction):
         users = ConfigManager.get('users', [])
@@ -217,8 +217,7 @@ class RootMeModal(ui.Modal):
         await interaction.response.defer()
         
         try:
-            async with self.rootme:
-                await self.rootme.get_authors(self.uuid.value)
+            await RootMe.get_authors(self.uuid.value)
 
             user['rootme'] = self.uuid.value
             ConfigManager.set('users', users)

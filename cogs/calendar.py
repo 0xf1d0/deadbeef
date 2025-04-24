@@ -151,13 +151,6 @@ class Calendar(commands.Cog):
         except ValueError:
             await interaction.response.send_message("Format invalide - JJ/MM/AAAA <HH:II>.", ephemeral=True)
 
-    @calendar.error
-    async def calendar_error(self, interaction: Interaction, error: Exception):
-        if isinstance(error, app_commands.MissingAnyRole):
-            await interaction.response.send_message("Vous n'avez pas la permission d'utiliser cette commande.", ephemeral=True)
-        else:
-            await interaction.response.send_message(error, ephemeral=True)
-
     @tasks.loop(minutes=1)
     async def check_reminders(self):
         now = datetime.now()

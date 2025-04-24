@@ -1,13 +1,49 @@
 import re
-from discord import app_commands, Interaction, Member, Embed, File
+from discord import app_commands, Interaction, Member, Embed, File, Color
 from discord.ext import commands
 
-from utils import ConfigManager
+from utils import ConfigManager, WELCOME_MESSAGE, WELCOME_CHANNEL, LOG_CHANNEL, CYBER
+from ui.auth import Authentication
+
+from api.api import RootMe
 
 
 class Common(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
+    
+    @commands.Cog.listener()
+    async def on_ready(self):
+        welcome = self.bot.get_guild(CYBER.id).get_channel(WELCOME_CHANNEL.id)
+        welcome_message = await welcome.fetch_message(WELCOME_MESSAGE.id)
+
+        await welcome_message.edit(content=ConfigManager.get('welcome_message'), view=Authentication())
+        
+    @commands.Cog.listener()
+    async def on_member_join(self, member: Member):
+        guild = member.guild
+        channel = guild.get_channel(LOG_CHANNEL.id)
+        embed = Embed(title=f'{member} joined', color=Color.green())\
+                .add_field(name='Display Name', value=member.display_name, inline=False)\
+                .add_field(name='Joined at', value=member.joined_at.strftime('%Y-%m-%d %H:%M:%S'), inline=False)\
+                .add_field(name='Roles', value='\n'.join([f"{i+1}. {role.mention} - {role.id}" for i, role in enumerate(member.roles[1:])]), inline=False)\
+                .set_image(url=member.display_avatar.url)\
+                .set_footer(text=f'ID: {member.id}')
+
+        await channel.send(embed=embed)
+    
+    @commands.Cog.listener()
+    async def on_member_remove(self, member: Member):
+        guild = member.guild
+        channel = guild.get_channel(LOG_CHANNEL.id)
+        embed = Embed(title=f'{member} left', color=Color.red())\
+                .add_field(name='Display Name', value=member.display_name, inline=False)\
+                .add_field(name='Joined at', value=member.joined_at.strftime('%Y-%m-%d %H:%M:%S'), inline=False)\
+                .add_field(name='Roles', value='\n'.join([f"{i+1}. {role.mention} - {role.id}" for i, role in enumerate(member.roles[1:])]), inline=False)\
+                .set_image(url=member.display_avatar.url)\
+                .set_footer(text=f'ID: {member.id}')
+
+        await channel.send(embed=embed)
 
     @app_commands.command(description="Affiche ou inscrit un profil LinkedIn.")
     @app_commands.describe(member='Le profil du membre à afficher', register='Inscrire un profil LinkedIn.')
@@ -70,15 +106,14 @@ class Common(commands.Cog):
         users = ConfigManager.get("users", [])
         
         async def fetch_and_send(rootme_id: str, user: Member = None):
-            async with self.bot.rootme:
-                try:
-                    await self.bot.rootme.get_authors(rootme_id)  # Appel API
-                    base_msg = f"Profil root-me de {rootme_id}: https://www.root-me.org/{rootme_id}"
-                    if user:
-                        base_msg = f"Profil root-me de {user.display_name}: " + base_msg.split(':', 1)[1]
-                    await ctx.response.send_message(base_msg)
-                except Exception as e:
-                    await ctx.response.send_message(f"Erreur: {str(e)}", ephemeral=True)
+            try:
+                await RootMe.get_authors(rootme_id)
+                base_msg = f"Profil root-me de {rootme_id}: https://www.root-me.org/{rootme_id}"
+                if user:
+                    base_msg = f"Profil root-me de {user.display_name}: " + base_msg.split(':', 1)[1]
+                await ctx.response.send_message(base_msg)
+            except Exception as e:
+                await ctx.response.send_message(f"Erreur: {str(e)}", ephemeral=True)
         
         # Logique de sélection des cibles
         if rootme_id:
