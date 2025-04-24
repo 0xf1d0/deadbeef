@@ -11,7 +11,7 @@ class Announcement(discord.ui.Modal, title="Annonce"):
         embed = discord.Embed(title=self.Title.value, description=self.Description.value, color=CYBER_COLOR)
         embed.set_footer(text=f"Annoncé par {interaction.user.display_name}", icon_url=interaction.user.avatar.url)
         mentions = set(re.findall(r'<@\d+>', self.Description.value))
-        interaction.response.send_message('Quels rôles voulez-vous mentionner ?', view=AnnouncementInitialization(embed, mentions), ephemeral=True)
+        await interaction.response.send_message('Quels rôles voulez-vous mentionner ?', view=AnnouncementInitialization(embed, mentions), ephemeral=True)
 
 
 class AnnouncementInitialization(discord.ui.View):
