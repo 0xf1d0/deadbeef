@@ -90,12 +90,13 @@ class Common(commands.Cog):
     async def invite(self, interaction: Interaction):
         guild = interaction.guild
         invites = await guild.invites()
-        permanent_invite = next([inv for inv in invites if inv.max_age == 0])
 
         embed = Embed(title=f'{guild.name}', description=f'Scannez ce QR Code et rejoignez le serveur discord de la communauté {guild.name}.', color=CYBER_COLOR)\
-            .add_field(name='Lien', value=f'{permanent_invite.url}', inline=False)\
             .set_image(url='attachment://invite.png')\
             .set_footer(text=f'{guild.name} - {len([member for member in guild.members if not member.bot])} membres', icon_url=guild.icon.url)
+        permanent_invite = next((inv for inv in invites if inv.max_age == 0), None)
+        if permanent_invite:
+            embed.add_field(name="Lien", value=f'[{permanent_invite.url}](permanent_invite.url)', inline=False)
             
         file = File("assets/qrcode.png", filename="invite.png")
         await interaction.response.send_message(file=file, embed=embed)
