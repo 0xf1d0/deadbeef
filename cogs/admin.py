@@ -7,7 +7,7 @@ from utils import ROLE_FI, ROLE_FA, ROLE_M1, ROLE_M2, ROLE_DELEGATE, ROLE_MANAGE
 
 class Admin(commands.Cog):    
     @app_commands.command(description="Annoncer un message.")
-    @app_commands.checks.has_any_role(ROLE_DELEGATE, ROLE_MANAGER, ROLE_NOTABLE)
+    @app_commands.checks.has_any_role(ROLE_DELEGATE.id, ROLE_MANAGER.id, ROLE_NOTABLE.id)
     async def announce(self, interaction: Interaction):
         modal = Announcement()
         await interaction.response.send_modal(modal)
