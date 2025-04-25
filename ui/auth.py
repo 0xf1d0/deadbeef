@@ -70,7 +70,7 @@ class ProModal(ui.Modal, title="Authentification"):
 
         email_user['last_auth_request'] = datetime.now().isoformat()
         email_user['id'] = interaction.user.id
-        email_user['role'] = ROLE_NOTABLE.id
+        # email_user['role'] = ROLE_NOTABLE.id
         email_user['nick'] = f'{self.firstname.value} {self.lastname.value}'.title() if self.firstname.value or self.lastname.value else None
         ConfigManager.set('users', users)
         

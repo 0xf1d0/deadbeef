@@ -6,6 +6,9 @@ from utils import ROLE_FI, ROLE_FA, ROLE_M1, ROLE_M2, ROLE_DELEGATE, ROLE_MANAGE
 
 
 class Admin(commands.Cog):
+    def __init__(self, bot: commands.Bot):
+        self.bot = bot
+        
     @app_commands.command(name="ping", description="Afficher la latence du bot.")
     @app_commands.checks.has_permissions(administrator=True)
     async def ping(self, interaction: Interaction):
@@ -40,4 +43,4 @@ class Admin(commands.Cog):
             await interaction.response.send_message(f'Les rôles de **{len(members)}** membres ont été réinitialisés.', ephemeral=True)
 
 async def setup(bot: commands.Bot):
-    await bot.add_cog(Admin())
+    await bot.add_cog(Admin(bot))
