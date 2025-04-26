@@ -4,7 +4,7 @@ from discord.ext import commands, tasks
 from datetime import datetime, timedelta
 import re
 
-from utils import CALENDAR_CHANNEL, ConfigManager
+from utils import CALENDAR_CHANNEL, ConfigManager, ROLE_NOTABLE, ROLE_MANAGER
 
 
 class Calendar(commands.Cog):
@@ -37,7 +37,7 @@ class Calendar(commands.Cog):
 
     @app_commands.command(description="Etablit un rappel pour un événement.")
     @app_commands.describe(course="Choisir le cours.", date="Choisir la date de l'événement.", event="Nom de l'événement", modality="Modalité de l'événement")
-    @app_commands.checks.has_any_role(1291503961139838987, 1293714448263024650, 1293687392368197712)
+    @app_commands.checks.has_any_role(ROLE_NOTABLE.id, ROLE_MANAGER.id)
     @app_commands.choices(option=[
         app_commands.Choice(name="add", value="1"),
         app_commands.Choice(name="edit", value="2"),
