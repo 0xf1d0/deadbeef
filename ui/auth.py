@@ -13,7 +13,7 @@ class Authentication(ui.View):
     def __init__(self):
         super().__init__(timeout=None)
     
-    @ui.button(label="S'authentifier", style=ButtonStyle.primary, emoji="<:upc:1291788754775965819>")
+    @ui.button(label="S'authentifier", style=ButtonStyle.success, emoji="<:upc:1291788754775965819>")
     async def authenticate(self, interaction: Interaction, _: ui.Button):
         user_roles = [role.id for role in interaction.user.roles]
         
@@ -48,7 +48,7 @@ class Authentication(ui.View):
     async def rootme(self, interaction: Interaction, _: ui.Button):
         await interaction.response.send_modal(RootMeModal())
         
-    @ui.button(label='LinkedIn', style=ButtonStyle.primary, emoji="<:linkedin:1366509373592961154>")
+    @ui.button(label='LinkedIn', style=ButtonStyle.secondary, emoji="<:linkedin:1366509373592961154>")
     async def linkedin(self, interaction: Interaction, _: ui.Button):
         await interaction.response.send_modal("Cette fonctionnalité n'est pas encore disponible.", ephemeral=True)
 
