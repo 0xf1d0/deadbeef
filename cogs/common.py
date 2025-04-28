@@ -1,4 +1,4 @@
-import datetime
+import datetime, re
 from typing import Optional
 from discord import app_commands, Interaction, Member, Embed, File, Color, Activity, ActivityType
 from discord.ext import tasks
@@ -143,7 +143,7 @@ class Common(commands.Cog):
                 
                 if recent_challenges:
                     challenges_text = "\n".join([
-                        f"• [{c.get('titre', 'Challenge')}](https://www.root-me.org/{c.get('titre', '').replace(' ', '-')}) <t:{int(datetime.datetime.strptime(c.get('date', datetime.datetime.now()), '%Y-%m-%d %H:%M:%S').timestamp())}:F>"
+                        f"• [{c.get('titre', 'Challenge')}](https://www.root-me.org/{re.sub(r'[\s-]+', '-', c.get('titre', ''))}) <t:{int(datetime.datetime.strptime(c.get('date', datetime.datetime.now()), '%Y-%m-%d %H:%M:%S').timestamp())}:F>"
                         for c in recent_challenges[:10]
                     ])
                     
