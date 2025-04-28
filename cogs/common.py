@@ -114,6 +114,8 @@ class Common(commands.Cog):
         if not rootme_username and user_data and user_data.get("rootme"):
             rootme_username = user_data.get("rootme")
         
+        await interaction.response.defer(thinking=True)
+
         if rootme_username:
             try:
                 # Configurer l'API Root-Me
@@ -166,7 +168,7 @@ class Common(commands.Cog):
         
         embed.set_footer(text=f"Demandé par {interaction.user.display_name}", icon_url=interaction.user.display_avatar.url)
         
-        await interaction.response.send_message(embed=embed)
+        await interaction.followup.send(embed=embed)
     
     @tasks.loop(hours=1)
     async def update_status(self):
