@@ -1,23 +1,25 @@
-import aiohttp, asyncio, re, time, logging
-from typing import ClassVar, Optional, Dict, Any, Tuple, Callable, TypeVar, Type
+import aiohttp, asyncio, logging, time, re
+from typing import ClassVar, Optional, Dict, Any, Tuple, List, TypeVar, Type
 from functools import wraps
+
 from utils import ConfigManager
 
 T = TypeVar('T', bound='API')
 ResponseType = Tuple[Any, int]
 
-
 class API:
-    # Class attributes for configuration
+    # Base configuration
     url: ClassVar[str] = ""
     headers: ClassVar[Dict[str, str]] = {}
     cookies: ClassVar[Dict[str, str]] = {}
     
-    # Session attributes and control
+    # Session management
     _session: ClassVar[Optional[aiohttp.ClientSession]] = None
     _lock: ClassVar[asyncio.Lock] = asyncio.Lock()
     _last_used: ClassVar[float] = 0
-    _session_ttl: ClassVar[float] = 300  # 5 minutes in seconds
+    _session_ttl: ClassVar[float] = 300  # 5 minutes
+    
+    # Error handling and retry configuration
     _max_retries: ClassVar[int] = 3
     _retry_delay: ClassVar[float] = 1.0
     _timeout: ClassVar[aiohttp.ClientTimeout] = aiohttp.ClientTimeout(total=30)
@@ -97,7 +99,7 @@ class API:
             async with cls._session.request(method, url, **kwargs) as response:
                 cls._last_used = time.time()
                 
-                # Simple handling of common error codes
+                # Handle rate limiting and server errors with retries
                 if response.status in {429, 500, 502, 503, 504} and retry_count < cls._max_retries:
                     retry_after = int(response.headers.get('Retry-After', cls._retry_delay))
                     cls._logger.warning(
@@ -118,11 +120,11 @@ class API:
         except (aiohttp.ClientError, asyncio.TimeoutError) as e:
             cls._logger.error(f"Connection error: {str(e)}")
             
-            # Retry if possible
+            # Retry with exponential backoff
             if retry_count < cls._max_retries:
                 # Reset the session in case of an error
                 await cls.close()
-                await asyncio.sleep(cls._retry_delay * (2 ** retry_count))  # Exponential backoff
+                await asyncio.sleep(cls._retry_delay * (2 ** retry_count))
                 return await cls._request(method, route, *args, retry_count=retry_count + 1, **kwargs)
             
             raise ConnectionError(f"Connection failed after {cls._max_retries} attempts: {str(e)}") from e
@@ -139,9 +141,9 @@ class API:
         await cls.close()
 
     @staticmethod
-    def endpoint(route: str, method: str = 'GET') -> Callable:
+    def endpoint(route: str, method: str = 'GET') -> callable:
         """Decorator to easily create API endpoints."""
-        def decorator(func: Callable):
+        def decorator(func: callable):
             @wraps(func)
             def wrapped(cls, data, status, *args, **kwargs):
                 return func(cls, data, status, *args, **kwargs)
@@ -155,7 +157,7 @@ class API:
                     if key in request_keys:
                         request_kwargs[key] = kwargs.pop(key)
                 
-                # If 'json' is not in request_kwargs but there are kwargs, use them as json
+                # If 'json' not in request_kwargs but there are kwargs, use them as json for appropriate methods
                 if 'json' not in request_kwargs and kwargs and method in {'POST', 'PUT', 'PATCH'}:
                     request_kwargs['json'] = kwargs
                     kwargs = {}  # Clear kwargs to avoid duplicates
@@ -186,28 +188,171 @@ class MistralAI(API):
 
 class RootMe(API):
     url = 'https://api.www.root-me.org'
-    cookies = {'api_key': ConfigManager.get('rootme_key')}
+    
+    @classmethod
+    def setup(cls, api_key: str = None):
+        """Configure the RootMe API with an API key."""
+        if api_key:
+            cls.cookies = {'api_key': api_key}
+        else:
+            # If no API key provided, check configuration
+            from utils import ConfigManager
+            cls.cookies = {'api_key': ConfigManager.get('rootme_key')}
+        
+        # Set up logging
+        logging.basicConfig(
+            level=logging.INFO,
+            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        )
+        return cls
 
     @API.endpoint('/challenges')
-    def get_challenges(cls, data, status, *args, **kwargs):
-        if status == 200:
-            return data
-        raise Exception("Impossible de trouver des informations sur ce challenge.")
+    def get_challenges(cls, data, status, **kwargs):
+        """
+        Get challenges data with optional filtering.
+        
+        Parameters:
+        - titre: Filter by title
+        - soustitre: Filter by subtitle
+        - lang: Filter by language
+        - score: Filter by score
+        - id_auteur[]: List of author IDs
+        """
+        if status != 200:
+            raise Exception(f"Failed to fetch challenges: Status {status}")
+        return data
+
+    @API.endpoint('/challenges/{id_challenge}')
+    def get_challenge(cls, data, status, id_challenge, **kwargs):
+        """
+        Get details for a specific challenge by ID.
+        
+        Parameters:
+        - id_challenge: The challenge ID
+        """
+        if status != 200:
+            raise Exception(f"Failed to fetch challenge {id_challenge}: Status {status}")
+        return data
 
     @API.endpoint('/auteurs')
-    def get_authors(cls, data, status, *args, **kwargs):
-        if status == 200:
-            return data
-        raise Exception("Impossible de trouver des informations sur cet utilisateur.")
+    def get_authors(cls, data, status, **kwargs):
+        """
+        Get authors data with optional filtering.
+        
+        Parameters:
+        - nom: Filter by name
+        - statut: Filter by status
+        - lang: Filter by language
+        """
+        if status != 200:
+            raise Exception(f"Failed to fetch authors: Status {status}")
+        return data
+
+    @API.endpoint('/auteurs/{id_author}')
+    def get_author(cls, data, status, id_author, **kwargs):
+        """
+        Get details for a specific author by ID.
+        
+        Parameters:
+        - id_author: The author ID
+        """
+        if status != 200:
+            raise Exception(f"Failed to fetch author {id_author}: Status {status}")
+        return data
 
     @API.endpoint('/classement')
-    def leaderboard(cls, data, status, *, debut_classement: str = None, **kwargs):
-        if status == 200:
-            return data
-        raise Exception("Impossible de trouver des informations sur le classement.")
+    def get_leaderboard(cls, data, status, **kwargs):
+        """
+        Get leaderboard data.
+        
+        Parameters:
+        - debut_classement: Starting position for pagination
+        """
+        if status != 200:
+            raise Exception(f"Failed to fetch leaderboard: Status {status}")
+        return data
 
     @API.endpoint('/environnements_virtuels')
-    def virtual_environments(cls, data, status, *args, **kwargs):
-        if status == 200:
-            return data
-        raise Exception("Impossible de trouver des informations sur le environnements virtuels.")
+    def get_virtual_environments(cls, data, status, **kwargs):
+        """
+        Get virtual environments data with optional filtering.
+        
+        Parameters:
+        - nom: Filter by name
+        - os: Filter by operating system
+        """
+        if status != 200:
+            raise Exception(f"Failed to fetch virtual environments: Status {status}")
+        return data
+
+    @API.endpoint('/environnements_virtuels/{id_env}')
+    def get_virtual_environment(cls, data, status, id_env, **kwargs):
+        """
+        Get details for a specific virtual environment by ID.
+        
+        Parameters:
+        - id_env: The environment ID
+        """
+        if status != 200:
+            raise Exception(f"Failed to fetch virtual environment {id_env}: Status {status}")
+        return data
+    
+    @classmethod
+    async def get_user_by_name(cls, username: str) -> Dict[str, Any]:
+        """
+        Find a user by name and return their detailed profile.
+        
+        This is a helper method that simulates the behavior of searching
+        by username rather than ID.
+        """
+        # First get all authors
+        authors_data, status = await cls._request('GET', '/auteurs')
+        
+        if status != 200:
+            raise Exception(f"Failed to fetch authors list: Status {status}")
+        
+        # Find the author by name
+        author_id = None
+        for key, author in authors_data.items():
+            if author.get("nom", "").lower() == username.lower():
+                author_id = author.get("id_auteur")
+                break
+                
+        if not author_id:
+            raise Exception(f"User '{username}' not found")
+            
+        # Get detailed profile with the user ID
+        user_data, status = await cls._request('GET', f'/auteurs/{author_id}')
+        
+        if status != 200:
+            raise Exception(f"Failed to fetch author details: Status {status}")
+            
+        return user_data
+        
+    @classmethod
+    async def get_recent_challenges_by_user(cls, username: str, limit: int = 5) -> List[Dict[str, Any]]:
+        """
+        Get a list of recently solved challenges by a user.
+        
+        Parameters:
+        - username: The username to look up
+        - limit: Maximum number of challenges to return
+        """
+        try:
+            user_data = await cls.get_user_by_name(username)
+            challenges = user_data.get("challenges", [])
+            
+            # Sort challenges by date if available
+            if challenges and isinstance(challenges, list):
+                # Assuming challenges have some sort of date field
+                sorted_challenges = sorted(
+                    challenges, 
+                    key=lambda x: x.get("date", 0), 
+                    reverse=True
+                )
+                return sorted_challenges[:limit]
+            
+            return []
+        except Exception as e:
+            cls._logger.error(f"Error fetching challenges for {username}: {str(e)}")
+            raise

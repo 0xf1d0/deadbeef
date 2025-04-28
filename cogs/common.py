@@ -1,4 +1,5 @@
-import re
+import datetime
+from typing import Optional
 from discord import app_commands, Interaction, Member, Embed, File, Color, Activity, ActivityType
 from discord.ext import tasks
 from discord.ext import commands
@@ -47,43 +48,12 @@ class Common(commands.Cog):
 
         await channel.send(embed=embed)
 
-    @app_commands.command(description="Affiche ou inscrit un profil LinkedIn.")
-    @app_commands.describe(member='Le profil du membre à afficher', register='Inscrire un profil LinkedIn.')
-    async def linkedin(self, ctx: Interaction, member: Member = None, register: str = ''):
-        if register:
-            pattern = r'https?://([a-z]{2,3}\.)?linkedin\.com/in/[^/]+/?'
-            if not re.match(pattern, register):
-                await ctx.response.send_message('Le lien LinkedIn est invalide', ephemeral=True)
-                return
-            user_id = member.id if member and ctx.user.guild_permissions.manage_roles else ctx.user.id
-            users = ConfigManager.get("users", [])
-            user = next((u for u in users if u["id"] == user_id), None)
-            if user:
-                user['linkedin'] = register
-            else:
-                user = {'id': user_id, 'linkedin': register}
-                users.append(user)
-            ConfigManager.set("users", users)
-            await ctx.response.send_message(f'Profil LinkedIn enregistré pour {member.display_name if member else ctx.user.display_name}.')
-        elif member:
-            user_profile = next((user for user in ConfigManager.get("users", []) if user["id"] == member.id), None)
-            if user_profile:
-                await ctx.response.send_message(f'Profil LinkedIn de {member.display_name}: {user_profile["linkedin"]}')
-            else:
-                await ctx.response.send_message(f'Profil LinkedIn pour {member.display_name} non trouvé.')
-        else:
-            user_profile = next((user for user in ConfigManager.get("users", []) if user["id"] == ctx.user.id), None)
-            if user_profile:
-                await ctx.response.send_message(f'Votre profil LinkedIn: {user_profile["linkedin"]}')
-            else:
-                await ctx.response.send_message('Votre profil LinkedIn non trouvé.')
-
     @app_commands.command(description="Affiche le QR Code d'invitation au serveur.")
     async def invite(self, interaction: Interaction):
         guild = interaction.guild
         invites = await guild.invites()
 
-        embed = Embed(title=f'{guild.name}', description=f'Scannez ce QR Code et rejoignez le serveur discord de la communauté {guild.name}.', color=CYBER_COLOR)\
+        embed = Embed(title=f'{guild.name}', description=f'Scannez ce QR Code pour rejoindre la communauté {guild.name}. 🚀', color=CYBER_COLOR)\
             .set_image(url='attachment://invite.png')\
             .set_footer(text=f'{guild.name} - {len([member for member in guild.members if not member.bot])} membres', icon_url=guild.icon.url)
         permanent_invite = next((inv for inv in invites if inv.max_age == 0), None)
@@ -93,40 +63,110 @@ class Common(commands.Cog):
         file = File("assets/qrcode.png", filename="invite.png")
         await interaction.response.send_message(file=file, embed=embed)
 
-    @app_commands.command(description="Affiche les informations sur le bot.")
-    async def about(self, ctx: Interaction):
-        embed = Embed(title='À propos de moi', description='Je suis un bot Discord créé par [Vincent Cohadon](https://fr.linkedin.com/in/vincent-cohadon) pour le Master Cybersécurité de Paris Cité.')
+    @app_commands.command(description="Affiche les informations du bot.")
+    async def about(self, interaction: Interaction):
+        embed = Embed(title='À propos de moi', description=f'Je suis un bot développé par [Vincent Cohadon](https://fr.linkedin.com/in/vincent-cohadon) pour la communauté {interaction.guild.name}.')
         file = File("assets/f1d0.png", filename="f1d0.png")
         embed.set_thumbnail(url='attachment://f1d0.png')
-        await ctx.response.send_message(file=file, embed=embed)
+        await interaction.response.send_message(file=file, embed=embed)
 
-    @app_commands.command(description="Affiche le profil root-me d'un utilisateur.")
-    async def profile(self, ctx: Interaction, rootme_id: str = None, discord_user: Member = None):
+    @app_commands.command(description="Afficher son profil ou celui d'un autre utilisateur.")
+    @app_commands.describe(member="Le membre dont vous souhaitez voir le profil", rootme_id="ID Root-Me spécifique à afficher")
+    async def profile(self, interaction: Interaction, member: Optional[Member] = None, rootme_id: Optional[str] = None):
+        """Affiche le profil complet d'un utilisateur avec ses informations Root-Me et LinkedIn"""
         users = ConfigManager.get("users", [])
         
-        async def fetch_and_send(rootme_id: str, user: Member = None):
-            try:
-                await RootMe.get_authors(rootme_id)
-                base_msg = f"Profil root-me de {rootme_id}: https://www.root-me.org/{rootme_id}"
-                if user:
-                    base_msg = f"Profil root-me de {user.display_name}: " + base_msg.split(':', 1)[1]
-                await ctx.response.send_message(base_msg)
-            except Exception as e:
-                await ctx.response.send_message(f"Erreur: {str(e)}", ephemeral=True)
+        # Définir l'utilisateur cible en fonction des paramètres
+        target_user = member or interaction.user
         
-        # Logique de sélection des cibles
-        if rootme_id:
-            await fetch_and_send(rootme_id)
-            return
+        # Créer l'embed pour l'affichage du profil
+        embed = Embed(
+            title=f"🔍 Profil de {target_user.display_name}",
+            color=Color.blue(),
+            timestamp=datetime.datetime.now()
+        )
         
-        target_user = discord_user or ctx.user
+        # Ajouter les informations Discord
+        member_since = target_user.joined_at or datetime.datetime.now()
+        
+        embed.add_field(
+            name="📊 Info Discord",
+            value=f"🕒 Sur le serveur depuis: <t{int(member_since.timestamp())}:d>\n"
+                f"🆔 ID: {target_user.id}",
+            inline=False
+        )
+        
+        embed.set_thumbnail(url=target_user.display_avatar.url)
+        
+        # Trouver les données utilisateur dans la configuration
         user_data = next((u for u in users if u["id"] == target_user.id), None)
         
-        if user_data and user_data.get("rootme"):
-            await fetch_and_send(user_data["rootme"], target_user)
+        # Gérer le profil LinkedIn
+        if user_data and user_data.get("linkedin"):
+            embed.add_field(
+                name="💼 LinkedIn",
+                value=f"[Profil LinkedIn]({user_data['linkedin']})",
+                inline=False
+            )
+        
+        # Gérer le profil Root-Me
+        rootme_username = rootme_id
+        if not rootme_username and user_data and user_data.get("rootme"):
+            rootme_username = user_data.get("rootme")
+        
+        if rootme_username:
+            try:
+                # Configurer l'API Root-Me
+                RootMe.setup()
+                
+                # Récupérer les informations d'utilisateur de l'API Root-Me
+                rootme_data = await RootMe.get_user_by_name(rootme_username)
+                
+                # Extraire les informations
+                nom = rootme_data.get("nom", rootme_username)
+                score = rootme_data.get("score", "N/A")
+                position = rootme_data.get("position", "N/A")
+                
+                # Ajouter les informations Root-Me à l'embed
+                embed.add_field(
+                    name="🛡️ Root-Me",
+                    value=f"👤 Pseudo: {nom}\n"
+                        f"🏆 Score: {score} points\n"
+                        f"📈 Classement: #{position}\n"
+                        f"🔗 [Voir le profil](https://www.root-me.org/{rootme_username})",
+                    inline=False
+                )
+                
+                # Récupérer les défis récents
+                recent_challenges = await RootMe.get_recent_challenges_by_user(rootme_username, 3)
+                
+                if recent_challenges:
+                    challenges_text = "\n".join([
+                        f"• [{c.get('id_challenge', '?')} - {c.get('titre', 'Challenge')}]({c.get('url_challenge', 'https://www.root-me.org/')}) - {c.get('score', '?')} pts"
+                        for c in recent_challenges
+                    ])
+                    
+                    embed.add_field(
+                        name="🏁 Défis récents",
+                        value=challenges_text or "Aucun défi récent trouvé.",
+                        inline=False
+                    )
+            except Exception as e:
+                embed.add_field(
+                    name="❌ Erreur Root-Me",
+                    value=f"Impossible de récupérer les données: {str(e)}",
+                    inline=False
+                )
         else:
-            msg = "Votre profil root-me non trouvé." if target_user == ctx.user else f"Profil root-me pour {target_user.display_name} non trouvé."
-            await ctx.response.send_message(msg)
+            embed.add_field(
+                name="🛡️ Root-Me",
+                value=f"Profil non lié. Rendez vous dans le salon `{interaction.guild.get_channel(WELCOME_CHANNEL.id).mention}` pour lier votre compte.",
+                inline=False
+            )
+        
+        embed.set_footer(text=f"Demandé par {interaction.user.display_name}", icon_url=interaction.user.display_avatar.url)
+        
+        await interaction.response.send_message(embed=embed)
     
     @tasks.loop(hours=1)
     async def update_status(self):

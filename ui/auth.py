@@ -1,3 +1,4 @@
+import re
 from discord import ui, Interaction, ButtonStyle, Forbidden, Object, Role
 from datetime import datetime, timedelta
 
@@ -12,7 +13,7 @@ class Authentication(ui.View):
     def __init__(self):
         super().__init__(timeout=None)
     
-    @ui.button(label="S'authentifier", style=ButtonStyle.primary, emoji="🔒")
+    @ui.button(label="S'authentifier", style=ButtonStyle.primary, emoji="<:upc:1291788754775965819>")
     async def authenticate(self, interaction: Interaction, _: ui.Button):
         user_roles = [role.id for role in interaction.user.roles]
         
@@ -43,9 +44,13 @@ class Authentication(ui.View):
         else:
             await interaction.response.send_message("Vous n'avez pas le profil requis.", ephemeral=True)
     
-    @ui.button(label='Root-Me', style=ButtonStyle.primary, emoji="💀")
+    @ui.button(label='Root-Me', style=ButtonStyle.primary, emoji="<:rootme:1366510489521356850>")
     async def rootme(self, interaction: Interaction, _: ui.Button):
         await interaction.response.send_modal(RootMeModal())
+        
+    @ui.button(label='LinkedIn', style=ButtonStyle.primary, emoji="<:linkedin:1366509373592961154>")
+    async def linkedin(self, interaction: Interaction, _: ui.Button):
+        await interaction.response.send_modal("Cette fonctionnalité n'est pas encore disponible.", ephemeral=True)
 
 
 class ProModal(ui.Modal, title="Authentification"):
@@ -225,3 +230,41 @@ class RootMeModal(ui.Modal):
             await interaction.followup.send("Compte Root-Me lié.", ephemeral=True)
         except Exception as e:
             await interaction.followup.send(str(e), ephemeral=True)
+            
+
+class LinkedinModal(ui.Modal, title="Lier son compte LinkedIn"):
+    linkedin_url = ui.TextInput(
+        label="URL LinkedIn",
+        placeholder="https://www.linkedin.com/in/votre-profil",
+        min_length=20,
+        max_length=100
+    )
+    
+    async def on_submit(self, interaction: Interaction):
+        pattern = r'https?://([a-z]{2,3}\.)?linkedin\.com/in/[^/]+/?'
+        if not re.match(pattern, self.linkedin_url.value):
+            await interaction.response.send_message("L'URL LinkedIn fournie n'est pas valide. Utilisez un format comme https://www.linkedin.com/in/votre-profil", ephemeral=True)
+            return
+
+        users = ConfigManager.get('users', [])
+        user = next((u for u in users if u['id'] == interaction.user.id), None)
+
+        if not user:
+            user = {'id': interaction.user.id}
+            users.append(user)
+        
+        # Check if the user already has a LinkedIn account linked
+        if user.get('linkedin'):
+            # Ask if the user wants to update their LinkedIn account
+            await interaction.response.send_message(
+                f"Vous avez déjà un compte LinkedIn lié ({user['linkedin']}). Votre profil va être mis à jour.",
+                ephemeral=True
+            )
+        else:
+            await interaction.response.defer(ephemeral=True)
+        
+        # Update the user's LinkedIn account
+        user['linkedin'] = self.linkedin_url.value
+        ConfigManager.set('users', users)
+        
+        await interaction.followup.send("Compte LinkedIn lié avec succès.", ephemeral=True)
