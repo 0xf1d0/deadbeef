@@ -144,7 +144,7 @@ class Common(commands.Cog):
                 
                 if recent_challenges:
                     challenges_text = "\n".join([
-                        f"• [{c.get('id_challenge', '?')} - {c.get('titre', 'Challenge')}]({c.get('url_challenge', 'https://www.root-me.org/')}) - {c.get('score', '?')} pts"
+                        f"• [{c.get('titre', 'Challenge')}](https://www.root-me.org/{c.get('titre', '').replace(' ', '-')}) (<t:{datetime.datetime.strptime(c.get('date', datetime.datetime.now()), '%Y-%m-%d %H:%M:%S').timestamp()}:F>)"
                         for c in recent_challenges[:10]
                     ])
                     
