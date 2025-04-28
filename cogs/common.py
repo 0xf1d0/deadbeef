@@ -111,10 +111,10 @@ class Common(commands.Cog):
             )
         
         # Gérer le profil Root-Me
+        rootme_id = None
         if user_data and user_data.get("rootme"):
             rootme_id = user_data.get("rootme")
         
-
         if rootme_id:
             try:
                 # Configurer l'API Root-Me
