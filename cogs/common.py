@@ -112,21 +112,20 @@ class Common(commands.Cog):
             )
         
         # Gérer le profil Root-Me
-        rootme_username = rootme_id
-        if not rootme_username and user_data and user_data.get("rootme"):
-            rootme_username = user_data.get("rootme")
+        if not rootme_id and user_data and user_data.get("rootme"):
+            rootme_id = user_data.get("rootme")
         
 
-        if rootme_username:
+        if rootme_id:
             try:
                 # Configurer l'API Root-Me
                 RootMe.setup()
                 
                 # Récupérer les informations d'utilisateur de l'API Root-Me
-                rootme_data = await RootMe.get_user_by_name(rootme_username)
+                rootme_data = await RootMe.get_author(rootme_id)
                 
                 # Extraire les informations
-                nom = rootme_data.get("nom", rootme_username)
+                nom = rootme_data.get("nom", rootme_id)
                 score = rootme_data.get("score", "N/A")
                 position = rootme_data.get("position", "N/A")
                 
@@ -136,12 +135,12 @@ class Common(commands.Cog):
                     value=f"👤 Pseudo: {nom}\n"
                         f"🏆 Score: {score} points\n"
                         f"📈 Classement: #{position}\n"
-                        f"🔗 [Voir le profil](https://www.root-me.org/{rootme_username})",
+                        f"🔗 [Voir le profil](https://www.root-me.org/{nom})",
                     inline=False
                 )
                 
                 # Récupérer les défis récents
-                recent_challenges = await RootMe.get_recent_challenges_by_user(rootme_username, 3)
+                recent_challenges = rootme_data.get("validations", [])
                 
                 if recent_challenges:
                     challenges_text = "\n".join([
