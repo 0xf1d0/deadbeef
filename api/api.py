@@ -161,7 +161,7 @@ class API:
                 if 'json' not in request_kwargs and kwargs and method in {'POST', 'PUT', 'PATCH'}:
                     request_kwargs['json'] = kwargs
                     kwargs = {}  # Clear kwargs to avoid duplicates
-                
+                print(method, route, *args, **request_kwargs)
                 data, status = await cls._request(method, route, *args, **request_kwargs)
                 return wrapped(cls, data, status, *args, **kwargs)
             
