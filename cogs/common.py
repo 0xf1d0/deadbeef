@@ -71,9 +71,8 @@ class Common(commands.Cog):
         await interaction.response.send_message(file=file, embed=embed)
 
     @app_commands.command(description="Afficher son profil ou celui d'un autre utilisateur.")
-    @app_commands.describe(member="Le membre dont vous souhaitez voir le profil", rootme_id="ID Root-Me spécifique à afficher")
-    async def profile(self, interaction: Interaction, member: Optional[Member] = None, rootme_id: Optional[str] = None):
-        """Affiche le profil complet d'un utilisateur avec ses informations Root-Me et LinkedIn"""
+    @app_commands.describe(member="Le membre dont vous souhaitez voir le profil")
+    async def profile(self, interaction: Interaction, member: Optional[Member] = None):
         users = ConfigManager.get("users", [])
         
         # Définir l'utilisateur cible en fonction des paramètres
@@ -112,7 +111,7 @@ class Common(commands.Cog):
             )
         
         # Gérer le profil Root-Me
-        if not rootme_id and user_data and user_data.get("rootme"):
+        if user_data and user_data.get("rootme"):
             rootme_id = user_data.get("rootme")
         
 
@@ -149,7 +148,7 @@ class Common(commands.Cog):
                     ])
                     
                     embed.add_field(
-                        name="🏁 Défis récents",
+                        name="🚩 Challenges récents",
                         value=challenges_text or "Aucun défi récent trouvé.",
                         inline=False
                     )
