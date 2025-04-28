@@ -122,7 +122,7 @@ class Common(commands.Cog):
                 RootMe.setup()
                 
                 # Récupérer les informations d'utilisateur de l'API Root-Me
-                rootme_data = await RootMe.get_author(id_author=str(rootme_id))
+                rootme_data = await RootMe.get_author(str(rootme_id))
                 
                 # Extraire les informations
                 nom = rootme_data.get("nom", rootme_id)
