@@ -142,14 +142,15 @@ class Common(commands.Cog):
                 recent_challenges = rootme_data.get("validations", [])
                 
                 if recent_challenges:
-                    challenges_text = "\n".join([
-                        f"• [{c.get('titre', 'Challenge')}](https://www.root-me.org/{re.sub(r'[\s-]+', '-', c.get('titre', ''))}) <t:{int(datetime.datetime.strptime(c.get('date', datetime.datetime.now()), '%Y-%m-%d %H:%M:%S').timestamp())}:F>"
-                        for c in recent_challenges[:10]
-                    ])
+                    challenges_text = []
+                    for c in recent_challenges[:10]:
+                        title = c.get('titre', 'Challenge')
+                        challenge_url = re.sub(r'[\s-]+', '-', title)
+                        challenges_text.append(f"[{title}](https://www.root-me.org/{challenge_url}) <t:{int(datetime.datetime.strptime(c.get('date', datetime.datetime.now()), '%Y-%m-%d %H:%M:%S').timestamp())}:F>")
                     
                     embed.add_field(
                         name="🚩 Challenges récents",
-                        value=challenges_text or "Aucun défi récent trouvé.",
+                        value="\n".join(challenges_text) or "Aucun défi récent trouvé.",
                         inline=False
                     )
             except Exception as e:
