@@ -142,7 +142,18 @@ class API:
 
     @staticmethod
     def endpoint(route: str, method: str = 'GET') -> callable:
-        """Decorator to easily create API endpoints."""
+        """
+        Decorator to easily create API endpoints.
+        
+        Args:
+            route: The API route with optional format placeholders like {param_name}
+            method: The HTTP method (GET, POST, etc.)
+            
+        Usage:
+            @API.endpoint('/auteurs/{id_author}')
+            def get_author(cls, data, status, id_author, **kwargs):
+                # Function implementation
+        """
         def decorator(func: callable):
             @wraps(func)
             def wrapped(cls, data, status, *args, **kwargs):
@@ -153,16 +164,41 @@ class API:
                 request_kwargs = {}
                 request_keys = {'params', 'json', 'data', 'headers', 'cookies', 'allow_redirects'}
                 
+                # Format the route with args - replace {placeholders} with values
+                formatted_route = route
+                route_params = {}
+                param_names = re.findall(r'{([^}]+)}', route)
+                
+                # If args are provided, use them to replace route parameters in order
+                if param_names and args:
+                    for i, param_name in enumerate(param_names):
+                        if i < len(args):
+                            route_params[param_name] = args[i]
+                    
+                    # Replace the parameters in the route
+                    for param_name, param_value in route_params.items():
+                        formatted_route = formatted_route.replace(f"{{{param_name}}}", str(param_value))
+                
+                # Extract special request parameters from kwargs
                 for key in list(kwargs.keys()):
                     if key in request_keys:
                         request_kwargs[key] = kwargs.pop(key)
                 
-                # If 'json' not in request_kwargs but there are kwargs, use them as json for appropriate methods
-                if 'json' not in request_kwargs and kwargs and method in {'POST', 'PUT', 'PATCH'}:
-                    request_kwargs['json'] = kwargs
-                    kwargs = {}  # Clear kwargs to avoid duplicates
-                print(method, route, *args, **request_kwargs)
-                data, status = await cls._request(method, route, *args, **request_kwargs)
+                # Add any remaining kwargs to the request params
+                if kwargs:
+                    if 'params' not in request_kwargs:
+                        request_kwargs['params'] = {}
+                    request_kwargs['params'].update(kwargs)
+                
+                # Special case for POST/PUT/PATCH with json payload
+                if 'json' not in request_kwargs and method in {'POST', 'PUT', 'PATCH'} and 'data' not in request_kwargs:
+                    if 'json_data' in kwargs:
+                        request_kwargs['json'] = kwargs.pop('json_data')
+                
+                # Make the request with formatted route
+                data, status = await cls._request(method, formatted_route, **request_kwargs)
+                
+                # Pass the original args and kwargs to the wrapped function
                 return wrapped(cls, data, status, *args, **kwargs)
             
             return classmethod(wrapper)
@@ -223,7 +259,7 @@ class RootMe(API):
         return data
 
     @API.endpoint('/challenges/{id_challenge}')
-    def get_challenge(cls, data, status, id_challenge, **kwargs):
+    def get_challenge(cls, data, status, id_challenge):
         """
         Get details for a specific challenge by ID.
         
@@ -248,8 +284,8 @@ class RootMe(API):
             raise Exception(f"Failed to fetch authors: Status {status}")
         return data
 
-    @API.endpoint('/auteurs')
-    def get_author(cls, data, status, id_author, **kwargs):
+    @API.endpoint('/auteurs/{id_author}')
+    def get_author(cls, data, status, id_author):
         """
         Get details for a specific author by ID.
         
@@ -286,7 +322,7 @@ class RootMe(API):
         return data
 
     @API.endpoint('/environnements_virtuels/{id_env}')
-    def get_virtual_environment(cls, data, status, id_env, **kwargs):
+    def get_virtual_environment(cls, data, status, id_env):
         """
         Get details for a specific virtual environment by ID.
         
