@@ -297,73 +297,81 @@ class RootMe(API):
             raise Exception(f"Failed to fetch virtual environment {id_env}: Status {status}")
         return data
     
-    @classmethod
-    async def get_user_by_name(cls, username: str) -> Dict[str, Any]:
-        """
-        Find a user by name and return their detailed profile.
-        
-        This is a helper method that searches by username rather than ID.
-        """
-        # First get all authors
-        authors_data, status = await cls._request('GET', '/auteurs')
-        
-        if status != 200:
-            raise Exception(f"Failed to fetch authors list: Status {status}")
-        
-        # Find the author by name
-        author_id = None
-        
-        # Handle different response formats
-        if isinstance(authors_data, dict):
-            # Format: {"0":{"id_auteur":"1","nom":"g0uZ"}, "1":{"id_auteur":"9","nom":"invité"}, ...}
-            for _, author_info in authors_data.items():
-                if isinstance(author_info, dict) and author_info.get("nom", "").lower() == username.lower():
-                    author_id = author_info.get("id_auteur")
-                    break
-        elif isinstance(authors_data, list):
-            # Format: [{"id_auteur":"1","nom":"g0uZ"}, {"id_auteur":"9","nom":"invité"}, ...]
-            for author in authors_data:
-                if isinstance(author, dict) and author.get("nom", "").lower() == username.lower():
-                    author_id = author.get("id_auteur")
-                    break
-        else:
-            raise Exception(f"Unexpected response format from /auteurs endpoint: {type(authors_data)}")
+@classmethod
+async def get_user_by_name(cls, username: str) -> Dict[str, Any]:
+    """
+    Find a user by name and return their detailed profile.
+    
+    This helper method handles the specific format of the Root-Me API response
+    for author data.
+    """
+    # First get all authors
+    authors_data, status = await cls._request('GET', '/auteurs')
+    
+    if status != 200:
+        raise Exception(f"Failed to fetch authors list: Status {status}")
+    
+    # The API returns a list where the first element contains author entries
+    if not isinstance(authors_data, list) or len(authors_data) == 0:
+        raise Exception(f"Unexpected response format from /auteurs endpoint")
+    
+    # Extract the author dictionary (first element in the list)
+    authors_dict = authors_data[0] if isinstance(authors_data, list) else authors_data
+    
+    # Find the author by name
+    author_id = None
+    
+    # Iterate through the dictionary entries
+    for _, author_info in authors_dict.items():
+        if isinstance(author_info, dict) and author_info.get("nom", "").lower() == username.lower():
+            author_id = author_info.get("id_auteur")
+            break
             
-        if not author_id:
-            raise Exception(f"User '{username}' not found")
-            
-        # Get detailed profile with the user ID
-        user_data, status = await cls._request('GET', f'/auteurs/{author_id}')
+    if not author_id:
+        raise Exception(f"User '{username}' not found")
         
-        if status != 200:
-            raise Exception(f"Failed to fetch author details: Status {status}")
-            
-        return user_data
+    # Get detailed profile with the user ID
+    user_data, status = await cls._request('GET', f'/auteurs/{author_id}')
+    
+    if status != 200:
+        raise Exception(f"Failed to fetch author details: Status {status}")
         
-    @classmethod
-    async def get_recent_challenges_by_user(cls, username: str, limit: int = 5) -> List[Dict[str, Any]]:
-        """
-        Get a list of recently solved challenges by a user.
+    return user_data
+
+@classmethod
+async def get_recent_challenges_by_user(cls, username: str, limit: int = 5) -> List[Dict[str, Any]]:
+    """
+    Get a list of recently solved challenges by a user.
+    
+    Parameters:
+    - username: The username to look up
+    - limit: Maximum number of challenges to return
+    """
+    try:
+        user_data = await cls.get_user_by_name(username)
         
-        Parameters:
-        - username: The username to look up
-        - limit: Maximum number of challenges to return
-        """
-        try:
-            user_data = await cls.get_user_by_name(username)
-            challenges = user_data.get("challenges", [])
-            
-            # Sort challenges by date if available
-            if challenges and isinstance(challenges, list):
-                # Assuming challenges have some sort of date field
-                sorted_challenges = sorted(
-                    challenges, 
-                    key=lambda x: x.get("date", 0), 
-                    reverse=True
-                )
-                return sorted_challenges[:limit]
-            
+        # Check if the challenges field exists and is a list
+        challenges = user_data.get("challenges", [])
+        
+        if not challenges or not isinstance(challenges, list):
             return []
-        except Exception as e:
-            cls._logger.error(f"Error fetching challenges for {username}: {str(e)}")
-            raise
+        
+        # Sort challenges by date if available
+        # The actual field name might be different depending on the API
+        # Possible fields: "date", "date_resolution", "timestamp", etc.
+        date_field = next((field for field in ["date", "date_resolution", "timestamp"] 
+                          if field in challenges[0]), None)
+        
+        if date_field:
+            sorted_challenges = sorted(
+                challenges, 
+                key=lambda x: x.get(date_field, 0), 
+                reverse=True
+            )
+            return sorted_challenges[:limit]
+        
+        # If no date field is found, just return the first 'limit' challenges
+        return challenges[:limit]
+    except Exception as e:
+        cls._logger.error(f"Error fetching challenges for {username}: {str(e)}")
+        raise
