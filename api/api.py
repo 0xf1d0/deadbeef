@@ -248,8 +248,8 @@ class RootMe(API):
             raise Exception(f"Failed to fetch authors: Status {status}")
         return data
 
-    @API.endpoint('/auteurs')
-    def get_author(cls, data, status, *, id_author, **kwargs):
+    @API.endpoint('/auteurs/{id_author}')
+    def get_author(cls, data, status, id_author, **kwargs):
         """
         Get details for a specific author by ID.
         
