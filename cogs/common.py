@@ -145,7 +145,7 @@ class Common(commands.Cog):
                 if recent_challenges:
                     challenges_text = "\n".join([
                         f"• [{c.get('id_challenge', '?')} - {c.get('titre', 'Challenge')}]({c.get('url_challenge', 'https://www.root-me.org/')}) - {c.get('score', '?')} pts"
-                        for c in recent_challenges
+                        for c in recent_challenges[:10]
                     ])
                     
                     embed.add_field(
