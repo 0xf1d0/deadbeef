@@ -302,8 +302,7 @@ class RootMe(API):
         """
         Find a user by name and return their detailed profile.
         
-        This is a helper method that simulates the behavior of searching
-        by username rather than ID.
+        This is a helper method that searches by username rather than ID.
         """
         # First get all authors
         authors_data, status = await cls._request('GET', '/auteurs')
@@ -313,11 +312,23 @@ class RootMe(API):
         
         # Find the author by name
         author_id = None
-        for key, author in authors_data.items():
-            if author.get("nom", "").lower() == username.lower():
-                author_id = author.get("id_auteur")
-                break
-                
+        
+        # Handle different response formats
+        if isinstance(authors_data, dict):
+            # Format: {"0":{"id_auteur":"1","nom":"g0uZ"}, "1":{"id_auteur":"9","nom":"invité"}, ...}
+            for _, author_info in authors_data.items():
+                if isinstance(author_info, dict) and author_info.get("nom", "").lower() == username.lower():
+                    author_id = author_info.get("id_auteur")
+                    break
+        elif isinstance(authors_data, list):
+            # Format: [{"id_auteur":"1","nom":"g0uZ"}, {"id_auteur":"9","nom":"invité"}, ...]
+            for author in authors_data:
+                if isinstance(author, dict) and author.get("nom", "").lower() == username.lower():
+                    author_id = author.get("id_auteur")
+                    break
+        else:
+            raise Exception(f"Unexpected response format from /auteurs endpoint: {type(authors_data)}")
+            
         if not author_id:
             raise Exception(f"User '{username}' not found")
             

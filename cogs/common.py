@@ -93,7 +93,7 @@ class Common(commands.Cog):
         
         embed.add_field(
             name="📊 Info Discord",
-            value=f"🕒 Sur le serveur depuis: <t{int(member_since.timestamp())}:d>\n"
+            value=f"🕒 Sur le serveur depuis: <t:{int(member_since.timestamp())}:d>\n"
                 f"🆔 ID: {target_user.id}",
             inline=False
         )
