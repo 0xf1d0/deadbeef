@@ -144,7 +144,7 @@ class Common(commands.Cog):
                 if recent_challenges:
                     challenges_text = []
                     for c in recent_challenges[:10]:
-                        title = c.get('titre', 'Challenge').strip()
+                        title = re.sub(r'&[^;]*;', '', c.get('titre', 'Challenge').strip())
                         challenge_url = re.sub(r'[\s-]+', '-', title)
                         challenges_text.append(f"[{title}](https://www.root-me.org/{challenge_url}) <t:{int(datetime.datetime.strptime(c.get('date', datetime.datetime.now()), '%Y-%m-%d %H:%M:%S').timestamp())}:F>")
                     
