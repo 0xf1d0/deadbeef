@@ -143,7 +143,7 @@ class Common(commands.Cog):
                 
                 if recent_challenges:
                     challenges_text = "\n".join([
-                        f"• [{c.get('titre', 'Challenge')}](https://www.root-me.org/{c.get('titre', '').replace(' ', '-')}) <t:{datetime.datetime.strptime(c.get('date', datetime.datetime.now()), '%Y-%m-%d %H:%M:%S').timestamp()}:F>"
+                        f"• [{c.get('titre', 'Challenge')}](https://www.root-me.org/{c.get('titre', '').replace(' ', '-')}) <t:{int(datetime.datetime.strptime(c.get('date', datetime.datetime.now()), '%Y-%m-%d %H:%M:%S').timestamp())}:F>"
                         for c in recent_challenges[:10]
                     ])
                     
