@@ -79,6 +79,8 @@ class Common(commands.Cog):
         # Définir l'utilisateur cible en fonction des paramètres
         target_user = member or interaction.user
         
+        await interaction.response.defer(thinking=True)
+        
         # Créer l'embed pour l'affichage du profil
         embed = Embed(
             title=f"🔍 Profil de {target_user.display_name}",
@@ -114,7 +116,6 @@ class Common(commands.Cog):
         if not rootme_username and user_data and user_data.get("rootme"):
             rootme_username = user_data.get("rootme")
         
-        await interaction.response.defer(thinking=True)
 
         if rootme_username:
             try:
