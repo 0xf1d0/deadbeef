@@ -46,11 +46,13 @@ class Authentication(ui.View):
     
     @ui.button(label='Root-Me', style=ButtonStyle.primary, emoji="<:rootme:1366510489521356850>")
     async def rootme(self, interaction: Interaction, _: ui.Button):
-        await interaction.response.send_modal(RootMeModal())
+        modal = RootMeModal()
+        await interaction.response.send_modal(modal)
         
     @ui.button(label='LinkedIn', style=ButtonStyle.secondary, emoji="<:linkedin:1366509373592961154>")
     async def linkedin(self, interaction: Interaction, _: ui.Button):
-        await interaction.response.send_modal("Cette fonctionnalité n'est pas encore disponible.", ephemeral=True)
+        modal = LinkedinModal()
+        await interaction.response.send_modal(modal)
 
 
 class ProModal(ui.Modal, title="Authentification"):
