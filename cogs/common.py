@@ -29,8 +29,7 @@ class Common(commands.Cog):
         embed = Embed(title=f'{member} joined', color=Color.green())\
                 .add_field(name='Display Name', value=member.display_name, inline=False)\
                 .add_field(name='Joined at', value=member.joined_at.strftime('%Y-%m-%d %H:%M:%S'), inline=False)\
-                .add_field(name='Roles', value='\n'.join([f"{i+1}. {role.mention} - {role.id}" for i, role in enumerate(member.roles[1:])]), inline=False)\
-                .set_image(url=member.display_avatar.url)\
+                .set_thumbnail(url=member.display_avatar.url)\
                 .set_footer(text=f'ID: {member.id}')
 
         await channel.send(embed=embed)
@@ -43,7 +42,7 @@ class Common(commands.Cog):
                 .add_field(name='Display Name', value=member.display_name, inline=False)\
                 .add_field(name='Joined at', value=member.joined_at.strftime('%Y-%m-%d %H:%M:%S'), inline=False)\
                 .add_field(name='Roles', value='\n'.join([f"{i+1}. {role.mention} - {role.id}" for i, role in enumerate(member.roles[1:])]), inline=False)\
-                .set_image(url=member.display_avatar.url)\
+                .set_thumbnail(url=member.display_avatar.url)\
                 .set_footer(text=f'ID: {member.id}')
 
         await channel.send(embed=embed)
