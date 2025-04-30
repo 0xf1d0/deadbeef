@@ -82,6 +82,7 @@ class Common(commands.Cog):
         # Créer l'embed pour l'affichage du profil
         embed = Embed(
             title=f"🔍 {target_user.display_name}",
+            description=f"\u200b",
             color=Color.blue(),
             timestamp=datetime.datetime.now()
         )
@@ -91,7 +92,7 @@ class Common(commands.Cog):
         
         embed.add_field(
             name="📊 __Statistiques__",
-            value=f"\u200b\n🕒 A rejoint : <t:{int(member_since.timestamp())}:R>",
+            value=f"\u200b\n🕒 A rejoint : <t:{int(member_since.timestamp())}:R>\n\u200b\n\u200b",
         )
         
         embed.set_thumbnail(url=target_user.display_avatar.url)
@@ -103,7 +104,7 @@ class Common(commands.Cog):
         if user_data and user_data.get("linkedin"):
             embed.add_field(
                 name="💼 __LinkedIn__",
-                value=f"\u200b\n[Profil]({user_data['linkedin']})",
+                value=f"\u200b\n[Profil]({user_data['linkedin']})\n\u200b\n\u200b",
             )
         
         # Gérer le profil Root-Me
@@ -129,7 +130,7 @@ class Common(commands.Cog):
                 embed.add_field(
                     name="🛡️ __Root-Me__",
                     value=f"\u200b\n👤 Pseudo: `{nom}` - [Profil](https://www.root-me.org/{nom})\n\n"
-                        f"🏆 Score: **{score}** points - {rank} ({position})\n\n",
+                        f"🏆 Score: **{score}** pts - {rank} (#{position}è)\n\u200b\n\u200b",
                     inline=False
                 )
                 
@@ -141,11 +142,11 @@ class Common(commands.Cog):
                     for c in challenges[:10]:
                         title = re.sub(r'&[^;]*;', '', c.get('titre', 'Challenge').strip())
                         challenge_url = re.sub(r'[\s-]+', '-', title)
-                        challenges_text.append(f"[{title}](https://www.root-me.org/{challenge_url}) <t:{int(datetime.datetime.strptime(c.get('date', datetime.datetime.now()), '%Y-%m-%d %H:%M:%S').timestamp())}:R>")
+                        challenges_text.append(f"- [{title}](https://www.root-me.org/{challenge_url}) <t:{int(datetime.datetime.strptime(c.get('date', datetime.datetime.now()), '%Y-%m-%d %H:%M:%S').timestamp())}:R>")
                     
                     embed.add_field(
                         name=f"🚩 __Challenges récents__ ({len(challenges)} validés)",
-                        value="\n".join(challenges_text) or "Aucun défi récent trouvé.",
+                        value="\u200b\n" + "\n".join(challenges_text) or "Aucun défi récent trouvé.",
                         inline=False
                     )
             except Exception as e:
