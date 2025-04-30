@@ -157,7 +157,7 @@ class Common(commands.Cog):
                 )
         else:
             embed.add_field(
-                name="🛡️ __Root-Me__",
+                name="<:rootme:1366510489521356850> __Root-Me__",
                 value=f"\u200b\nProfil non lié. Rendez vous dans le salon {interaction.guild.get_channel(WELCOME_CHANNEL.id).mention} pour lier votre compte.",
                 inline=False
             )
