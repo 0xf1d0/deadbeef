@@ -129,7 +129,7 @@ class Common(commands.Cog):
                 embed.add_field(
                     name="🛡️ __Root-Me__",
                     value=f"\u200b\n👤 Pseudo: `{nom}` - [Profil](https://www.root-me.org/{nom})\n\n"
-                        f"🏆 Score: **{score}** points - {rank} ({position})\n\n"
+                        f"🏆 Score: **{score}** points - {rank} ({position})\n\n",
                     inline=False
                 )
                 
