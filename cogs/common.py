@@ -104,7 +104,7 @@ class Common(commands.Cog):
         if user_data and user_data.get("linkedin"):
             embed.add_field(
                 name="💼 __LinkedIn__",
-                value=f"\u200b\n[Profil lié]({user_data['linkedin']})\n\u200b\n\u200b",
+                value=f"\u200b\n[Voir le profil]({user_data['linkedin']})\n\u200b\n\u200b",
             )
         
         # Gérer le profil Root-Me
@@ -129,7 +129,7 @@ class Common(commands.Cog):
                 # Ajouter les informations Root-Me à l'embed
                 embed.add_field(
                     name="<:rootme:1366510489521356850> __Root-Me__",
-                    value=f"\u200b\n🔗 [Profil lié](https://www.root-me.org/{nom})\n\n"
+                    value=f"\u200b\n🔗 [Voir le profil](https://www.root-me.org/{nom})\n\n"
                         f"👤 Pseudo: `{nom}`\n\n"
                         f"🏆 Score: **{score}** pts - {rank} - **#{position}**\n\u200b\n\u200b",
                     inline=False
