@@ -129,7 +129,8 @@ class Common(commands.Cog):
                 # Ajouter les informations Root-Me à l'embed
                 embed.add_field(
                     name="<:rootme:1366510489521356850> __Root-Me__",
-                    value=f"\u200b\n👤 Pseudo: `{nom}` - [Profil](https://www.root-me.org/{nom})\n\n"
+                    value=f"🔗 [Profil lié](https://www.root-me.org/{nom})\n\n"
+                        f"\u200b\n👤 Pseudo: `{nom}`\n\n"
                         f"🏆 Score: **{score}** pts - {rank} - **#{position}**\n\u200b\n\u200b",
                     inline=False
                 )
