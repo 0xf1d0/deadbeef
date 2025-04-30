@@ -90,15 +90,33 @@ class Common(commands.Cog):
         # Ajouter les informations Discord
         member_since = target_user.joined_at or datetime.datetime.now()
         
+        # Trouver les données utilisateur dans la configuration
+        user_data = next((u for u in users if u["id"] == target_user.id), None)
+        
+        informations = f"\u200b\n🕒 A rejoint : <t:{int(member_since.timestamp())}:R>"
+        
+        if user_data:
+            if "studentId" in user_data:
+                informations += "\nStatut : 🎓 Etudiant"
+            elif "courses" in user_data:
+                channels = []
+                for c in user_data["courses"]:
+                    if channel := interaction.guild.get_channel(c):
+                        channels.append(channel.name)
+                        
+                informations += f"\nStatut : 🧑‍🏫 Professionnel \n📚 Cours : {', '.join(channels)}"
+        
+        informations += "\n\u200b\n\u200b"
+
         embed.add_field(
-            name="📊 __Statistiques__",
-            value=f"\u200b\n🕒 A rejoint : <t:{int(member_since.timestamp())}:R>\n\u200b\n\u200b",
+            name="📊 __Informations__",
+            value=
+                
+                f"\n\n\n" if user_data and '' in user_data else
+                f"\u200b\n\u200b",
         )
         
         embed.set_thumbnail(url=target_user.display_avatar.url)
-        
-        # Trouver les données utilisateur dans la configuration
-        user_data = next((u for u in users if u["id"] == target_user.id), None)
         
         # Gérer le profil LinkedIn
         if user_data and user_data.get("linkedin"):
@@ -130,8 +148,8 @@ class Common(commands.Cog):
                 embed.add_field(
                     name="<:rootme:1366510489521356850> __Root-Me__",
                     value=f"\u200b\n🔗 [Voir le profil](https://www.root-me.org/{nom})\n\n"
-                        f"👤 Pseudo: `{nom}`\n\n"
-                        f"🏆 Score: **{score}** pts - {rank} - **#{position}**\n\u200b\n\u200b",
+                        f"👤 Pseudo : `{nom}`\n\n"
+                        f"🏆 Score : **{score}** pts - {rank} - **#{position}**\n\u200b\n\u200b",
                     inline=False
                 )
                 
