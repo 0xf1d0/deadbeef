@@ -46,12 +46,14 @@ class Authentication(ui.View):
     
     @ui.button(label='Root-Me', style=ButtonStyle.primary, emoji="<:rootme:1366510489521356850>")
     async def rootme(self, interaction: Interaction, _: ui.Button):
-        modal = RootMeModal()
+        user = next((u for u in ConfigManager.get('users', []) if u['id'] == interaction.user.id), None)
+        modal = RootMeModal(user)
         await interaction.response.send_modal(modal)
         
     @ui.button(label='LinkedIn', style=ButtonStyle.secondary, emoji="<:linkedin:1366509373592961154>")
     async def linkedin(self, interaction: Interaction, _: ui.Button):
-        modal = LinkedinModal()
+        user = next((u for u in ConfigManager.get('users', []) if u['id'] == interaction.user.id), None)
+        modal = LinkedinModal(user)
         await interaction.response.send_modal(modal)
 
 
@@ -205,10 +207,15 @@ class StudentModal(ui.Modal, title="Authentification"):
         
 
 class RootMeModal(ui.Modal):
-    uuid = ui.TextInput(label="Identifiant", placeholder="123456")
-    
-    def __init__(self):
+    def __init__(self, user):
         super().__init__(title="Lier son compte Root-Me")
+        self.uuid = ui.TextInput(
+            label="Identifiant",
+            placeholder="123456 (https://www.root-me.org/?page=preferences)",
+            default=user['rootme'] if user and 'rootme' in user else None,
+            min_length=6,
+            max_length=6
+        )
     
     async def on_submit(self, interaction: Interaction):
         users = ConfigManager.get('users', [])
@@ -232,15 +239,18 @@ class RootMeModal(ui.Modal):
             await interaction.followup.send("Compte Root-Me lié.", ephemeral=True)
         except Exception as e:
             await interaction.followup.send(str(e), ephemeral=True)
-            
 
-class LinkedinModal(ui.Modal, title="Lier son compte LinkedIn"):
-    linkedin_url = ui.TextInput(
-        label="URL LinkedIn",
-        placeholder="https://www.linkedin.com/in/votre-profil",
-        min_length=20,
-        max_length=100
-    )
+
+class LinkedinModal(ui.Modal):
+    def __init__(self, user):
+        super().__init__(title="Lier son compte LinkedIn")
+        self.linkedin_url = ui.TextInput(
+            label="URL LinkedIn",
+            placeholder="https://www.linkedin.com/in/votre-profil",
+            default=user['linkedin'] if user and 'linkedin' in user else None,
+            min_length=20,
+            max_length=100
+        )
     
     async def on_submit(self, interaction: Interaction):
         pattern = r'https?://([a-z]{2,3}\.)?linkedin\.com/in/[^/]+/?'
