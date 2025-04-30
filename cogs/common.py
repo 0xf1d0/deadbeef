@@ -91,8 +91,7 @@ class Common(commands.Cog):
         
         embed.add_field(
             name="📊 __Statistiques__",
-            value=f"🕒 A rejoint : <t:{int(member_since.timestamp())}:R>",
-            inline=False
+            value=f"\u200b\n🕒 A rejoint : <t:{int(member_since.timestamp())}:R>",
         )
         
         embed.set_thumbnail(url=target_user.display_avatar.url)
@@ -104,8 +103,7 @@ class Common(commands.Cog):
         if user_data and user_data.get("linkedin"):
             embed.add_field(
                 name="💼 __LinkedIn__",
-                value=f"[Profil LinkedIn]({user_data['linkedin']})",
-                inline=False
+                value=f"\u200b\n[Profil]({user_data['linkedin']})",
             )
         
         # Gérer le profil Root-Me
@@ -125,29 +123,28 @@ class Common(commands.Cog):
                 nom = rootme_data.get("nom", rootme_id)
                 score = rootme_data.get("score", "N/A")
                 position = rootme_data.get("position", "N/A")
+                rank = rootme_data.get("rang", "N/A")
                 
                 # Ajouter les informations Root-Me à l'embed
                 embed.add_field(
                     name="🛡️ __Root-Me__",
-                    value=f"👤 Pseudo: `{nom}`\n\n"
-                        f"🏆 Score: **{score}** points\n\n"
-                        f"📈 Classement: **#{position}**\n\n"
-                        f"🔗 [Voir le profil](https://www.root-me.org/{nom})",
+                    value=f"\u200b\n👤 Pseudo: `{nom}` - [Profil](https://www.root-me.org/{nom})\n\n"
+                        f"🏆 Score: **{score}** points - {rank} ({position})\n\n"
                     inline=False
                 )
                 
-                # Récupérer les défis récents
-                recent_challenges = rootme_data.get("validations", [])
+                challenges = rootme_data.get("validations", [])
                 
-                if recent_challenges:
+                # Afficher les défis récents
+                if challenges:
                     challenges_text = []
-                    for c in recent_challenges[:10]:
+                    for c in challenges[:10]:
                         title = re.sub(r'&[^;]*;', '', c.get('titre', 'Challenge').strip())
                         challenge_url = re.sub(r'[\s-]+', '-', title)
                         challenges_text.append(f"[{title}](https://www.root-me.org/{challenge_url}) <t:{int(datetime.datetime.strptime(c.get('date', datetime.datetime.now()), '%Y-%m-%d %H:%M:%S').timestamp())}:R>")
                     
                     embed.add_field(
-                        name="🚩 Challenges récents",
+                        name=f"🚩 __Challenges récents__ ({len(challenges)} validés)",
                         value="\n".join(challenges_text) or "Aucun défi récent trouvé.",
                         inline=False
                     )
@@ -159,7 +156,7 @@ class Common(commands.Cog):
                 )
         else:
             embed.add_field(
-                name="🛡️ Root-Me",
+                name="🛡️ __Root-Me__",
                 value=f"Profil non lié. Rendez vous dans le salon {interaction.guild.get_channel(WELCOME_CHANNEL.id).mention} pour lier votre compte.",
                 inline=False
             )
