@@ -110,10 +110,7 @@ class Common(commands.Cog):
 
         embed.add_field(
             name="📊 __Informations__",
-            value=
-                
-                f"\n\n\n" if user_data and '' in user_data else
-                f"\u200b\n\u200b",
+            value=informations
         )
         
         embed.set_thumbnail(url=target_user.display_avatar.url)
