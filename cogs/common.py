@@ -1,6 +1,6 @@
 import datetime, re
 from typing import Optional
-from discord import app_commands, Interaction, Member, Embed, File, Color, Activity, ActivityType, ChannelType
+from discord import app_commands, Interaction, Member, Embed, File, Color, Activity, ActivityType
 from discord.ext import tasks
 from discord.ext import commands
 
