@@ -1,6 +1,6 @@
 import datetime, re
 from typing import Optional
-from discord import app_commands, Interaction, Member, Embed, File, Color, Activity, ActivityType
+from discord import app_commands, Interaction, Member, Embed, File, Color, Activity, ActivityType, ChannelType
 from discord.ext import tasks
 from discord.ext import commands
 
@@ -101,7 +101,7 @@ class Common(commands.Cog):
             elif "courses" in user_data:
                 channels = []
                 for c in user_data["courses"]:
-                    if channel := interaction.guild.get_channel(c):
+                    if channel := interaction.guild.get_channel(c) and channel.type == ChannelType.text:
                         channels.append(channel.name)
                         
                 informations += f"\n\n🧑‍🏫 Professionnel authentifié\n\n📚 Cours : {', '.join(channels)}"
