@@ -97,14 +97,14 @@ class Common(commands.Cog):
         
         if user_data:
             if "studentId" in user_data:
-                informations += "\n\n🎓 Etudiant"
+                informations += "\n\n🎓 Etudiant authentifié"
             elif "courses" in user_data:
                 channels = []
                 for c in user_data["courses"]:
                     if channel := interaction.guild.get_channel(c):
                         channels.append(channel.name)
                         
-                informations += f"\n\n🧑‍🏫 Professionnel\n\n📚 Cours : {', '.join(channels)}"
+                informations += f"\n\n🧑‍🏫 Professionnel authentifié\n\n📚 Cours : {', '.join(channels)}"
         
         informations += "\n\u200b\n\u200b"
 
