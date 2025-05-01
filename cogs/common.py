@@ -101,7 +101,7 @@ class Common(commands.Cog):
             elif "courses" in user_data:
                 channels = []
                 for c in user_data["courses"]:
-                    if channel := interaction.guild.get_channel(c) and channel.type == ChannelType.text:
+                    if channel := interaction.guild.get_channel(c):
                         channels.append(channel.name)
                         
                 informations += f"\n\n🧑‍🏫 Professionnel authentifié\n\n📚 Cours : {', '.join(channels)}"
