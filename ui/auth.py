@@ -216,6 +216,7 @@ class RootMeModal(ui.Modal):
             min_length=6,
             max_length=6
         )
+        self.add_item(self.uuid)
     
     async def on_submit(self, interaction: Interaction):
         users = ConfigManager.get('users', [])
@@ -251,6 +252,7 @@ class LinkedinModal(ui.Modal):
             min_length=20,
             max_length=100
         )
+        self.add_item(self.linkedin_url)
     
     async def on_submit(self, interaction: Interaction):
         pattern = r'https?://([a-z]{2,3}\.)?linkedin\.com/in/[^/]+/?'
