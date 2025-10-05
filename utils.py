@@ -46,7 +46,7 @@ HEADERS_FA, FA = read_csv('assets/cyber.csv')
 
 def send_email(subject, body, to_email):
     msg = MIMEMultipart()
-    from_email = ConfigManager.get('email_address')
+    from_email = os.getenv('EMAIL_ADDRESS')
     msg['From'] = from_email
     msg['To'] = to_email
     msg['Subject'] = subject
@@ -60,7 +60,7 @@ def send_email(subject, body, to_email):
         server.starttls()   # Utiliser TLS pour sécuriser la connexion
 
         # Login to the email account
-        server.login(from_email, ConfigManager.get('email_password'))
+        server.login(from_email, os.getenv('EMAIL_PASSWORD'))
 
         # Send the email
         server.sendmail(from_email, to_email, msg.as_string())
@@ -78,12 +78,12 @@ def create_jwt(email):
         "email": email,
         "exp": expiration
     }
-    token = jwt.encode(payload, ConfigManager.get('token'), algorithm="HS256")
+    token = jwt.encode(payload, os.getenv('TOKEN'), algorithm="HS256")
     return token
 
 def verify_jwt(token, email):
     try:
-        payload = jwt.decode(token, ConfigManager.get('token'), algorithms=["HS256"])
+        payload = jwt.decode(token, os.getenv('TOKEN'), algorithms=["HS256"])
         if payload.get("email") != email:
             return None
         return payload

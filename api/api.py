@@ -1,8 +1,7 @@
-import aiohttp, asyncio, logging, time, re
-from typing import ClassVar, Optional, Dict, Any, Tuple, List, TypeVar, Type
+import aiohttp, asyncio, logging, time, re, os
+from typing import ClassVar, Optional, Dict, Any, Tuple, TypeVar, Type
 from functools import wraps
 
-from utils import ConfigManager
 
 T = TypeVar('T', bound='API')
 ResponseType = Tuple[Any, int]
@@ -208,7 +207,7 @@ class API:
 class MistralAI(API):
     url = 'https://api.mistral.ai'
     headers = {
-        "Authorization": f"Bearer {ConfigManager.get('mistral_key')}",
+        "Authorization": f"Bearer {os.getenv('MISTRAL')}",
     }
 
     @API.endpoint('/v1/chat/completions', method='POST')
@@ -232,8 +231,7 @@ class RootMe(API):
             cls.cookies = {'api_key': api_key}
         else:
             # If no API key provided, check configuration
-            from utils import ConfigManager
-            cls.cookies = {'api_key': ConfigManager.get('rootme_key')}
+            cls.cookies = {'api_key': os.getenv('ROOTME')}
         
         # Set up logging
         logging.basicConfig(

@@ -1,8 +1,9 @@
 from discord.ext import commands
 from discord import Intents, Interaction, app_commands
+from dotenv import load_dotenv
 import os, re
 
-from utils import ConfigManager, CYBER
+from utils import ConfigManager
 
 
 class DeadBeef(commands.Bot):
@@ -20,11 +21,12 @@ class DeadBeef(commands.Bot):
 
             name = file[:-3]
             await self.load_extension(f"cogs.{name}")
-        self.tree.copy_global_to(guild=CYBER)
-        await self.tree.sync(guild=CYBER)
+        # self.tree.copy_global_to(guild=CYBER)
+        await self.tree.sync()
 
 
 if __name__ == '__main__':
+    load_dotenv(override=True)
     bot = DeadBeef()
     
     @bot.tree.error
@@ -36,4 +38,4 @@ if __name__ == '__main__':
             await interaction.response.send_message(f"Une erreur est survenue : {str(error)}", ephemeral=True)
             raise error
 
-    bot.run(ConfigManager.get('token'))
+    bot.run(os.getenv("TOKEN"))

@@ -2,6 +2,10 @@ from discord.ext import commands
 from discord import Interaction, app_commands, Embed
 
 from utils import ConfigManager
+from db.database import SessionLocal
+from db.models import Tool
+from discord import ui, ButtonStyle
+from datetime import datetime
 
 
 def check_if_user(interaction: Interaction) -> bool:
@@ -39,67 +43,99 @@ class Tools(commands.Cog):
         msg = await tools_channel.fetch_message(1294690496815566983)
 
         formatted_time = interaction.created_at.strftime("%Y-%m-%d %H:%M:%S")
-        
-        tools = ConfigManager.get('tools', [])
 
         match option.name:
             case "add":
-                store = {
-                    "category": category,
-                    "fields": [
-                        {
-                            "tool": tool,
-                            "description": description
-                        }
-                    ]
-                }
-                
-                for existing_tool in tools:
-                    if existing_tool['category'].lower() == category.lower():
-                        existing_tool['fields'].append(store['fields'][0])
-                        update_embed(msg.embeds, category, existing_tool['fields'])
-                        msg.embeds[-1].set_footer(text=f"Last update by {interaction.user.display_name} at {formatted_time}", icon_url=interaction.user.avatar.url)
-                        await msg.edit(embeds=msg.embeds)
-                        break
-                else:
-                    tools.append(store)
-                    update_embed(msg.embeds, category, store['fields'])
-                    msg.embeds[-1].set_footer(text=f"Last update by {interaction.user.display_name} at {formatted_time}", icon_url=interaction.user.avatar.url)
-                    await msg.edit(embeds=msg.embeds)
-                
-                ConfigManager.set('tools', tools)
+                with SessionLocal() as session:
+                    # Determine next index for this category
+                    existing = (
+                        session.query(Tool)
+                        .filter(Tool.category.ilike(category))
+                        .order_by(Tool.index.asc())
+                        .all()
+                    )
+                    next_index = existing[-1].index + 1 if existing else 0
+                    new_tool = Tool(category=category, index=next_index, tool=tool, description=description)
+                    session.add(new_tool)
+                    session.commit()
 
+                    # Rebuild category list for embed update
+                    fields = [{"tool": t.tool, "description": t.description or ''} for t in (
+                        session.query(Tool)
+                        .filter(Tool.category.ilike(category))
+                        .order_by(Tool.index.asc())
+                        .all()
+                    )]
+
+                update_embed(msg.embeds, category, fields)
+                msg.embeds[-1].set_footer(text=f"Last update by {interaction.user.display_name} at {formatted_time}", icon_url=interaction.user.avatar.url)
+                await msg.edit(embeds=msg.embeds)
                 await interaction.response.send_message(f"Outil {tool} créé dans la catégorie {category}", ephemeral=True)
                 
             case "edit" | "remove":
-                for existing_tool in tools:
-                    if existing_tool['category'].lower() == category.lower():
-                        if 0 <= index - 1 < len(existing_tool['fields']):
-                            t = existing_tool['fields'][index - 1]['tool']
-                            if option.name == "edit":
-                                if tool is not None:
-                                    existing_tool['fields'][index - 1]['tool'] = tool
-                                existing_tool['fields'][index - 1]['description'] = description if description else existing_tool['fields'][index - 1]['description']
-                                update_embed(msg.embeds, category, existing_tool['fields'])
-                            else:
-                                del existing_tool['fields'][index - 1]
-                                if existing_tool['fields']:
-                                    update_embed(msg.embeds, category, existing_tool['fields'])
-                                else:
-                                    for embed in msg.embeds:
-                                        for field_index, field in enumerate(embed.fields):
-                                            if field.name == f'__{category.upper()}__':
-                                                embed.remove_field(field_index)
-                                                break
-                            msg.embeds[-1].set_footer(text=f"Last update by {interaction.user.display_name} at {formatted_time}", icon_url=interaction.user.avatar.url)
-                            await msg.edit(embeds=msg.embeds)
-                            await interaction.response.send_message(f"Outil {t} dans la catégorie {category} {option.value}.", ephemeral=True)
-                            ConfigManager.set('tools', tools)
-                        else:
-                            await interaction.response.send_message("Index non trouvé.", ephemeral=True)
-                        break
+                with SessionLocal() as session:
+                    items = (
+                        session.query(Tool)
+                        .filter(Tool.category.ilike(category))
+                        .order_by(Tool.index.asc())
+                        .all()
+                    )
+                    if not items:
+                        await interaction.response.send_message("Catégorie non trouvée.", ephemeral=True)
+                        return
+                    pos = index - 1
+                    if pos < 0 or pos >= len(items):
+                        await interaction.response.send_message("Index non trouvé.", ephemeral=True)
+                        return
+                    target = items[pos]
+                    original_name = target.tool
+                    if option.name == "edit":
+                        if tool is not None:
+                            target.tool = tool
+                        if description:
+                            target.description = description
+                        session.commit()
+                    else:
+                        session.delete(target)
+                        session.flush()
+                        # Reindex remaining tools for the category to keep order contiguous
+                        remaining = (
+                            session.query(Tool)
+                            .filter(Tool.category.ilike(category))
+                            .order_by(Tool.index.asc())
+                            .all()
+                        )
+                        for idx, row in enumerate(remaining):
+                            row.index = idx
+                        session.commit()
+
+                    # Build fields for embed update
+                    fields = [{"tool": t.tool, "description": t.description or ''} for t in (
+                        session.query(Tool)
+                        .filter(Tool.category.ilike(category))
+                        .order_by(Tool.index.asc())
+                        .all()
+                    )]
+
+                if fields:
+                    update_embed(msg.embeds, category, fields)
                 else:
-                    await interaction.response.send_message("Catégorie non trouvée.", ephemeral=True)
+                    for embed in msg.embeds:
+                        for field_index, field in enumerate(embed.fields):
+                            if field.name == f'__{category.upper()}__':
+                                embed.remove_field(field_index)
+                                break
+                msg.embeds[-1].set_footer(text=f"Last update by {interaction.user.display_name} at {formatted_time}", icon_url=interaction.user.avatar.url)
+                await msg.edit(embeds=msg.embeds)
+                await interaction.response.send_message(f"Outil {original_name} dans la catégorie {category} {option.value}.", ephemeral=True)
+
+
+    @app_commands.command(description="Gérer les outils via une interface interactive.")
+    @app_commands.check(check_if_user)
+    async def manage_tools(self, interaction: Interaction):
+        from ui.tools import ToolsView  # lazy import to avoid circular
+        view = ToolsView()
+        await interaction.response.send_message("Gestion des outils", view=view, ephemeral=True)
 
 
 async def setup(bot: commands.Bot):
