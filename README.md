@@ -50,13 +50,6 @@ DATABASE_URL=sqlite+aiosqlite:///db/database.db
 python setup_cybertools.py
 ```
 
-3. **Find your admin channel ID** (if needed):
-```bash
-python get_channel_id.py
-```
-
-See [QUICK_START_CYBERTOOLS.md](QUICK_START_CYBERTOOLS.md) for detailed setup instructions.
-
 ### Homework To-Do System Setup
 
 To use the Homework Tracking System:
@@ -72,8 +65,6 @@ To use the Homework Tracking System:
 ```
 
 3. **Add courses and assignments** using the interactive buttons on the to-do list.
-
-See [QUICK_START_HOMEWORK.md](QUICK_START_HOMEWORK.md) for detailed instructions.
 
 ### Course Schedule System Setup
 
@@ -96,8 +87,6 @@ Repeat in M2 channel with M2 sheet details.
 
 Schedules will update automatically every 15 minutes!
 
-See [QUICK_START_SCHEDULE.md](QUICK_START_SCHEDULE.md) for detailed instructions.
-
 ### RSS News System Setup
 
 To use the automated news feed system:
@@ -118,8 +107,6 @@ Click "Add Feed" and provide:
 Add as many feeds as you want!
 
 News will update automatically every 30 minutes!
-
-See [QUICK_START_NEWS.md](QUICK_START_NEWS.md) for detailed instructions.
 
 ## Config
 
