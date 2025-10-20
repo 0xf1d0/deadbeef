@@ -1,4 +1,4 @@
-import yt_dlp, asyncio, re, json, os, csv, functools, smtplib, jwt
+import yt_dlp, asyncio, re, json, os, functools, smtplib, jwt
 from discord import PCMVolumeTransformer, FFmpegPCMAudio, Object, Guild, Role, Message, TextChannel
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -24,24 +24,6 @@ CALENDAR_CHANNEL = Object(1293319532361809986, type=TextChannel)
 LOG_CHANNEL = Object(1292059079287504930, type=TextChannel)
 
 CYBER_COLOR = 0x476efc
-
-def read_csv(file_path):
-    """
-    @brief Reads a CSV file and returns a list of rows.
-    @param file_path The path to the CSV file.
-    @return List of rows, where each row is a list of values.
-    """
-    data = []
-    with open(file_path, newline='', encoding='utf-8') as csvfile:
-        reader = csv.reader(csvfile)
-        headers = next(reader)  # Skip the header row
-        for row in reader:
-            data.append(row)
-    return headers, data
-
-
-HEADERS_FI, FI = read_csv('assets/cyber_sante.csv')
-HEADERS_FA, FA = read_csv('assets/cyber.csv')
 
 
 def send_email(subject, body, to_email):

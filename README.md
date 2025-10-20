@@ -4,6 +4,17 @@ DeadBeef is a `discord.py` bot for M1 Cybersecurity's Discord at Paris Cité Uni
 
 This bot embeds all the features to make everyday life easier for students.
 
+## Features
+
+- 🎓 **Student Authentication** - Verify students and professionals
+- 📅 **Calendar Management** - Schedule and event tracking
+- 🎵 **Music Player** - Play music in voice channels
+- 🤖 **AI Integration** - Mistral AI chat functionality
+- 🔧 **Cybersecurity Tools** - Browse, search, and suggest security tools
+- 📚 **Homework To-Do System** - Track assignments and deadlines by grade level
+- 📊 **Course Schedule System** - Automated weekly schedule from Google Sheets
+- 📰 **RSS News System** - Automated news feeds with custom sources (NEW!)
+
 ## Installation
 
 ```sh
@@ -23,6 +34,92 @@ pip install -r requirements.txt
 # Execute program
 ./start.sh
 ```
+
+### Cybersecurity Tools Feature Setup
+
+To use the Cybersecurity Tools Management System:
+
+1. **Add to `.env` file:**
+```env
+ADMIN_CHANNEL_ID=your_admin_channel_id_here
+DATABASE_URL=sqlite+aiosqlite:///db/database.db
+```
+
+2. **Initialize with sample data:**
+```bash
+python setup_cybertools.py
+```
+
+3. **Find your admin channel ID** (if needed):
+```bash
+python get_channel_id.py
+```
+
+See [QUICK_START_CYBERTOOLS.md](QUICK_START_CYBERTOOLS.md) for detailed setup instructions.
+
+### Homework To-Do System Setup
+
+To use the Homework Tracking System:
+
+1. **Set up a channel for M1:**
+```
+/setup_homework_channel grade_level:M1
+```
+
+2. **Set up a channel for M2:**
+```
+/setup_homework_channel grade_level:M2
+```
+
+3. **Add courses and assignments** using the interactive buttons on the to-do list.
+
+See [QUICK_START_HOMEWORK.md](QUICK_START_HOMEWORK.md) for detailed instructions.
+
+### Course Schedule System Setup
+
+To use the automated schedule system:
+
+1. **Make your Google Sheet public** (anyone with link can view)
+
+2. **Get your sheet information:**
+   - Spreadsheet URL
+   - GID (from URL after `#gid=`)
+
+3. **Configure M1 channel:**
+```
+/manage_schedule
+```
+Then click "Setup New Channel" and provide M1 sheet details.
+
+4. **Configure M2 channel:**
+Repeat in M2 channel with M2 sheet details.
+
+Schedules will update automatically every 15 minutes!
+
+See [QUICK_START_SCHEDULE.md](QUICK_START_SCHEDULE.md) for detailed instructions.
+
+### RSS News System Setup
+
+To use the automated news feed system:
+
+1. **Configure news channel:**
+```
+/manage_news
+```
+Then click "Setup Channel" and provide a channel name.
+
+2. **Add RSS feeds:**
+Click "Add Feed" and provide:
+- Feed name (e.g., "CERT-FR")
+- Feed URL (e.g., `https://www.cert.ssi.gouv.fr/feed/`)
+- Color (optional, e.g., "red" or "#FF0000")
+
+3. **Repeat for more feeds:**
+Add as many feeds as you want!
+
+News will update automatically every 30 minutes!
+
+See [QUICK_START_NEWS.md](QUICK_START_NEWS.md) for detailed instructions.
 
 ## Config
 

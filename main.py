@@ -3,7 +3,7 @@ from discord import Intents, Interaction, app_commands
 from dotenv import load_dotenv
 import os, re
 
-from utils import ConfigManager
+from utils.utils import ConfigManager
 
 
 class DeadBeef(commands.Bot):

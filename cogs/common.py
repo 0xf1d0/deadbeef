@@ -3,9 +3,13 @@ from typing import Optional
 from discord import app_commands, Interaction, Member, Embed, File, Color, Activity, ActivityType
 from discord.ext import tasks
 from discord.ext import commands
+from sqlalchemy import select
 
-from utils import ConfigManager, WELCOME_MESSAGE, WELCOME_CHANNEL, LOG_CHANNEL, CYBER_COLOR, CYBER
+from utils.utils import ConfigManager, WELCOME_MESSAGE, WELCOME_CHANNEL, LOG_CHANNEL, CYBER_COLOR, CYBER, ROLE_MANAGER, ROLE_NOTABLE
 from ui.auth import Authentication
+from ui.announce import Announcement
+from db import AsyncSessionLocal
+from db.models import AuthenticatedUser, Professional
 
 from api.api import RootMe
 
@@ -69,11 +73,27 @@ class Common(commands.Cog):
         embed.set_thumbnail(url='attachment://f1d0.png')
         await interaction.response.send_message(file=file, embed=embed)
 
+    @app_commands.command(name="ping", description="Afficher la latence du bot.")
+    @app_commands.checks.has_permissions(administrator=True)
+    async def ping(self, interaction: Interaction):
+        """Check the bot's latency."""
+        await interaction.response.send_message(f"🏓 Pong ! ({round(self.bot.latency * 1000)} ms)")
+   
+    @app_commands.command(description="Annoncer un message.")
+    @app_commands.checks.has_any_role(ROLE_MANAGER.id, ROLE_NOTABLE.id)
+    async def announce(self, interaction: Interaction):
+        modal = Announcement()
+        await interaction.response.send_modal(modal)
+    
+    @app_commands.command(description="Efface un nombre de messages.")
+    @app_commands.checks.has_permissions(manage_messages=True)
+    async def purge(self, interaction: Interaction, limit: int):
+        await interaction.response.send_message(f'{limit} messages ont été effacés.', ephemeral=True)
+        await interaction.channel.purge(limit=limit)
+
     @app_commands.command(description="Afficher son profil ou celui d'un autre utilisateur.")
     @app_commands.describe(member="Le membre dont vous souhaitez voir le profil")
     async def profile(self, interaction: Interaction, member: Optional[Member] = None):
-        users = ConfigManager.get("users", [])
-        
         # Définir l'utilisateur cible en fonction des paramètres
         target_user = member or interaction.user
         
@@ -90,97 +110,111 @@ class Common(commands.Cog):
         # Ajouter les informations Discord
         member_since = target_user.joined_at or datetime.datetime.now()
         
-        # Trouver les données utilisateur dans la configuration
-        user_data = next((u for u in users if u["id"] == target_user.id), None)
-        
-        informations = f"\u200b\n🕒 A rejoint : <t:{int(member_since.timestamp())}:R>"
-        
-        if user_data:
-            if "studentId" in user_data:
-                informations += "\n\n🎓 Etudiant authentifié <:upc_black:1367296895717736553>"
-            elif "courses" in user_data:
-                channels = []
-                for c in user_data["courses"]:
-                    if channel := interaction.guild.get_channel(c):
-                        channels.append(channel.name)
-                        
-                informations += f"\n\n🧑‍🏫 Professionnel authentifié <:upc_black:1367296895717736553>\n\n📚 Cours : {', '.join(channels)}"
-        
-        informations += "\n\u200b\n\u200b"
-
-        embed.add_field(
-            name="📊 __Informations__",
-            value=informations
-        )
-        
-        embed.set_thumbnail(url=target_user.display_avatar.url)
-        
-        # Gérer le profil LinkedIn
-        if user_data and user_data.get("linkedin"):
-            embed.add_field(
-                name="💼 __LinkedIn__",
-                value=f"\u200b\n[Voir le profil]({user_data['linkedin']})\n\u200b\n\u200b",
+        # Récupérer les données utilisateur depuis la base de données
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(
+                select(AuthenticatedUser).where(AuthenticatedUser.user_id == target_user.id)
             )
-        
-        # Gérer le profil Root-Me
-        rootme_id = None
-        if user_data and user_data.get("rootme"):
-            rootme_id = user_data.get("rootme")
-        
-        if rootme_id:
-            try:
-                # Configurer l'API Root-Me
-                RootMe.setup()
-                
-                # Récupérer les informations d'utilisateur de l'API Root-Me
-                rootme_data = await RootMe.get_author(str(rootme_id))
-                
-                # Extraire les informations
-                nom = rootme_data.get("nom", rootme_id)
-                score = rootme_data.get("score", "N/A")
-                position = rootme_data.get("position", "N/A")
-                rank = rootme_data.get("rang", "N/A")
-                
-                # Ajouter les informations Root-Me à l'embed
-                embed.add_field(
-                    name="<:rootme:1366510489521356850> __Root-Me__",
-                    value=f"\u200b\n🔗 [Voir le profil](https://www.root-me.org/{nom})\n\n"
-                        f"👤 Pseudo : `{nom}`\n\n"
-                        f"🏆 Score : **{score}** pts - {rank} - **#{position}**\n\u200b\n\u200b",
-                    inline=False
-                )
-                
-                challenges = rootme_data.get("validations", [])
-                
-                # Afficher les défis récents
-                if challenges:
-                    challenges_text = []
-                    for c in challenges[:10]:
-                        title = re.sub(r'&[^;]*;', '', c.get('titre', 'Challenge').strip())
-                        challenge_url = re.sub(r'[\s-]+', '-', title)
-                        challenges_text.append(f"- [{title}](https://www.root-me.org/{challenge_url}) <t:{int(datetime.datetime.strptime(c.get('date', datetime.datetime.now()), '%Y-%m-%d %H:%M:%S').timestamp())}:R>")
+            user_data = result.scalar_one_or_none()
+            
+            informations = f"\u200b\n🕒 A rejoint : <t:{int(member_since.timestamp())}:R>"
+            
+            if user_data:
+                if user_data.user_type == 'student':
+                    informations += f"\n\n🎓 Etudiant authentifié <:upc_black:1367296895717736553>"
+                    informations += f"\n📚 {user_data.grade_level} - {user_data.formation_type}"
+                elif user_data.user_type == 'professional':
+                    # Get professional's courses
+                    result = await session.execute(
+                        select(Professional).where(Professional.email == user_data.email)
+                    )
+                    pro = result.scalar_one_or_none()
                     
+                    if pro:
+                        channels = []
+                        for cc in pro.course_channels:
+                            if channel := interaction.guild.get_channel(cc.channel_id):
+                                channels.append(channel.name)
+                        
+                        informations += f"\n\n🧑‍🏫 Professionnel authentifié <:upc_black:1367296895717736553>"
+                        if channels:
+                            informations += f"\n\n📚 Cours : {', '.join(channels)}"
+            
+            informations += "\n\u200b\n\u200b"
+
+            embed.add_field(
+                name="📊 __Informations__",
+                value=informations
+            )
+            
+            embed.set_thumbnail(url=target_user.display_avatar.url)
+            
+            # Gérer le profil LinkedIn
+            if user_data and user_data.linkedin_url:
+                embed.add_field(
+                    name="💼 __LinkedIn__",
+                    value=f"\u200b\n[Voir le profil]({user_data.linkedin_url})\n\u200b\n\u200b",
+                )
+            
+            # Gérer le profil Root-Me
+            rootme_id = None
+            if user_data and user_data.rootme_id:
+                rootme_id = user_data.rootme_id
+            
+            if rootme_id:
+                try:
+                    # Configurer l'API Root-Me
+                    RootMe.setup()
+                    
+                    # Récupérer les informations d'utilisateur de l'API Root-Me
+                    rootme_data = await RootMe.get_author(str(rootme_id))
+                    
+                    # Extraire les informations
+                    nom = rootme_data.get("nom", rootme_id)
+                    score = rootme_data.get("score", "N/A")
+                    position = rootme_data.get("position", "N/A")
+                    rank = rootme_data.get("rang", "N/A")
+                    
+                    # Ajouter les informations Root-Me à l'embed
                     embed.add_field(
-                        name=f"🚩 __Challenges récents__ ({len(challenges)} validés)",
-                        value="\u200b\n" + "\n".join(challenges_text) or "Aucun défi récent trouvé.",
+                        name="<:rootme:1366510489521356850> __Root-Me__",
+                        value=f"\u200b\n🔗 [Voir le profil](https://www.root-me.org/{nom})\n\n"
+                            f"👤 Pseudo : `{nom}`\n\n"
+                            f"🏆 Score : **{score}** pts - {rank} - **#{position}**\n\u200b\n\u200b",
                         inline=False
                     )
-            except Exception as e:
+                    
+                    challenges = rootme_data.get("validations", [])
+                    
+                    # Afficher les défis récents
+                    if challenges:
+                        challenges_text = []
+                        for c in challenges[:10]:
+                            title = re.sub(r'&[^;]*;', '', c.get('titre', 'Challenge').strip())
+                            challenge_url = re.sub(r'[\s-]+', '-', title)
+                            challenges_text.append(f"- [{title}](https://www.root-me.org/{challenge_url}) <t:{int(datetime.datetime.strptime(c.get('date', datetime.datetime.now()), '%Y-%m-%d %H:%M:%S').timestamp())}:R>")
+                        
+                        embed.add_field(
+                            name=f"🚩 __Challenges récents__ ({len(challenges)} validés)",
+                            value="\u200b\n" + "\n".join(challenges_text) or "Aucun défi récent trouvé.",
+                            inline=False
+                        )
+                except Exception as e:
+                    embed.add_field(
+                        name="❌ Erreur Root-Me",
+                        value=f"Impossible de récupérer les données: {str(e)}",
+                        inline=False
+                    )
+            else:
                 embed.add_field(
-                    name="❌ Erreur Root-Me",
-                    value=f"Impossible de récupérer les données: {str(e)}",
+                    name="<:rootme:1366510489521356850> __Root-Me__",
+                    value=f"\u200b\nProfil non lié. Rendez vous dans le salon {interaction.guild.get_channel(WELCOME_CHANNEL.id).mention} pour lier votre compte.",
                     inline=False
                 )
-        else:
-            embed.add_field(
-                name="<:rootme:1366510489521356850> __Root-Me__",
-                value=f"\u200b\nProfil non lié. Rendez vous dans le salon {interaction.guild.get_channel(WELCOME_CHANNEL.id).mention} pour lier votre compte.",
-                inline=False
-            )
-        
-        embed.set_footer(text=f"Demandé par {interaction.user.display_name}", icon_url=interaction.user.display_avatar.url)
-        
-        await interaction.followup.send(embed=embed)
+            
+            embed.set_footer(text=f"Demandé par {interaction.user.display_name}", icon_url=interaction.user.display_avatar.url)
+            
+            await interaction.followup.send(embed=embed)
     
     @tasks.loop(hours=1)
     async def update_status(self):

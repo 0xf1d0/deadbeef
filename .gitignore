@@ -1,5 +1,7 @@
-.venv
+venv
 .env
 __pycache__
 *.json
 assets/*.csv
+*.md
+!README.md

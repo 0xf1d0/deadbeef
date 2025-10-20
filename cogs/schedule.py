@@ -1,132 +1,326 @@
 import discord
 from discord.ext import commands, tasks
-
-import requests, csv, io, locale
-
+from discord import app_commands, Interaction, Embed, Color
+from sqlalchemy import select
+import requests
+import csv
+import io
+import locale
+import hashlib
 from datetime import datetime, timedelta
+from typing import Optional, List, Tuple
 
-locale.setlocale(locale.LC_TIME, 'fr_FR.UTF-8')
+from db import AsyncSessionLocal, init_db
+from db.models import ScheduleChannelConfig
+from ui.schedule import ScheduleManagementView
+from utils.utils import ROLE_NOTABLE, ROLE_MANAGER
+
+# Set French locale for date formatting
+try:
+    locale.setlocale(locale.LC_TIME, 'fr_FR.UTF-8')
+except:
+    try:
+        locale.setlocale(locale.LC_TIME, 'fr_FR')
+    except:
+        pass  # Fallback to default if French locale not available
+
+
+def get_schedule_data(spreadsheet_url: str, gid: str) -> List[List[str]]:
+    """
+    Fetch schedule data from Google Sheets.
+    
+    Args:
+        spreadsheet_url: The full Google Sheets URL
+        gid: The sheet ID (gid parameter)
+    
+    Returns:
+        List of rows from the spreadsheet
+    """
+    # Extract spreadsheet ID from URL
+    spreadsheet_id = None
+    if '/d/' in spreadsheet_url:
+        try:
+            spreadsheet_id = spreadsheet_url.split('/d/')[1].split('/')[0]
+        except:
+            raise ValueError("Could not extract spreadsheet ID from URL")
+    
+    if not spreadsheet_id:
+        raise ValueError("Invalid spreadsheet URL format")
+    
+    # Construct CSV export URL
+    export_url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/export?format=csv&gid={gid}"
+    
+    try:
+        response = requests.get(export_url, timeout=30)
+        response.raise_for_status()
+        data = response.content.decode('utf-8')
+        reader = list(csv.reader(io.StringIO(data)))
+        
+        # Return the relevant rows (skip header rows, adjust based on sheet structure)
+        # This may need adjustment based on the actual sheet structure
+        return reader[8:92] + reader[102:] if len(reader) > 102 else reader
+    
+    except requests.RequestException as e:
+        raise Exception(f"Failed to fetch schedule: {str(e)}")
+
+
+def filter_schedule_for_week(schedule_data: List[List[str]]) -> Tuple[List[List[str]], bool]:
+    """
+    Filter schedule data to get the current or next week.
+    
+    Args:
+        schedule_data: Raw schedule data from spreadsheet
+    
+    Returns:
+        Tuple of (filtered schedule for current week, whether week was updated)
+    """
+    today = datetime.today()
+    weekday = today.weekday()  # 0 = Monday, 6 = Sunday
+    
+    # Calculate start of the week (Monday)
+    start_of_week = today - timedelta(days=weekday)
+    week_updated = False
+    days = 2  # Default: show 2 days
+    
+    # If we're past Wednesday (day 2), show next week
+    if weekday > 2:
+        start_of_week = start_of_week + timedelta(days=7)
+        week_updated = True
+    
+    # Search for the week in the schedule data
+    for i in range(0, len(schedule_data), 7):
+        try:
+            # Try to parse the date in the first column (assuming it's in DD/MM format)
+            if len(schedule_data[i]) > 1 and schedule_data[i][1]:
+                date_str = schedule_data[i][1]
+                date = datetime.strptime(date_str, "%d/%m").replace(year=today.year)
+                
+                # Check if this is the week we're looking for
+                if date.date() == start_of_week.date():
+                    # Format the dates with full day names
+                    schedule_data[i][1] = date.strftime("%A %d %B %Y").capitalize()
+                    
+                    # Format the next few days
+                    for j in range(2, days + 2):
+                        if j < len(schedule_data[i]) and schedule_data[i][j]:
+                            try:
+                                day_date = datetime.strptime(schedule_data[i][j], "%d/%m").replace(year=today.year)
+                                schedule_data[i][j] = day_date.strftime("%A %d %B %Y").capitalize()
+                            except:
+                                pass
+                    
+                    # Return the 7 rows for this week (date, morning course, teacher, room, afternoon course, teacher, room)
+                    return [row[:days + 2] for row in schedule_data[i:i + 7]], week_updated
+        
+        except (ValueError, IndexError):
+            continue
+    
+    return [], week_updated
+
+
+def format_schedule(schedule_data: List[List[str]]) -> str:
+    """
+    Format schedule data into a nice Discord message.
+    
+    Args:
+        schedule_data: Filtered schedule data for the week
+    
+    Returns:
+        Formatted string for Discord message
+    """
+    if not schedule_data or len(schedule_data) < 7:
+        return "❌ Aucun emploi du temps disponible pour cette semaine."
+    
+    formatted_parts = []
+    
+    # Process each day (columns 1+)
+    for j in range(1, len(schedule_data[0])):
+        try:
+            day_name = schedule_data[0][j]
+            
+            # Morning course info (rows 1-3: course name, teacher, room)
+            morning_course = schedule_data[1][j] if len(schedule_data[1]) > j else ""
+            morning_teacher = schedule_data[2][j] if len(schedule_data[2]) > j else ""
+            morning_room = schedule_data[3][j] if len(schedule_data[3]) > j else ""
+            
+            # Afternoon course info (rows 4-6: course name, teacher, room)
+            afternoon_course = schedule_data[4][j] if len(schedule_data[4]) > j else ""
+            afternoon_teacher = schedule_data[5][j] if len(schedule_data[5]) > j else ""
+            afternoon_room = schedule_data[6][j] if len(schedule_data[6]) > j else ""
+            
+            # Format morning
+            morning_label = schedule_data[1][0] if len(schedule_data[1]) > 0 else "Matin"
+            morning_text = f"{morning_label}: {morning_course}"
+            if morning_teacher:
+                morning_text += f" ({morning_teacher})"
+            if morning_room:
+                morning_text += f" -> Salle {morning_room}"
+            
+            # Format afternoon
+            afternoon_label = schedule_data[4][0] if len(schedule_data[4]) > 0 else "Après-midi"
+            afternoon_text = f"{afternoon_label}: {afternoon_course}"
+            if afternoon_teacher:
+                afternoon_text += f" ({afternoon_teacher})"
+            if afternoon_room:
+                afternoon_text += f" -> Salle {afternoon_room}"
+            
+            formatted_parts.append(f"**{day_name}**\n```{morning_text}\n{afternoon_text}```")
+        
+        except IndexError:
+            continue
+    
+    return '\n'.join(formatted_parts) if formatted_parts else "❌ Erreur de formatage de l'emploi du temps."
+
+
+def detect_changes(current_data: List[List[str]], previous_hash: Optional[str]) -> Tuple[List[str], str]:
+    """
+    Detect changes in the schedule.
+    
+    Args:
+        current_data: Current schedule data
+        previous_hash: Hash of the previous schedule
+    
+    Returns:
+        Tuple of (list of changes, current hash)
+    """
+    # Create hash of current data
+    current_str = str(current_data)
+    current_hash = hashlib.md5(current_str.encode()).hexdigest()
+    
+    # If no previous hash or hashes match, no changes
+    if not previous_hash or current_hash == previous_hash:
+        return [], current_hash
+    
+    # If hashes differ, there are changes (we'll return a generic message)
+    changes = ["📋 L'emploi du temps a été mis à jour"]
+    
+    return changes, current_hash
+
+
+async def update_schedule_for_channel(bot: commands.Bot, session, config: ScheduleChannelConfig):
+    """
+    Update the schedule for a specific channel.
+    
+    Args:
+        bot: Discord bot instance
+        session: Database session
+        config: Schedule channel configuration
+    """
+    try:
+        # Get the channel
+        channel = bot.get_channel(config.channel_id)
+        if not channel:
+            print(f"Channel {config.channel_id} not found for {config.grade_level}")
+            return
+        
+        # Fetch schedule data
+        schedule_data = get_schedule_data(config.spreadsheet_url, config.gid)
+        
+        # Filter for current week
+        filtered_data, week_updated = filter_schedule_for_week(schedule_data)
+        
+        if not filtered_data:
+            print(f"No schedule data found for {config.grade_level}")
+            return
+        
+        # Detect changes
+        changes, current_hash = detect_changes(filtered_data, config.last_schedule_hash)
+        
+        # Format the schedule
+        schedule_message = format_schedule(filtered_data)
+        
+        # Create or update the message
+        message_updated = False
+        
+        if config.message_id:
+            try:
+                message = await channel.fetch_message(config.message_id)
+                await message.edit(content=schedule_message)
+                message_updated = True
+            except discord.NotFound:
+                # Message was deleted, create new one
+                message = await channel.send(schedule_message)
+                config.message_id = message.id
+                message_updated = True
+            except Exception as e:
+                print(f"Error editing message for {config.grade_level}: {e}")
+        else:
+            # No message ID stored, create new message
+            message = await channel.send(schedule_message)
+            config.message_id = message.id
+            message_updated = True
+        
+        # Send notification for changes (but not on week updates)
+        if changes and not week_updated and config.last_schedule_hash is not None:
+            notification = "📋 **Modifications de l'emploi du temps** :\n" + "\n".join(changes)
+            await channel.send(notification + "\n||@everyone||", delete_after=3600)
+        
+        # Update the hash in database
+        if message_updated:
+            config.last_schedule_hash = current_hash
+            await session.commit()
+    
+    except Exception as e:
+        print(f"Error updating schedule for {config.grade_level}: {e}")
+
 
 class Schedule(commands.Cog):
+    """Cog for managing course schedules."""
     
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.schedule_channel_id = 1304836325010313287
-        self.schedule_message_id = 1325536150227517572
-        self.previous_schedule_data = None
-        self.update_schedule.start()
-
-    def get_schedule(self):
-        url = "https://docs.google.com/spreadsheets/d/1_FbKo3bwaJ5-PObvIbQrEHUbCbqPro-CH08pyikZ04k/export?format=csv&gid=496614399"
-        response = requests.get(url)
-        response.raise_for_status() # Check if the request was successful
-        data = response.content.decode('utf-8')
-        reader = list(csv.reader(io.StringIO(data)))
-        return reader[8:92] + reader[102:]
-
-    def filter_schedule(self, schedule_data):
-        today = datetime.today()
-        weekday = today.weekday()
-        # february_2025 = datetime(2025, 2, 1)
-        
-        start_of_week = today - timedelta(days=weekday)
-        week_updated = False
-        days = 2
-
-        if weekday > 2:
-            start_of_week = start_of_week + timedelta(days=7)
-            week_updated = True
-            """if (next_week := start_of_week + timedelta(days=7)) > february_2025:
-                days = 1
-                start_of_week = next_week
-                week_updated = True
-            elif next_week < february_2025:
-                start_of_week = next_week
-                week_updated = True"""
-
-        for i in range(0, len(schedule_data), 7):
-            try:
-                date = datetime.strptime(schedule_data[i][1], "%d/%m").replace(year=today.year)
-                
-                if date.date() == start_of_week.date():
-                    schedule_data[i][1] = date.strftime("%A %d %B %Y").capitalize()
-                    
-                    for j in range(2, days + 2):
-                        schedule_data[i][j] = (
-                            datetime.strptime(schedule_data[i][j], "%d/%m")
-                            .replace(year=today.year)
-                            .strftime("%A %d %B %Y")
-                            .capitalize()
-                        )
-                    
-                    return [row[:days + 2] for row in schedule_data[i:i + 7]], week_updated
-            
-            except (ValueError, IndexError):
-                continue
-
-        return [], week_updated
-
-    def format_schedule(self, schedule_data):
-        formatted_data = []
-
-        for j in range(1, len(schedule_data[0])):
-            morning_course = f"{schedule_data[1][0]}: {schedule_data[1][j]} ({schedule_data[2][j]}) -> Salle {schedule_data[3][j]}"
-            afternoon_course = f"{schedule_data[4][0]}: {schedule_data[4][j]} ({schedule_data[5][j]}) -> Salle {schedule_data[6][j]}"
-            formatted_data.append(f"**{schedule_data[0][j]}**\n```{morning_course}\n{afternoon_course}```")
-
-        return formatted_data
+        self.update_all_schedules.start()
     
-    def detect_changes(self, current_data, previous_data):
-        if previous_data is None:
-            return []
-
-        changes = []
-        for j in range(1, len(current_data[0])):
-            if (current_data[1][j] != previous_data[1][j] or 
-                current_data[2][j] != previous_data[2][j] or 
-                current_data[3][j] != previous_data[3][j]):
-                changes.append(f"🔄 Modification matin {current_data[0][j]} : {current_data[1][j]} ({current_data[2][j]}) -> Salle {current_data[3][j]}")
-            
-            if (current_data[4][j] != previous_data[4][j] or 
-                current_data[5][j] != previous_data[5][j] or 
-                current_data[6][j] != previous_data[6][j]):
-                changes.append(f"🔄 Modification après-midi {current_data[0][j]} : {current_data[4][j]} ({current_data[5][j]}) -> Salle {current_data[6][j]}")
-
-        return changes
-
+    async def cog_load(self):
+        """Initialize database when cog loads."""
+        await init_db()
+    
+    def cog_unload(self):
+        """Stop the update task when cog unloads."""
+        self.update_all_schedules.cancel()
+    
+    @app_commands.command(
+        name="manage_schedule",
+        description="Manage schedule channel configuration (Admin/Manager only)."
+    )
+    @app_commands.checks.has_any_role(ROLE_MANAGER.id, ROLE_NOTABLE.id)
+    async def manage_schedule(self, interaction: Interaction):
+        """Open schedule management panel."""
+        view = ScheduleManagementView()
+        embed = Embed(
+            title="📅 Schedule Management",
+            description="Configure and manage course schedules for M1/M2 channels.",
+            color=Color.blue()
+        )
+        embed.add_field(
+            name="Available Actions",
+            value="• **Setup New Channel** - Configure this channel for schedule display\n"
+                  "• **Edit Configuration** - Update spreadsheet URL or GID\n"
+                  "• **Force Refresh** - Manually update the schedule\n"
+                  "• **View Configuration** - See current settings\n"
+                  "• **Delete Configuration** - Remove schedule from this channel",
+            inline=False
+        )
+        embed.set_footer(text="Schedules update automatically every 15 minutes")
+        
+        await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+    
     @tasks.loop(minutes=15)
-    async def update_schedule(self):
-        channel = self.bot.get_channel(self.schedule_channel_id)
-        if channel:
-            schedule_data = self.get_schedule()
-            filtered_data, week_updated = self.filter_schedule(schedule_data)
-            changes = self.detect_changes(filtered_data, self.previous_schedule_data)
-
-            if changes or self.previous_schedule_data is None:
-                formatted_data = self.format_schedule(filtered_data)
-                schedule_message = '\n'.join(formatted_data)
-
-                if self.schedule_message_id:
-                    try:
-                        message = await channel.fetch_message(self.schedule_message_id)
-                        await message.edit(content=schedule_message)
-                        
-                        if changes and not week_updated:
-                            modification_message = "📋 Modifications de l'emploi du temps :\n" + "\n".join(changes + ['@everyone'])
-                            await channel.send(modification_message, delete_after=3600)
-                    
-                    except discord.NotFound:
-                        message = await channel.send(schedule_message)
-                        self.schedule_message_id = message.id
-                else:
-                    message = await channel.send(schedule_message)
-                    self.schedule_message_id = message.id
-                
-                self.previous_schedule_data = filtered_data
-
-    @update_schedule.before_loop
-    async def before_update_schedule(self):
+    async def update_all_schedules(self):
+        """Update all configured schedule channels."""
+        async with AsyncSessionLocal() as session:
+            # Get all schedule configurations
+            result = await session.execute(select(ScheduleChannelConfig))
+            configs = result.scalars().all()
+            
+            for config in configs:
+                await update_schedule_for_channel(self.bot, session, config)
+    
+    @update_all_schedules.before_loop
+    async def before_update_all_schedules(self):
+        """Wait until the bot is ready before starting the update task."""
         await self.bot.wait_until_ready()
+
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Schedule(bot))

@@ -3,7 +3,7 @@ import functools, os, asyncio, __main__
 from discord import Interaction, app_commands
 from discord.ext import commands, tasks
 
-from utils import YTDLSource, restrict_channel
+from utils.utils import YTDLSource, restrict_channel
 
 
 def ensure_voice(f):
