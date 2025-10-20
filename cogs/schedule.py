@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands, tasks
 from discord import app_commands, Interaction, Embed, Color
 from sqlalchemy import select
-import requests
+import aiohttp
 import csv
 import io
 import locale
@@ -25,7 +25,7 @@ except:
         pass  # Fallback to default if French locale not available
 
 
-def get_schedule_data(spreadsheet_url: str, gid: str) -> List[List[str]]:
+async def get_schedule_data(spreadsheet_url: str, gid: str) -> List[List[str]]:
     """
     Fetch schedule data from Google Sheets.
     
@@ -51,16 +51,19 @@ def get_schedule_data(spreadsheet_url: str, gid: str) -> List[List[str]]:
     export_url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/export?format=csv&gid={gid}"
     
     try:
-        response = requests.get(export_url, timeout=30)
-        response.raise_for_status()
-        data = response.content.decode('utf-8')
-        reader = list(csv.reader(io.StringIO(data)))
-        
-        # Return the relevant rows (skip header rows, adjust based on sheet structure)
-        # This may need adjustment based on the actual sheet structure
-        return reader[8:92] + reader[102:] if len(reader) > 102 else reader
+        async with aiohttp.ClientSession() as session:
+            async with session.get(export_url, timeout=aiohttp.ClientTimeout(total=30)) as response:
+                response.raise_for_status()
+                data = await response.text()
+                reader = list(csv.reader(io.StringIO(data)))
+                
+                # Return the relevant rows (skip header rows, adjust based on sheet structure)
+                # This may need adjustment based on the actual sheet structure
+                return reader[8:92] + reader[102:] if len(reader) > 102 else reader
     
-    except requests.RequestException as e:
+    except aiohttp.ClientError as e:
+        raise Exception(f"Failed to fetch schedule: {str(e)}")
+    except Exception as e:
         raise Exception(f"Failed to fetch schedule: {str(e)}")
 
 
@@ -214,7 +217,7 @@ async def update_schedule_for_channel(bot: commands.Bot, session, config: Schedu
             return
         
         # Fetch schedule data
-        schedule_data = get_schedule_data(config.spreadsheet_url, config.gid)
+        schedule_data = await get_schedule_data(config.spreadsheet_url, config.gid)
         
         # Filter for current week
         filtered_data, week_updated = filter_schedule_for_week(schedule_data)

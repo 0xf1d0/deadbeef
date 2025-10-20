@@ -16,3 +16,6 @@ PyJWT>=2.8.0
 
 # HTTP Client
 aiohttp>=3.11.0
+
+# RSS Feed
+feedparser>=6.0.0
