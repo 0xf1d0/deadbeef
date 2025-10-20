@@ -161,7 +161,7 @@ class News(commands.Cog):
         async with AsyncSessionLocal() as session:
             # Get all active news channels
             result = await session.execute(
-                select(NewsChannel).where(NewsChannel.is_active == 'true')
+                select(NewsChannel).where(NewsChannel.is_active == True)
             )
             news_channels = result.scalars().all()
             
@@ -172,7 +172,7 @@ class News(commands.Cog):
                 
                 # Process each active feed for this channel
                 for feed_config in news_channel.feeds:
-                    if feed_config.is_active != 'true':
+                    if not feed_config.is_active:
                         continue
                     
                     try:

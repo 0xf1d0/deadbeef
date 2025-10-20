@@ -18,10 +18,10 @@ from utils.utils import ROLE_NOTABLE, ROLE_MANAGER
 # Set French locale for date formatting
 try:
     locale.setlocale(locale.LC_TIME, 'fr_FR.UTF-8')
-except:
+except (locale.Error, ValueError):
     try:
         locale.setlocale(locale.LC_TIME, 'fr_FR')
-    except:
+    except (locale.Error, ValueError):
         pass  # Fallback to default if French locale not available
 
 
@@ -41,7 +41,7 @@ async def get_schedule_data(spreadsheet_url: str, gid: str) -> List[List[str]]:
     if '/d/' in spreadsheet_url:
         try:
             spreadsheet_id = spreadsheet_url.split('/d/')[1].split('/')[0]
-        except:
+        except (IndexError, AttributeError):
             raise ValueError("Could not extract spreadsheet ID from URL")
     
     if not spreadsheet_id:

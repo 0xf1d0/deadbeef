@@ -1,4 +1,7 @@
-import functools, os, asyncio, __main__
+import functools
+import os
+import asyncio
+import __main__
 
 from discord import Interaction, app_commands
 from discord.ext import commands, tasks
@@ -75,13 +78,16 @@ class Music(commands.Cog):
                 await ctx.followup.send(f"Erreur lors de la lecture de la vidéo: {e}")
 
     async def cleanup(self, ctx: Interaction, error, path: str):
+        """Clean up after playback finishes."""
         if error:
             print(f'Player error: {error}')
         if path:
             try:
                 await asyncio.sleep(1)
                 dirname = os.path.dirname(__main__.__file__)
-                os.remove(os.path.join(dirname, path))
+                filepath = os.path.join(dirname, path)
+                if os.path.exists(filepath):
+                    os.remove(filepath)
             except OSError as e:
                 print(f'Error deleting file: {e}')
         await self.play_next(ctx)

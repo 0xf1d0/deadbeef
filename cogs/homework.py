@@ -3,12 +3,96 @@ from discord.ext import commands, tasks
 from discord import app_commands, Interaction, Embed, Color, TextChannel
 from sqlalchemy import select
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Optional, List
 
 from db import AsyncSessionLocal, init_db
 from db.models import GradeChannelConfig, Course, Assignment
 from ui.homework import HomeworkMainView, AssignmentActionsView
-from utils.utils import ROLE_NOTABLE, ROLE_MANAGER
+from utils.utils import ROLE_NOTABLE, ROLE_MANAGER, ROLE_M1, ROLE_M2, ROLE_FI, ROLE_FA
+
+
+def get_roles_with_channel_access(channel: TextChannel) -> List[int]:
+    """
+    Get the list of role IDs that have access to view a channel.
+    
+    Args:
+        channel: The Discord channel to check
+    
+    Returns:
+        List of role IDs that have view_channel permission
+    """
+    roles_with_access = []
+    
+    # Check permission overwrites for specific roles
+    role_ids_to_check = {
+        'M1': ROLE_M1.id,
+        'M2': ROLE_M2.id,
+        'FI': ROLE_FI.id,
+        'FA': ROLE_FA.id,
+    }
+    
+    for role_name, role_id in role_ids_to_check.items():
+        # Get the role object from the guild
+        role = channel.guild.get_role(role_id)
+        if not role:
+            continue
+        
+        # Check if there's an overwrite for this role
+        overwrite = channel.overwrites_for(role)
+        
+        # Check view_channel permission
+        # If explicitly allowed (True), or not explicitly denied (None) and @everyone can see
+        if overwrite.view_channel is True:
+            roles_with_access.append(role_id)
+        elif overwrite.view_channel is None:
+            # Check @everyone permissions
+            everyone_role = channel.guild.default_role
+            everyone_overwrite = channel.overwrites_for(everyone_role)
+            if everyone_overwrite.view_channel is not False:
+                # If @everyone can view or it's not explicitly denied, and the role isn't denied
+                roles_with_access.append(role_id)
+    
+    return roles_with_access
+
+
+def get_role_mentions_for_channel(channel: TextChannel, grade_level: str) -> str:
+    """
+    Get the appropriate role mentions for a channel based on permissions.
+    
+    Args:
+        channel: The Discord channel
+        grade_level: The grade level (M1 or M2)
+    
+    Returns:
+        String with role mentions (e.g., "<@&M1_ID> <@&FI_ID>")
+    """
+    accessible_role_ids = get_roles_with_channel_access(channel)
+    
+    # Determine which grade role to mention
+    grade_role_map = {
+        'M1': ROLE_M1.id,
+        'M2': ROLE_M2.id,
+    }
+    
+    mentions = []
+    
+    # Add grade level mention if accessible
+    grade_role_id = grade_role_map.get(grade_level.upper())
+    if grade_role_id and grade_role_id in accessible_role_ids:
+        mentions.append(f"<@&{grade_role_id}>")
+    
+    # Add formation mentions (FI/FA) if accessible
+    if ROLE_FI.id in accessible_role_ids:
+        mentions.append(f"<@&{ROLE_FI.id}>")
+    
+    if ROLE_FA.id in accessible_role_ids:
+        mentions.append(f"<@&{ROLE_FA.id}>")
+    
+    # If no specific roles found, fall back to @everyone
+    if not mentions:
+        return "||@everyone||"
+    
+    return " ".join(mentions)
 
 
 async def update_homework_message(bot: commands.Bot, session, config: GradeChannelConfig):
@@ -289,8 +373,28 @@ class Homework(commands.Cog):
                         course = result.scalar_one_or_none()
                         
                         if course:
+                            # Send reminder to the homework to-do channel
                             channel = self.bot.get_channel(course.channel_id)
                             if channel:
+                                # Get the grade level from the course's grade channel config
+                                result_grade = await session.execute(
+                                    select(GradeChannelConfig).where(
+                                        GradeChannelConfig.channel_id == course.channel_id
+                                    )
+                                )
+                                grade_config = result_grade.scalar_one_or_none()
+                                grade_level = grade_config.grade_level if grade_config else "M1"
+                                
+                                # Get appropriate role mentions based on course channel permissions
+                                # Use course_channel_id if set, otherwise fall back to homework channel
+                                permission_channel_id = course.course_channel_id if course.course_channel_id else course.channel_id
+                                permission_channel = self.bot.get_channel(permission_channel_id)
+                                
+                                if permission_channel:
+                                    role_mentions = get_role_mentions_for_channel(permission_channel, grade_level)
+                                else:
+                                    role_mentions = "||@everyone||"
+                                
                                 embed = Embed(
                                     title=f"⏰ Assignment Reminder",
                                     description=f"The assignment **{assignment.title}** for {course.name} is due in **{label}**!",
@@ -314,7 +418,7 @@ class Homework(commands.Cog):
                                         inline=False
                                     )
                                 
-                                await channel.send("||@everyone||", embed=embed)
+                                await channel.send(role_mentions, embed=embed)
                         break
             
             # Commit status changes

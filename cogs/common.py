@@ -1,4 +1,6 @@
-import datetime, re
+import datetime
+import re
+import logging
 from typing import Optional
 from discord import app_commands, Interaction, Member, Embed, File, Color, Activity, ActivityType
 from discord.ext import tasks
@@ -13,6 +15,8 @@ from db.models import AuthenticatedUser, Professional
 
 from api.api import RootMe
 
+logger = logging.getLogger(__name__)
+
 
 class Common(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -21,10 +25,26 @@ class Common(commands.Cog):
     
     @commands.Cog.listener()
     async def on_ready(self):
-        welcome = self.bot.get_guild(CYBER.id).get_channel(WELCOME_CHANNEL.id)
-        welcome_message = await welcome.fetch_message(WELCOME_MESSAGE.id)
-
-        await welcome_message.edit(content=ConfigManager.get('welcome_message'), view=Authentication())
+        """Initialize welcome message on bot ready."""
+        try:
+            guild = self.bot.get_guild(CYBER.id)
+            if not guild:
+                logger.error(f"Guild {CYBER.id} not found")
+                return
+            
+            welcome = guild.get_channel(WELCOME_CHANNEL.id)
+            if not welcome:
+                logger.error(f"Welcome channel {WELCOME_CHANNEL.id} not found")
+                return
+            
+            welcome_message = await welcome.fetch_message(WELCOME_MESSAGE.id)
+            await welcome_message.edit(
+                content=ConfigManager.get('welcome_message'),
+                view=Authentication()
+            )
+            logger.info("Welcome message initialized successfully")
+        except Exception as e:
+            logger.error(f"Failed to initialize welcome message: {e}", exc_info=True)
         
     @commands.Cog.listener()
     async def on_member_join(self, member: Member):
@@ -56,9 +76,12 @@ class Common(commands.Cog):
         guild = interaction.guild
         invites = await guild.invites()
 
+        # Count non-bot members efficiently
+        member_count = sum(1 for member in guild.members if not member.bot)
+        
         embed = Embed(title=f'{guild.name}', description=f'Scannez ce QR Code pour rejoindre la communauté {guild.name}. 🚀', color=CYBER_COLOR)\
             .set_image(url='attachment://invite.png')\
-            .set_footer(text=f'{guild.name} - {len([member for member in guild.members if not member.bot])} membres', icon_url=guild.icon.url)
+            .set_footer(text=f'{guild.name} - {member_count} membres', icon_url=guild.icon.url)
         permanent_invite = next((inv for inv in invites if inv.max_age == 0), None)
         if permanent_invite:
             embed.add_field(name="Lien", value=f'{permanent_invite.url}')
@@ -192,7 +215,19 @@ class Common(commands.Cog):
                         for c in challenges[:10]:
                             title = re.sub(r'&[^;]*;', '', c.get('titre', 'Challenge').strip())
                             challenge_url = re.sub(r'[\s-]+', '-', title)
-                            challenges_text.append(f"- [{title}](https://www.root-me.org/{challenge_url}) <t:{int(datetime.datetime.strptime(c.get('date', datetime.datetime.now()), '%Y-%m-%d %H:%M:%S').timestamp())}:R>")
+                            
+                            # Safely parse date
+                            date_str = c.get('date', '')
+                            if date_str and isinstance(date_str, str):
+                                try:
+                                    challenge_dt = datetime.datetime.strptime(date_str, '%Y-%m-%d %H:%M:%S')
+                                    timestamp = int(challenge_dt.timestamp())
+                                except (ValueError, TypeError):
+                                    timestamp = int(datetime.datetime.now().timestamp())
+                            else:
+                                timestamp = int(datetime.datetime.now().timestamp())
+                            
+                            challenges_text.append(f"- [{title}](https://www.root-me.org/{challenge_url}) <t:{timestamp}:R>")
                         
                         embed.add_field(
                             name=f"🚩 __Challenges récents__ ({len(challenges)} validés)",
@@ -221,10 +256,12 @@ class Common(commands.Cog):
         """Update the bot's status."""
         guild = self.bot.get_guild(CYBER.id)
         if guild:
+            # Count non-bot members efficiently
+            member_count = sum(1 for member in guild.members if not member.bot)
             await self.bot.change_presence(
                 activity=Activity(
                     type=ActivityType.watching,
-                    name=f"{len([member for member in guild.members if not member.bot])} members"
+                    name=f"{member_count} members"
                 )
             )
     

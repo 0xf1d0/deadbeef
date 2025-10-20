@@ -454,6 +454,13 @@ class AddCourseModal(ui.Modal, title="Add Course"):
         max_length=100
     )
     
+    course_channel_id = ui.TextInput(
+        label="Course Channel ID (Optional)",
+        placeholder="Right-click channel > Copy ID",
+        required=False,
+        max_length=20
+    )
+    
     def __init__(self, session: AsyncSession, channel_id: int):
         super().__init__()
         self.db_session = session
@@ -476,10 +483,31 @@ class AddCourseModal(ui.Modal, title="Add Course"):
             )
             return
         
+        # Parse course channel ID if provided
+        course_channel_id = None
+        if self.course_channel_id.value:
+            try:
+                course_channel_id = int(self.course_channel_id.value.strip())
+                # Verify the channel exists
+                channel = interaction.guild.get_channel(course_channel_id)
+                if not channel:
+                    await interaction.response.send_message(
+                        f"❌ Channel with ID {course_channel_id} not found in this server.",
+                        ephemeral=True
+                    )
+                    return
+            except ValueError:
+                await interaction.response.send_message(
+                    f"❌ Invalid channel ID format. Please enter a valid numeric ID.",
+                    ephemeral=True
+                )
+                return
+        
         # Create course
         course = Course(
             name=self.course_name.value,
-            channel_id=self.channel_id
+            channel_id=self.channel_id,
+            course_channel_id=course_channel_id
         )
         self.db_session.add(course)
         await self.db_session.commit()
@@ -530,6 +558,13 @@ class EditCourseModal(ui.Modal, title="Edit Course"):
     
     course_name = ui.TextInput(label="Course Name", required=True, max_length=100)
     
+    course_channel_id = ui.TextInput(
+        label="Course Channel ID (Optional)",
+        placeholder="Right-click channel > Copy ID",
+        required=False,
+        max_length=20
+    )
+    
     def __init__(self, session: AsyncSession, course: Course):
         super().__init__()
         self.db_session = session
@@ -537,6 +572,8 @@ class EditCourseModal(ui.Modal, title="Edit Course"):
         
         # Pre-fill with existing data
         self.course_name.default = course.name
+        if course.course_channel_id:
+            self.course_channel_id.default = str(course.course_channel_id)
     
     async def on_submit(self, interaction: Interaction):
         # Check if new name conflicts
@@ -556,8 +593,29 @@ class EditCourseModal(ui.Modal, title="Edit Course"):
                 )
                 return
         
+        # Parse course channel ID if provided
+        course_channel_id = None
+        if self.course_channel_id.value:
+            try:
+                course_channel_id = int(self.course_channel_id.value.strip())
+                # Verify the channel exists
+                channel = interaction.guild.get_channel(course_channel_id)
+                if not channel:
+                    await interaction.response.send_message(
+                        f"❌ Channel with ID {course_channel_id} not found in this server.",
+                        ephemeral=True
+                    )
+                    return
+            except ValueError:
+                await interaction.response.send_message(
+                    f"❌ Invalid channel ID format. Please enter a valid numeric ID.",
+                    ephemeral=True
+                )
+                return
+        
         # Update course
         self.course.name = self.course_name.value
+        self.course.course_channel_id = course_channel_id
         await self.db_session.commit()
         
         # Update the main message

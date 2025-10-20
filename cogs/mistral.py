@@ -46,7 +46,7 @@ class Mistral(commands.Cog):
         if replied_message and replied_message.author == self.bot.user or 'deadbeef' in msg or f'<@{self.bot.user.id}>' in msg:
             new = {
                 'role': 'user',
-                'content': re.sub(r'<@1291395104023773225>|deadbeef', '', message.content)
+                'content': re.sub(rf'<@{self.bot.user.id}>|deadbeef', '', message.content, flags=re.IGNORECASE)
             }
             if channel_id in self.conversations:
                 self.conversations[channel_id].append(new)
