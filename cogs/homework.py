@@ -224,9 +224,7 @@ async def update_homework_message(bot: commands.Bot, session, config: GradeChann
     
     # Only add timestamp if content changed
     if content_changed:
-        footer_embed.set_footer(text=f"Last updated: {datetime.now().strftime('%d/%m/%Y %H:%M')} #{content_hash}")
-    else:
-        footer_embed.set_footer(text=f"#{content_hash}")
+        footer_embed.set_footer(text=f"Last updated: {datetime.now().strftime('%d/%m/%Y %H:%M')}")
     
     embeds.append(footer_embed)
     
