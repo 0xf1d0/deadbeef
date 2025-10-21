@@ -20,19 +20,14 @@ def get_role_mentions_for_channel(channel: TextChannel, grade_level: str) -> str
         grade_level: The grade level (M1 or M2)
     
     Returns:
-        String with role mentions (e.g., "<@&M1_ID> <@&FI_ID>")
+        String with role mentions
     """
-    mentions = []
-    
-    # Always mention the grade level (M1 or M2)
+    # Get grade role ID
     grade_role_map = {
         'M1': ROLE_M1.id,
         'M2': ROLE_M2.id,
     }
-    
     grade_role_id = grade_role_map.get(grade_level.upper())
-    if grade_role_id:
-        mentions.append(f"<@&{grade_role_id}>")
     
     # Check if FI role is explicitly DENIED view_channel permission
     fi_role = channel.guild.get_role(ROLE_FI.id)
@@ -50,15 +45,19 @@ def get_role_mentions_for_channel(channel: TextChannel, grade_level: str) -> str
         if fa_overwrite.view_channel is False:
             fa_denied = True
     
-    # Mention FI if not denied
-    if not fi_denied:
-        mentions.append(f"<@&{ROLE_FI.id}>")
-    
-    # Mention FA if not denied
-    if not fa_denied:
-        mentions.append(f"<@&{ROLE_FA.id}>")
-    
-    return " ".join(mentions)
+    # Logic:
+    # - If FA is denied → mention only @FI
+    # - If FI is denied → mention only @FA
+    # - If both can access → mention only @M1
+    if fa_denied and not fi_denied:
+        # Only FI can access
+        return f"<@&{ROLE_FI.id}>"
+    elif fi_denied and not fa_denied:
+        # Only FA can access
+        return f"<@&{ROLE_FA.id}>"
+    else:
+        # Both can access (or both denied which is impossible) → mention grade level
+        return f"<@&{grade_role_id}>" if grade_role_id else "||@everyone||"
 
 
 async def update_homework_message(bot: commands.Bot, session, config: GradeChannelConfig):
@@ -205,15 +204,18 @@ class Homework(commands.Cog):
     
     def __init__(self, bot: commands.Bot):
         self.bot = bot
+        print("[HOMEWORK] Cog initialized, starting reminder task...")
         self.check_reminders.start()
     
     async def cog_load(self):
         """Initialize database when cog loads."""
         await init_db()
+        print("[HOMEWORK] Database initialized")
     
     def cog_unload(self):
         """Stop the reminder task when cog unloads."""
         self.check_reminders.cancel()
+        print("[HOMEWORK] Cog unloaded, reminder task cancelled")
     
     @app_commands.command(
         name="homework",
@@ -334,6 +336,7 @@ class Homework(commands.Cog):
             assignments = result.scalars().all()
             
             now = datetime.now()
+            print(f"[HOMEWORK] {now.strftime('%H:%M:%S')} - Checking {len(assignments)} active assignment(s) for reminders")
             
             for assignment in assignments:
                 time_until_due = assignment.due_date - now
@@ -344,17 +347,19 @@ class Homework(commands.Cog):
                     continue
                 
                 # Check reminder thresholds
-                # We'll use a simple approach: remind at 7 days, 1 day, and 1 hour
+                # Remind at: 7 days, 1 day, 1 hour before, and AT DUE TIME
                 # To avoid duplicate reminders, we'll check if we're within a small window
                 
                 reminder_windows = [
                     (timedelta(days=7), timedelta(days=7, minutes=30), "1 week"),
                     (timedelta(days=1), timedelta(days=1, minutes=30), "1 day"),
                     (timedelta(hours=1), timedelta(hours=1, minutes=30), "1 hour"),
+                    (timedelta(minutes=-5), timedelta(minutes=5), "NOW - DUE!"),  # At due time (±5 min)
                 ]
                 
                 for threshold, window, label in reminder_windows:
                     if threshold <= time_until_due < window:
+                        print(f"[HOMEWORK] ⏰ REMINDER TRIGGERED for '{assignment.title}' - Due in {label}!")
                         # Send reminder
                         result = await session.execute(
                             select(Course).where(Course.id == assignment.course_id)
@@ -412,6 +417,7 @@ class Homework(commands.Cog):
                                 
                                 # Send to homework to-do channel with role mentions
                                 await channel.send(role_mentions, embed=embed)
+                                print(f"[HOMEWORK] ✅ Reminder sent to {channel.name} - Mentioned: {role_mentions}")
                         break
             
             # Commit status changes
@@ -427,7 +433,9 @@ class Homework(commands.Cog):
     @check_reminders.before_loop
     async def before_check_reminders(self):
         """Wait until the bot is ready before starting the reminder task."""
+        print("[HOMEWORK] Waiting for bot to be ready...")
         await self.bot.wait_until_ready()
+        print("[HOMEWORK] Bot ready! Starting reminder checks every minute.")
 
 
 async def setup(bot: commands.Bot):
