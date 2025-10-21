@@ -41,8 +41,7 @@ class Category(Base, TimestampMixin):
     tools: Mapped[List["Tool"]] = relationship(
         'Tool',
         back_populates='category',
-        cascade='all, delete-orphan',
-        lazy='selectinload'
+        cascade='all, delete-orphan'
     )
     
     def __repr__(self) -> str:
@@ -115,8 +114,7 @@ class GradeChannelConfig(Base, TimestampMixin):
     courses: Mapped[List["Course"]] = relationship(
         'Course',
         back_populates='grade_channel',
-        cascade='all, delete-orphan',
-        lazy='selectinload'
+        cascade='all, delete-orphan'
     )
     
     def __repr__(self) -> str:
@@ -146,8 +144,7 @@ class Course(Base, TimestampMixin):
     assignments: Mapped[List["Assignment"]] = relationship(
         'Assignment',
         back_populates='course',
-        cascade='all, delete-orphan',
-        lazy='selectinload'
+        cascade='all, delete-orphan'
     )
     
     def __repr__(self) -> str:
@@ -229,8 +226,7 @@ class NewsChannel(Base, TimestampMixin):
     feeds: Mapped[List["NewsFeed"]] = relationship(
         'NewsFeed',
         back_populates='channel',
-        cascade='all, delete-orphan',
-        lazy='selectinload'
+        cascade='all, delete-orphan'
     )
     
     def __repr__(self) -> str:
@@ -261,8 +257,7 @@ class NewsFeed(Base, TimestampMixin):
     sent_entries: Mapped[List["SentNewsEntry"]] = relationship(
         'SentNewsEntry',
         back_populates='feed',
-        cascade='all, delete-orphan',
-        lazy='selectinload'
+        cascade='all, delete-orphan'
     )
     
     def __repr__(self) -> str:
@@ -336,8 +331,7 @@ class Professional(Base, TimestampMixin):
     course_channels: Mapped[List["ProfessionalCourseChannel"]] = relationship(
         'ProfessionalCourseChannel',
         back_populates='professional',
-        cascade='all, delete-orphan',
-        lazy='selectinload'
+        cascade='all, delete-orphan'
     )
     
     @property
