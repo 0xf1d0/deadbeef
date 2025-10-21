@@ -602,8 +602,19 @@ class SelectHomeworkChannelView(ui.View):
                 await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
             
             elif self.action == "add_course":
-                modal = AddCourseModal(session, channel_id)
-                await interaction.response.send_modal(modal)
+                # Show channel select for course channel
+                view = SelectCourseChannelView(channel_id)
+                embed = Embed(
+                    title="📘 Add Course",
+                    description=f"Homework channel: <#{channel_id}>\n\nSelect the course channel (where the course content is):",
+                    color=discord.Color.blurple()
+                )
+                embed.add_field(
+                    name="ℹ️ Why select a course channel?",
+                    value="This helps the bot mention only the right roles (FI/FA) for homework reminders based on channel permissions.",
+                    inline=False
+                )
+                await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
             
             elif self.action == "edit_course":
                 # Get courses
@@ -924,6 +935,48 @@ class DeleteAssignmentSelect(ui.View):
 # Course Management
 # ============================================================================
 
+class SelectCourseChannelView(ui.View):
+    """View for selecting the course channel when adding a course."""
+    
+    def __init__(self, homework_channel_id: int):
+        super().__init__(timeout=300)
+        self.homework_channel_id = homework_channel_id
+        
+        # Add channel select
+        channel_select = ui.ChannelSelect(
+            placeholder="Select course channel...",
+            channel_types=[ChannelType.text],
+            custom_id="select_course_channel"
+        )
+        channel_select.callback = self.channel_selected
+        self.add_item(channel_select)
+        
+        # Add skip button
+        skip_button = ui.Button(label="Skip (No channel)", style=ButtonStyle.secondary)
+        skip_button.callback = self.skip_channel
+        self.add_item(skip_button)
+    
+    async def channel_selected(self, interaction: Interaction):
+        """Handle course channel selection."""
+        from db import AsyncSessionLocal
+        
+        course_channel_id = self.children[0].values[0].id
+        
+        # Show modal for course name
+        async with AsyncSessionLocal() as session:
+            modal = AddCourseModal(session, self.homework_channel_id, course_channel_id)
+            await interaction.response.send_modal(modal)
+    
+    async def skip_channel(self, interaction: Interaction):
+        """Skip course channel selection."""
+        from db import AsyncSessionLocal
+        
+        # Show modal without course channel
+        async with AsyncSessionLocal() as session:
+            modal = AddCourseModal(session, self.homework_channel_id, None)
+            await interaction.response.send_modal(modal)
+
+
 class AddCourseModal(ui.Modal, title="Add Course"):
     """Modal for adding a new course."""
     
@@ -934,17 +987,11 @@ class AddCourseModal(ui.Modal, title="Add Course"):
         max_length=100
     )
     
-    course_channel_id = ui.TextInput(
-        label="Course Channel ID (Optional)",
-        placeholder="Right-click channel > Copy ID",
-        required=False,
-        max_length=20
-    )
-    
-    def __init__(self, session: AsyncSession, channel_id: int):
+    def __init__(self, session: AsyncSession, channel_id: int, course_channel_id: int = None):
         super().__init__()
         self.db_session = session
         self.channel_id = channel_id
+        self.course_channel_id = course_channel_id
     
     async def on_submit(self, interaction: Interaction):
         # Check if course already exists
@@ -963,31 +1010,11 @@ class AddCourseModal(ui.Modal, title="Add Course"):
             )
             return
         
-        # Parse course channel ID if provided
-        course_channel_id = None
-        if self.course_channel_id.value:
-            try:
-                course_channel_id = int(self.course_channel_id.value.strip())
-                # Verify the channel exists
-                channel = interaction.guild.get_channel(course_channel_id)
-                if not channel:
-                    await interaction.response.send_message(
-                        f"❌ Channel with ID {course_channel_id} not found in this server.",
-                        ephemeral=True
-                    )
-                    return
-            except ValueError:
-                await interaction.response.send_message(
-                    f"❌ Invalid channel ID format. Please enter a valid numeric ID.",
-                    ephemeral=True
-                )
-                return
-        
         # Create course
         course = Course(
             name=self.course_name.value,
             channel_id=self.channel_id,
-            course_channel_id=course_channel_id
+            course_channel_id=self.course_channel_id
         )
         self.db_session.add(course)
         await self.db_session.commit()
@@ -1002,10 +1029,12 @@ class AddCourseModal(ui.Modal, title="Add Course"):
             from cogs.homework import update_homework_message
             await update_homework_message(interaction.client, self.db_session, config)
         
-        await interaction.response.send_message(
-            f"✅ Course '{self.course_name.value}' added successfully!",
-            ephemeral=True
-        )
+        # Build success message
+        message = f"✅ Course **{self.course_name.value}** added successfully!"
+        if self.course_channel_id:
+            message += f"\n📍 Course channel: <#{self.course_channel_id}>"
+        
+        await interaction.response.send_message(message, ephemeral=True)
 
 
 class EditCourseSelect(ui.View):
