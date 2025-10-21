@@ -7,7 +7,6 @@ from typing import Optional, List
 
 from db import AsyncSessionLocal, init_db
 from db.models import GradeChannelConfig, Course, Assignment
-from ui.homework import HomeworkMainView, AssignmentActionsView
 from utils import ROLE_NOTABLE, ROLE_MANAGER, ROLE_M1, ROLE_M2, ROLE_FI, ROLE_FA
 
 
@@ -113,7 +112,7 @@ async def update_homework_message(bot: commands.Bot, session, config: GradeChann
     if not courses:
         embed = Embed(
             title=f"📚 {config.grade_level} - Homework To-Do List",
-            description="No courses have been added yet.\n\nUse the '📘 Manage Courses' button below to add courses.",
+            description="No courses have been added yet.",
             color=Color.blue()
         )
         embeds.append(embed)
@@ -121,7 +120,7 @@ async def update_homework_message(bot: commands.Bot, session, config: GradeChann
         # Add a header embed
         header_embed = Embed(
             title=f"📚 {config.grade_level} - Homework To-Do List",
-            description=f"Track your assignments and deadlines for {config.grade_level} courses.\n\u200b",
+            description=f"View all assignments and deadlines for {config.grade_level} courses.\n\u200b",
             color=Color.blue()
         )
         embeds.append(header_embed)
@@ -157,8 +156,8 @@ async def update_homework_message(bot: commands.Bot, session, config: GradeChann
                     if assignment.modality:
                         field_value += f"📝 Modality: {assignment.modality}\n"
                     
-                    # Add action buttons mention
-                    field_value += f"\n*ID: {assignment.id}* - Use buttons below to manage"
+                    # Add assignment ID for reference
+                    field_value += f"\n*Assignment ID: {assignment.id}*"
                     
                     # Check if overdue
                     if assignment.due_date < datetime.now():
@@ -189,22 +188,19 @@ async def update_homework_message(bot: commands.Bot, session, config: GradeChann
     footer_embed.set_footer(text=f"Last updated: {datetime.now().strftime('%d/%m/%Y %H:%M')}")
     embeds.append(footer_embed)
     
-    # Create the view
-    view = HomeworkMainView()
-    
-    # Update or create message
+    # Update or create message (no view/buttons - display only)
     try:
         if config.message_id:
             try:
                 message = await channel.fetch_message(config.message_id)
-                await message.edit(embeds=embeds, view=view)
+                await message.edit(embeds=embeds)
             except:
                 # Message was deleted, create new one
-                message = await channel.send(embeds=embeds, view=view)
+                message = await channel.send(embeds=embeds)
                 config.message_id = message.id
                 await session.commit()
         else:
-            message = await channel.send(embeds=embeds, view=view)
+            message = await channel.send(embeds=embeds)
             config.message_id = message.id
             await session.commit()
     except Exception as e:
@@ -227,111 +223,32 @@ class Homework(commands.Cog):
         self.check_reminders.cancel()
     
     @app_commands.command(
-        name="setup_homework_channel",
-        description="Set up this channel for homework tracking (Admin/Manager only)."
+        name="homework",
+        description="Homework management dashboard (Admin/Manager only)."
     )
-    @app_commands.describe(grade_level="The grade level (e.g., M1, M2)")
     @app_commands.checks.has_any_role(ROLE_MANAGER.id, ROLE_NOTABLE.id)
-    async def setup_homework_channel(self, interaction: Interaction, grade_level: str):
-        """Set up a channel for homework tracking."""
-        async with AsyncSessionLocal() as session:
-            # Check if channel is already configured
-            result = await session.execute(
-                select(GradeChannelConfig).where(
-                    GradeChannelConfig.channel_id == interaction.channel_id
-                )
-            )
-            existing = result.scalar_one_or_none()
-            
-            if existing:
-                await interaction.response.send_message(
-                    f"❌ This channel is already configured for {existing.grade_level}.",
-                    ephemeral=True
-                )
-                return
-            
-            # Check if grade level is already used
-            result = await session.execute(
-                select(GradeChannelConfig).where(
-                    GradeChannelConfig.grade_level == grade_level
-                )
-            )
-            existing_grade = result.scalar_one_or_none()
-            
-            if existing_grade:
-                await interaction.response.send_message(
-                    f"❌ Grade level '{grade_level}' is already configured in another channel.",
-                    ephemeral=True
-                )
-                return
-            
-            # Create configuration
-            config = GradeChannelConfig(
-                channel_id=interaction.channel_id,
-                grade_level=grade_level
-            )
-            session.add(config)
-            await session.commit()
-            await session.refresh(config)
-            
-            # Send initial message
-            await update_homework_message(self.bot, session, config)
-            
-            await interaction.response.send_message(
-                f"✅ This channel is now set up for {grade_level} homework tracking!",
-                ephemeral=True
-            )
-    
-    @app_commands.command(
-        name="assignment_actions",
-        description="Manage a specific assignment (Notable/Manager only)."
-    )
-    @app_commands.describe(assignment_id="The ID of the assignment")
-    @app_commands.checks.has_any_role(ROLE_MANAGER.id, ROLE_NOTABLE.id)
-    async def assignment_actions(self, interaction: Interaction, assignment_id: int):
-        """Show action buttons for an assignment."""
-        async with AsyncSessionLocal() as session:
-            result = await session.execute(
-                select(Assignment).where(Assignment.id == assignment_id)
-            )
-            assignment = result.scalar_one_or_none()
-            
-            if not assignment:
-                await interaction.response.send_message(
-                    "❌ Assignment not found.",
-                    ephemeral=True
-                )
-                return
-            
-            # Verify assignment belongs to this channel
-            result = await session.execute(
-                select(Course).where(Course.id == assignment.course_id)
-            )
-            course = result.scalar_one_or_none()
-            
-            if not course or course.channel_id != interaction.channel_id:
-                await interaction.response.send_message(
-                    "❌ Assignment not found in this channel.",
-                    ephemeral=True
-                )
-                return
-            
-            view = AssignmentActionsView(assignment_id)
-            embed = Embed(
-                title=f"📝 {assignment.title}",
-                description=f"**Course:** {course.name}\n"
-                           f"**Due:** <t:{int(assignment.due_date.timestamp())}:F>\n"
-                           f"**Status:** {assignment.status}",
-                color=Color.blue()
-            )
-            
-            if assignment.description:
-                embed.add_field(name="Description", value=assignment.description, inline=False)
-            
-            if assignment.modality:
-                embed.add_field(name="Modality", value=assignment.modality, inline=False)
-            
-            await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+    async def homework(self, interaction: Interaction):
+        """Open homework management dashboard."""
+        from ui.homework import HomeworkAdminPanel
+        
+        view = HomeworkAdminPanel()
+        embed = Embed(
+            title="📚 Homework Management Dashboard",
+            description="Select an action from the menu below to manage homework assignments and courses.",
+            color=Color.blue()
+        )
+        embed.add_field(
+            name="Available Actions",
+            value="• Setup new homework channel\n"
+                  "• Add/edit/delete assignments\n"
+                  "• Add/edit/delete courses\n"
+                  "• Refresh to-do lists\n"
+                  "• View statistics",
+            inline=False
+        )
+        embed.set_footer(text="Use the select menu below to get started")
+        
+        await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
     
     @tasks.loop(minutes=30)
     async def check_reminders(self):

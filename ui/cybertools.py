@@ -413,6 +413,143 @@ class ApprovalEditModal(ui.Modal, title="Edit & Approve Tool"):
             pass  # User might have DMs disabled
 
 
+class CyberToolsAdminPanel(ui.View):
+    """Admin panel with select menu for tool management."""
+    
+    def __init__(self, bot):
+        super().__init__(timeout=300)
+        self.bot = bot
+        
+        # Create select menu with all admin options
+        options = [
+            SelectOption(
+                label="Manage Tools & Categories",
+                description="Add, edit, or delete tools and categories",
+                value="manage",
+                emoji="🔧"
+            ),
+            SelectOption(
+                label="Review Suggestions",
+                description="View and approve/deny tool suggestions",
+                value="suggestions",
+                emoji="📋"
+            ),
+            SelectOption(
+                label="View Statistics",
+                description="Show tool database statistics",
+                value="stats",
+                emoji="📊"
+            ),
+        ]
+        
+        select = ui.Select(
+            placeholder="Select an action...",
+            options=options,
+            custom_id="cybertools_admin_select"
+        )
+        select.callback = self.action_selected
+        self.add_item(select)
+    
+    async def action_selected(self, interaction: Interaction):
+        """Handle admin action selection."""
+        from db import AsyncSessionLocal
+        
+        action = self.children[0].values[0]
+        
+        if action == "manage":
+            # Show tool/category management panel
+            view = AdminPanelView()
+            embed = Embed(
+                title="🔐 Admin Tool Management",
+                description="Choose an action to manage tools and categories:",
+                color=discord.Color.gold()
+            )
+            await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+        
+        elif action == "suggestions":
+            async with AsyncSessionLocal() as session:
+                # Fetch pending suggestions
+                result = await session.execute(
+                    select(ToolSuggestion).where(ToolSuggestion.status == 'pending')
+                )
+                suggestions = result.scalars().all()
+                
+                if not suggestions:
+                    embed = Embed(
+                        title="📋 Tool Suggestions",
+                        description="No pending suggestions.",
+                        color=discord.Color.green()
+                    )
+                    await interaction.response.send_message(embed=embed, ephemeral=True)
+                    return
+                
+                embed = Embed(
+                    title="📋 Tool Suggestions",
+                    description=f"There are **{len(suggestions)}** pending suggestion(s).",
+                    color=discord.Color.orange()
+                )
+                
+                for suggestion in suggestions[:25]:  # Limit to 25
+                    try:
+                        user = await self.bot.fetch_user(suggestion.suggester_id)
+                        user_mention = user.mention if user else 'Unknown'
+                    except:
+                        user_mention = 'Unknown'
+                    
+                    embed.add_field(
+                        name=f"ID: {suggestion.id} - {suggestion.tool_name}",
+                        value=f"Category: {suggestion.category_suggestion}\n"
+                              f"By: {user_mention}\n"
+                              f"[URL]({suggestion.tool_url})",
+                        inline=False
+                    )
+                
+                await interaction.response.send_message(embed=embed, ephemeral=True)
+        
+        elif action == "stats":
+            async with AsyncSessionLocal() as session:
+                # Get statistics
+                categories_result = await session.execute(select(Category))
+                categories = categories_result.scalars().all()
+                
+                tools_result = await session.execute(select(Tool))
+                tools = tools_result.scalars().all()
+                
+                suggestions_result = await session.execute(select(ToolSuggestion))
+                suggestions = suggestions_result.scalars().all()
+                
+                pending_suggestions = sum(1 for s in suggestions if s.status == 'pending')
+                approved_suggestions = sum(1 for s in suggestions if s.status == 'approved')
+                denied_suggestions = sum(1 for s in suggestions if s.status == 'denied')
+                
+                embed = Embed(
+                    title="📊 Cybersecurity Tools Statistics",
+                    description="Overview of the tool database:",
+                    color=discord.Color.blue()
+                )
+                embed.add_field(name="📁 Categories", value=str(len(categories)), inline=True)
+                embed.add_field(name="🔧 Tools", value=str(len(tools)), inline=True)
+                embed.add_field(name="📝 Total Suggestions", value=str(len(suggestions)), inline=True)
+                embed.add_field(name="⏳ Pending", value=str(pending_suggestions), inline=True)
+                embed.add_field(name="✅ Approved", value=str(approved_suggestions), inline=True)
+                embed.add_field(name="❌ Denied", value=str(denied_suggestions), inline=True)
+                
+                # Category breakdown
+                if categories:
+                    category_info = []
+                    for cat in categories:
+                        tool_count = len(cat.tools)
+                        category_info.append(f"• **{cat.name}**: {tool_count} tool(s)")
+                    
+                    embed.add_field(
+                        name="Category Breakdown",
+                        value="\n".join(category_info) or "No categories",
+                        inline=False
+                    )
+                
+                await interaction.response.send_message(embed=embed, ephemeral=True)
+
+
 class AdminPanelView(ui.View):
     """Main admin panel view."""
     
