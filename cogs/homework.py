@@ -96,6 +96,8 @@ def get_role_mentions_for_channel(channel: TextChannel, grade_level: str) -> str
 
 async def update_homework_message(bot: commands.Bot, session, config: GradeChannelConfig):
     """Update the homework to-do list message in a channel."""
+    import hashlib
+    
     channel = bot.get_channel(config.channel_id)
     if not channel:
         return
@@ -108,6 +110,8 @@ async def update_homework_message(bot: commands.Bot, session, config: GradeChann
     
     # Create embeds for each course
     embeds = []
+    content_parts = []  # Track content for change detection
+    has_courses_with_assignments = False
     
     if not courses:
         embed = Embed(
@@ -116,6 +120,7 @@ async def update_homework_message(bot: commands.Bot, session, config: GradeChann
             color=Color.blue()
         )
         embeds.append(embed)
+        content_parts.append("no_courses")
     else:
         # Add a header embed
         header_embed = Embed(
@@ -125,7 +130,7 @@ async def update_homework_message(bot: commands.Bot, session, config: GradeChann
         )
         embeds.append(header_embed)
         
-        # Create an embed for each course
+        # Create an embed for each course (only if it has active assignments)
         for course in sorted(courses, key=lambda c: c.name):
             # Get active assignments sorted by due date
             active_assignments = [
@@ -134,58 +139,95 @@ async def update_homework_message(bot: commands.Bot, session, config: GradeChann
             ]
             active_assignments.sort(key=lambda a: a.due_date)
             
+            # Skip courses with no active assignments
+            if not active_assignments:
+                continue
+            
+            has_courses_with_assignments = True
+            
             course_embed = Embed(
                 title=f"🎓 {course.name.upper()}",
-                color=Color.green() if active_assignments else Color.greyple()
+                color=Color.green()
             )
             
-            if not active_assignments:
-                course_embed.description = "*No active assignments*"
-            else:
-                for assignment in active_assignments:
-                    # Format the field value
-                    field_value = ""
-                    
-                    if assignment.description:
-                        field_value += f"_{assignment.description}_\n"
-                    
-                    # Format due date as Discord timestamp
-                    timestamp = int(assignment.due_date.timestamp())
-                    field_value += f"📅 Due: <t:{timestamp}:F> (<t:{timestamp}:R>)\n"
-                    
-                    if assignment.modality:
-                        field_value += f"📝 Modality: {assignment.modality}\n"
-                    
-                    # Add assignment ID for reference
-                    field_value += f"\n*Assignment ID: {assignment.id}*"
-                    
-                    # Check if overdue
-                    if assignment.due_date < datetime.now():
-                        field_name = f"⚠️ {assignment.title} (OVERDUE)"
+            for assignment in active_assignments:
+                # Format the field value
+                field_value = ""
+                
+                if assignment.description:
+                    field_value += f"_{assignment.description}_\n"
+                
+                # Format due date as Discord timestamp
+                timestamp = int(assignment.due_date.timestamp())
+                field_value += f"📅 Due: <t:{timestamp}:F> (<t:{timestamp}:R>)"
+                
+                if assignment.modality:
+                    field_value += f"\n📝 Modality: {assignment.modality}"
+                
+                # Check if overdue
+                if assignment.due_date < datetime.now():
+                    field_name = f"⚠️ {assignment.title} (OVERDUE)"
+                else:
+                    # Check if due soon
+                    time_until_due = assignment.due_date - datetime.now()
+                    if time_until_due < timedelta(days=1):
+                        field_name = f"🔴 {assignment.title}"
+                    elif time_until_due < timedelta(days=7):
+                        field_name = f"🟡 {assignment.title}"
                     else:
-                        # Check if due soon
-                        time_until_due = assignment.due_date - datetime.now()
-                        if time_until_due < timedelta(days=1):
-                            field_name = f"🔴 {assignment.title}"
-                        elif time_until_due < timedelta(days=7):
-                            field_name = f"🟡 {assignment.title}"
-                        else:
-                            field_name = f"📝 {assignment.title}"
-                    
-                    course_embed.add_field(
-                        name=field_name,
-                        value=field_value,
-                        inline=False
-                    )
+                        field_name = f"📝 {assignment.title}"
+                
+                course_embed.add_field(
+                    name=field_name,
+                    value=field_value,
+                    inline=False
+                )
+                
+                # Track content for change detection (exclude timestamps for relative changes)
+                content_parts.append(f"{course.name}:{assignment.id}:{assignment.title}:{assignment.status}")
             
             embeds.append(course_embed)
+        
+        # If no courses have active assignments, show a message
+        if not has_courses_with_assignments:
+            no_assignments_embed = Embed(
+                description="✨ No active assignments at the moment!",
+                color=Color.green()
+            )
+            embeds.append(no_assignments_embed)
+            content_parts.append("no_active_assignments")
     
     # Add footer embed
     footer_embed = Embed(
         description="\u200b\n**Legend:**\n🔴 Due within 24 hours\n🟡 Due within 7 days\n📝 Active assignment\n⚠️ Overdue",
         color=Color.light_gray()
     )
-    footer_embed.set_footer(text=f"Last updated: {datetime.now().strftime('%d/%m/%Y %H:%M')}")
+    
+    # Compute content hash to detect actual changes
+    content_hash = hashlib.md5("".join(content_parts).encode()).hexdigest()
+    
+    # Check if content actually changed
+    content_changed = True
+    if config.message_id:
+        try:
+            message = await channel.fetch_message(config.message_id)
+            # Check if we have stored hash in message footer (if it exists)
+            if message.embeds and len(message.embeds) > 0:
+                last_embed = message.embeds[-1]
+                if last_embed.footer and last_embed.footer.text:
+                    # Extract hash from footer if present
+                    if "#" in last_embed.footer.text:
+                        old_hash = last_embed.footer.text.split("#")[-1]
+                        content_changed = (old_hash != content_hash)
+        except:
+            pass
+    
+    # Only add timestamp if content changed
+    if content_changed:
+        footer_embed.set_footer(text=f"Last updated: {datetime.now().strftime('%d/%m/%Y %H:%M')} #{content_hash}")
+    else:
+        footer_embed.set_footer(text=f"#{content_hash}")
+    
     embeds.append(footer_embed)
     
     # Update or create message (no view/buttons - display only)
