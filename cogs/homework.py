@@ -1,4 +1,5 @@
 import os
+import logging
 from discord.ext import commands, tasks
 from discord import app_commands, Interaction, Embed, Color, TextChannel
 from sqlalchemy import select
@@ -8,6 +9,9 @@ from typing import Optional, List
 from db import AsyncSessionLocal, init_db
 from db.models import GradeChannelConfig, Course, Assignment
 from utils import ROLE_NOTABLE, ROLE_MANAGER, ROLE_M1, ROLE_M2, ROLE_FI, ROLE_FA
+
+# Set up logging
+logger = logging.getLogger('homework')
 
 
 def get_roles_with_channel_access(channel: TextChannel) -> List[int]:
@@ -285,6 +289,86 @@ class Homework(commands.Cog):
         
         await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
     
+    @app_commands.command(
+        name="test_reminder",
+        description="Test reminder system (Admin/Manager only)."
+    )
+    @app_commands.checks.has_any_role(ROLE_MANAGER.id, ROLE_NOTABLE.id)
+    async def test_reminder(self, interaction: Interaction):
+        """Manually trigger reminder check for testing."""
+        await interaction.response.defer(ephemeral=True)
+        
+        async with AsyncSessionLocal() as session:
+            # Get all active assignments
+            result = await session.execute(
+                select(Assignment).where(Assignment.status == 'active')
+            )
+            assignments = result.scalars().all()
+            
+            if not assignments:
+                await interaction.followup.send("❌ No active assignments found.", ephemeral=True)
+                return
+            
+            now = datetime.now()
+            report = []
+            report.append(f"**Found {len(assignments)} active assignment(s):**\n")
+            
+            for assignment in assignments:
+                time_until_due = assignment.due_date - now
+                days = time_until_due.days
+                hours = time_until_due.seconds // 3600
+                minutes = (time_until_due.seconds % 3600) // 60
+                
+                result = await session.execute(
+                    select(Course).where(Course.id == assignment.course_id)
+                )
+                course = result.scalar_one_or_none()
+                course_name = course.name if course else "Unknown"
+                
+                # Get grade level and channel info
+                if course:
+                    result_grade = await session.execute(
+                        select(GradeChannelConfig).where(
+                            GradeChannelConfig.channel_id == course.channel_id
+                        )
+                    )
+                    grade_config = result_grade.scalar_one_or_none()
+                    grade_level = str(grade_config.grade_level.value) if grade_config else "N/A"
+                    
+                    # Get role mentions
+                    permission_channel_id = course.course_channel_id if course.course_channel_id else course.channel_id
+                    permission_channel = self.bot.get_channel(permission_channel_id)
+                    
+                    if permission_channel:
+                        role_mentions = get_role_mentions_for_channel(permission_channel, grade_level)
+                        channel_info = f"Channel: {permission_channel.name}"
+                    else:
+                        role_mentions = "No channel found"
+                        channel_info = "Channel: Not found"
+                else:
+                    grade_level = "N/A"
+                    role_mentions = "N/A"
+                    channel_info = "No course"
+                
+                status_icon = "✅" if time_until_due > timedelta(0) else "⚠️"
+                report.append(
+                    f"{status_icon} **{assignment.title}**\n"
+                    f"  • Course: {course_name}\n"
+                    f"  • Grade: {grade_level}\n"
+                    f"  • Due: {days}d {hours}h {minutes}m\n"
+                    f"  • {channel_info}\n"
+                    f"  • Roles: {role_mentions}\n"
+                )
+            
+            embed = Embed(
+                title="📊 Reminder System Test",
+                description="\n".join(report),
+                color=Color.blue()
+            )
+            embed.set_footer(text="Reminder windows: 7 days, 1 day, 1 hour (±30 min)")
+            
+            await interaction.followup.send(embed=embed, ephemeral=True)
+    
     @tasks.loop(minutes=1)
     async def check_reminders(self):
         """Check for assignments that need reminders."""
@@ -295,9 +379,12 @@ class Homework(commands.Cog):
             )
             assignments = result.scalars().all()
             
+            logger.info(f"[HOMEWORK] Checking {len(assignments)} active assignment(s) for reminders")
+            
             now = datetime.now()
             
             for assignment in assignments:
+                logger.debug(f"[HOMEWORK] Checking assignment '{assignment.title}', due: {assignment.due_date}")
                 time_until_due = assignment.due_date - now
                 
                 # Check if overdue
@@ -316,8 +403,11 @@ class Homework(commands.Cog):
                     (timedelta(hours=1), timedelta(hours=1, minutes=30), "1 hour"),
                 ]
                 
+                logger.debug(f"[HOMEWORK] Time until due: {time_until_due}")
+                
                 for threshold, window, label in reminder_windows:
                     if threshold <= time_until_due < window:
+                        logger.info(f"[HOMEWORK] REMINDER TRIGGERED for '{assignment.title}' - Due in {label}")
                         # Send reminder
                         result = await session.execute(
                             select(Course).where(Course.id == assignment.course_id)
@@ -344,13 +434,13 @@ class Homework(commands.Cog):
                                 
                                 if permission_channel:
                                     role_mentions = get_role_mentions_for_channel(permission_channel, grade_level)
-                                    print(f"[REMINDER] Assignment '{assignment.title}' - Grade: {grade_level}, Channel: {permission_channel.name}, Roles: {role_mentions}")
+                                    logger.info(f"[HOMEWORK] Assignment '{assignment.title}' - Grade: {grade_level}, Channel: {permission_channel.name}, Roles to mention: {role_mentions}")
                                 else:
                                     # Fall back to mentioning the grade role only
                                     grade_role_map = {'M1': ROLE_M1.id, 'M2': ROLE_M2.id}
                                     grade_role_id = grade_role_map.get(grade_level)
                                     role_mentions = f"<@&{grade_role_id}>" if grade_role_id else "||@everyone||"
-                                    print(f"[REMINDER] Assignment '{assignment.title}' - Grade: {grade_level}, No permission channel, fallback: {role_mentions}")
+                                    logger.warning(f"[HOMEWORK] Assignment '{assignment.title}' - Grade: {grade_level}, No permission channel found, using fallback: {role_mentions}")
                                 
                                 embed = Embed(
                                     title=f"⏰ Assignment Reminder",
@@ -376,8 +466,11 @@ class Homework(commands.Cog):
                                     )
                                 
                                 # Send to homework to-do channel with role mentions
-                                await channel.send(role_mentions, embed=embed)
-                                print(f"[REMINDER] Sent reminder to channel {channel.name} (ID: {channel.id})")
+                                try:
+                                    await channel.send(role_mentions, embed=embed)
+                                    logger.info(f"[HOMEWORK] ✅ Reminder sent successfully to {channel.name} (ID: {channel.id})")
+                                except Exception as e:
+                                    logger.error(f"[HOMEWORK] ❌ Failed to send reminder: {e}")
                         break
             
             # Commit status changes
