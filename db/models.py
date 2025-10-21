@@ -140,7 +140,7 @@ class Course(Base, TimestampMixin):
         ForeignKey('grade_channels.channel_id', ondelete='CASCADE'),
         nullable=False
     )  # Homework to-do channel
-    course_channel_id = Column(BigInteger, nullable=True)  # Actual course channel (for permissions)
+    course_channel_id = Column(BigInteger, nullable=False)  # Actual course channel (for permissions)
     
     # Relationships
     grade_channel: Mapped["GradeChannelConfig"] = relationship('GradeChannelConfig', back_populates='courses')
