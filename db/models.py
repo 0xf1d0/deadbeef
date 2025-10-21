@@ -42,7 +42,7 @@ class Category(Base, TimestampMixin):
         'Tool',
         back_populates='category',
         cascade='all, delete-orphan',
-        lazy='joined'
+        lazy='selectin'
     )
     
     def __repr__(self) -> str:
@@ -116,7 +116,7 @@ class GradeChannelConfig(Base, TimestampMixin):
         'Course',
         back_populates='grade_channel',
         cascade='all, delete-orphan',
-        lazy='joined'
+        lazy='selectin'
     )
     
     def __repr__(self) -> str:
@@ -147,7 +147,7 @@ class Course(Base, TimestampMixin):
         'Assignment',
         back_populates='course',
         cascade='all, delete-orphan',
-        lazy='joined'
+        lazy='selectin'
     )
     
     def __repr__(self) -> str:
@@ -230,7 +230,7 @@ class NewsChannel(Base, TimestampMixin):
         'NewsFeed',
         back_populates='channel',
         cascade='all, delete-orphan',
-        lazy='joined'
+        lazy='selectin'
     )
     
     def __repr__(self) -> str:
@@ -262,7 +262,7 @@ class NewsFeed(Base, TimestampMixin):
         'SentNewsEntry',
         back_populates='feed',
         cascade='all, delete-orphan',
-        lazy='joined'
+        lazy='selectin'
     )
     
     def __repr__(self) -> str:
@@ -337,7 +337,7 @@ class Professional(Base, TimestampMixin):
         'ProfessionalCourseChannel',
         back_populates='professional',
         cascade='all, delete-orphan',
-        lazy='joined'
+        lazy='selectin'
     )
     
     @property
