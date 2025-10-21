@@ -335,7 +335,7 @@ class Homework(commands.Cog):
                                     )
                                 )
                                 grade_config = result_grade.scalar_one_or_none()
-                                grade_level = grade_config.grade_level if grade_config else "M1"
+                                grade_level = str(grade_config.grade_level.value) if grade_config else "M1"
                                 
                                 # Get appropriate role mentions based on course channel permissions
                                 # Use course_channel_id if set, otherwise fall back to homework channel
@@ -344,8 +344,13 @@ class Homework(commands.Cog):
                                 
                                 if permission_channel:
                                     role_mentions = get_role_mentions_for_channel(permission_channel, grade_level)
+                                    print(f"[REMINDER] Assignment '{assignment.title}' - Grade: {grade_level}, Channel: {permission_channel.name}, Roles: {role_mentions}")
                                 else:
-                                    role_mentions = "||@everyone||"
+                                    # Fall back to mentioning the grade role only
+                                    grade_role_map = {'M1': ROLE_M1.id, 'M2': ROLE_M2.id}
+                                    grade_role_id = grade_role_map.get(grade_level)
+                                    role_mentions = f"<@&{grade_role_id}>" if grade_role_id else "||@everyone||"
+                                    print(f"[REMINDER] Assignment '{assignment.title}' - Grade: {grade_level}, No permission channel, fallback: {role_mentions}")
                                 
                                 embed = Embed(
                                     title=f"⏰ Assignment Reminder",
@@ -370,7 +375,9 @@ class Homework(commands.Cog):
                                         inline=False
                                     )
                                 
+                                # Send to homework to-do channel with role mentions
                                 await channel.send(role_mentions, embed=embed)
+                                print(f"[REMINDER] Sent reminder to channel {channel.name} (ID: {channel.id})")
                         break
             
             # Commit status changes
