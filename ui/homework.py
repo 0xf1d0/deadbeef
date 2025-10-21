@@ -136,7 +136,10 @@ class AddAssignmentModal(ui.Modal, title="Add Assignment"):
         super().__init__()
         self.db_session = session
         self.course = course
-        self.title = f"Add Assignment for {course.name}"
+        # Discord modal titles have a 45-character limit
+        # "Add Assignment: " is 17 chars, leaving 28 for course name
+        course_name = course.name[:28] if len(course.name) > 28 else course.name
+        self.title = f"Add Assignment: {course_name}"
     
     async def on_submit(self, interaction: Interaction):
         try:
