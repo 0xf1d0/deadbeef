@@ -250,7 +250,7 @@ class Homework(commands.Cog):
         
         await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
     
-    @tasks.loop(minutes=30)
+    @tasks.loop(minutes=1)
     async def check_reminders(self):
         """Check for assignments that need reminders."""
         async with AsyncSessionLocal() as session:
