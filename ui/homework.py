@@ -74,6 +74,12 @@ class HomeworkAdminPanel(ui.View):
                 value="stats",
                 emoji="📊"
             ),
+            SelectOption(
+                label="Remove Channel Configuration",
+                description="Delete a homework channel configuration",
+                value="remove_channel",
+                emoji="🗑️"
+            ),
         ]
         
         select = ui.Select(
@@ -160,7 +166,7 @@ class HomeworkAdminPanel(ui.View):
             embed = Embed(
                 title="🔄 Refresh To-Do List",
                 description="Select the homework channel to refresh:",
-                color=discord.Color.grey()
+                color=discord.Color.greyple()
             )
             await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
         
@@ -206,6 +212,21 @@ class HomeworkAdminPanel(ui.View):
                     )
                 
                 await interaction.response.send_message(embed=embed, ephemeral=True)
+        
+        elif action == "remove_channel":
+            # Show channel select to remove configuration
+            view = RemoveChannelSelectView()
+            embed = Embed(
+                title="🗑️ Remove Channel Configuration",
+                description="Select the homework channel configuration to remove:",
+                color=discord.Color.red()
+            )
+            embed.add_field(
+                name="⚠️ Warning",
+                value="This will remove the channel configuration and all associated courses and assignments from the database.",
+                inline=False
+            )
+            await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
 
 
 class SetupChannelSelectView(ui.View):
@@ -311,6 +332,159 @@ class GradeLevelSelectView(ui.View):
                 inline=False
             )
             await interaction.response.send_message(embed=embed, ephemeral=True)
+
+
+class RemoveChannelSelectView(ui.View):
+    """View for selecting a homework channel to remove."""
+    
+    def __init__(self):
+        super().__init__(timeout=300)
+        
+        channel_select = ui.ChannelSelect(
+            placeholder="Select channel to remove...",
+            channel_types=[ChannelType.text],
+            custom_id="remove_channel_select"
+        )
+        channel_select.callback = self.channel_selected
+        self.add_item(channel_select)
+    
+    async def channel_selected(self, interaction: Interaction):
+        """Handle channel selection for removal."""
+        from db import AsyncSessionLocal
+        
+        channel_id = self.children[0].values[0].id
+        
+        async with AsyncSessionLocal() as session:
+            # Check if channel is configured
+            result = await session.execute(
+                select(GradeChannelConfig).where(
+                    GradeChannelConfig.channel_id == channel_id
+                )
+            )
+            config = result.scalar_one_or_none()
+            
+            if not config:
+                await interaction.response.send_message(
+                    f"❌ <#{channel_id}> is not configured as a homework channel.",
+                    ephemeral=True
+                )
+                return
+            
+            # Get counts for confirmation
+            result = await session.execute(
+                select(Course).where(Course.channel_id == channel_id)
+            )
+            courses = result.scalars().all()
+            
+            total_assignments = sum(len(course.assignments) for course in courses)
+            
+            # Show confirmation view
+            view = ConfirmRemoveChannelView(config, len(courses), total_assignments)
+            embed = Embed(
+                title="⚠️ Confirm Removal",
+                description=f"Are you sure you want to remove the homework configuration for <#{channel_id}>?",
+                color=discord.Color.red()
+            )
+            embed.add_field(
+                name="Configuration Details",
+                value=f"**Grade Level:** {config.grade_level}\n"
+                      f"**Courses:** {len(courses)}\n"
+                      f"**Assignments:** {total_assignments}",
+                inline=False
+            )
+            embed.add_field(
+                name="⚠️ This action will:",
+                value="• Delete the channel configuration\n"
+                      "• Remove all associated courses\n"
+                      "• Delete all assignments\n"
+                      "• Remove the to-do list message",
+                inline=False
+            )
+            embed.set_footer(text="This action cannot be undone!")
+            
+            await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+
+
+class ConfirmRemoveChannelView(ui.View):
+    """Confirmation view for removing a homework channel."""
+    
+    def __init__(self, config: GradeChannelConfig, course_count: int, assignment_count: int):
+        super().__init__(timeout=60)
+        self.config = config
+        self.course_count = course_count
+        self.assignment_count = assignment_count
+    
+    @ui.button(label="✅ Confirm Removal", style=ButtonStyle.danger)
+    async def confirm(self, interaction: Interaction, button: ui.Button):
+        """Confirm and execute removal."""
+        from db import AsyncSessionLocal
+        
+        async with AsyncSessionLocal() as session:
+            # Re-fetch the config to ensure it's bound to this session
+            result = await session.execute(
+                select(GradeChannelConfig).where(
+                    GradeChannelConfig.channel_id == self.config.channel_id
+                )
+            )
+            config = result.scalar_one_or_none()
+            
+            if not config:
+                await interaction.response.send_message(
+                    "❌ Configuration no longer exists.",
+                    ephemeral=True
+                )
+                return
+            
+            channel_id = config.channel_id
+            grade_level = config.grade_level
+            message_id = config.message_id
+            
+            # Delete the configuration (cascade will handle courses and assignments)
+            await session.delete(config)
+            await session.commit()
+            
+            # Try to delete the to-do list message
+            if message_id:
+                try:
+                    channel = interaction.guild.get_channel(channel_id)
+                    if channel:
+                        message = await channel.fetch_message(message_id)
+                        await message.delete()
+                except:
+                    pass  # Message might already be deleted
+            
+            embed = Embed(
+                title="✅ Configuration Removed",
+                description=f"Successfully removed homework configuration for <#{channel_id}>.",
+                color=discord.Color.green()
+            )
+            embed.add_field(
+                name="Removed",
+                value=f"**Grade Level:** {grade_level}\n"
+                      f"**Courses:** {self.course_count}\n"
+                      f"**Assignments:** {self.assignment_count}",
+                inline=False
+            )
+            
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            
+            # Disable the buttons
+            for item in self.children:
+                item.disabled = True
+            await interaction.message.edit(view=self)
+    
+    @ui.button(label="❌ Cancel", style=ButtonStyle.secondary)
+    async def cancel(self, interaction: Interaction, button: ui.Button):
+        """Cancel the removal."""
+        await interaction.response.send_message(
+            "✅ Removal cancelled. No changes were made.",
+            ephemeral=True
+        )
+        
+        # Disable the buttons
+        for item in self.children:
+            item.disabled = True
+        await interaction.message.edit(view=self)
 
 
 class SelectHomeworkChannelView(ui.View):
