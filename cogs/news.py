@@ -9,7 +9,7 @@ import re
 from db import AsyncSessionLocal, init_db
 from db.models import NewsChannel, SentNewsEntry
 from ui.news import NewsManagementView
-from utils.utils import ROLE_NOTABLE, ROLE_MANAGER
+from utils import ROLE_NOTABLE, ROLE_MANAGER
 
 
 def clean_html(raw_html: str) -> str:

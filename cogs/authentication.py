@@ -10,7 +10,7 @@ from typing import List, Optional
 
 from db import AsyncSessionLocal, init_db
 from db.models import AuthenticatedUser, Professional, ProfessionalCourseChannel, PendingAuth
-from utils.utils import ROLE_MANAGER, ROLE_NOTABLE, ROLE_M1, ROLE_M2, ROLE_FI, ROLE_FA
+from utils import ROLE_MANAGER, ROLE_NOTABLE, ROLE_M1, ROLE_M2, ROLE_FI, ROLE_FA
 from utils.csv_parser import get_all_students
 
 

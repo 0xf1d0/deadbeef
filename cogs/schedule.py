@@ -13,7 +13,7 @@ from typing import Optional, List, Tuple
 from db import AsyncSessionLocal, init_db
 from db.models import ScheduleChannelConfig
 from ui.schedule import ScheduleManagementView
-from utils.utils import ROLE_NOTABLE, ROLE_MANAGER
+from utils import ROLE_NOTABLE, ROLE_MANAGER
 
 # Set French locale for date formatting
 try:

@@ -5,7 +5,7 @@ from discord import Message, NotFound
 
 import re
 
-from api.api import MistralAI
+from api import MistralAI
 
 
 def divide_msg(content):

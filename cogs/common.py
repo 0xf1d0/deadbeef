@@ -7,13 +7,13 @@ from discord.ext import tasks
 from discord.ext import commands
 from sqlalchemy import select
 
-from utils.utils import ConfigManager, WELCOME_MESSAGE, WELCOME_CHANNEL, LOG_CHANNEL, CYBER_COLOR, CYBER, ROLE_MANAGER, ROLE_NOTABLE
+from utils import ConfigManager, WELCOME_MESSAGE, WELCOME_CHANNEL, LOG_CHANNEL, CYBER_COLOR, CYBER, ROLE_MANAGER, ROLE_NOTABLE
 from ui.auth import Authentication
 from ui.announce import Announcement
 from db import AsyncSessionLocal
 from db.models import AuthenticatedUser, Professional
 
-from api.api import RootMe
+from api import RootMe
 
 logger = logging.getLogger(__name__)
 

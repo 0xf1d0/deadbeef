@@ -8,7 +8,7 @@ from typing import Optional, List
 from db import AsyncSessionLocal, init_db
 from db.models import GradeChannelConfig, Course, Assignment
 from ui.homework import HomeworkMainView, AssignmentActionsView
-from utils.utils import ROLE_NOTABLE, ROLE_MANAGER, ROLE_M1, ROLE_M2, ROLE_FI, ROLE_FA
+from utils import ROLE_NOTABLE, ROLE_MANAGER, ROLE_M1, ROLE_M2, ROLE_FI, ROLE_FA
 
 
 def get_roles_with_channel_access(channel: TextChannel) -> List[int]:

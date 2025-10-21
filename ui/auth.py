@@ -11,7 +11,7 @@ from typing import Optional
 
 from db import AsyncSessionLocal
 from db.models import AuthenticatedUser, Professional, PendingAuth
-from utils.utils import ROLE_FA, ROLE_FI, ROLE_PRO, ROLE_M1, ROLE_M2, ROLE_STUDENT, send_email, create_jwt, verify_jwt, ConfigManager
+from utils import ROLE_FA, ROLE_FI, ROLE_PRO, ROLE_M1, ROLE_M2, ROLE_STUDENT, send_email, create_jwt, verify_jwt, ConfigManager
 from utils.csv_parser import find_student_by_id
 from api.api import RootMe
 
