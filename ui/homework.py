@@ -1,6 +1,6 @@
 import discord
-from discord import ui, ButtonStyle, TextStyle, Interaction, Embed, SelectOption
-from typing import List
+from discord import ui, ButtonStyle, TextStyle, Interaction, Embed, SelectOption, ChannelType
+from typing import List, Optional
 from datetime import datetime
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,72 +8,522 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from db.models import GradeChannelConfig, Course, Assignment
 
 
-class HomeworkMainView(ui.View):
-    """Main view for the homework to-do list with management buttons."""
+# ============================================================================
+# Admin Management Interface
+# ============================================================================
+
+class HomeworkAdminPanel(ui.View):
+    """Main admin panel for homework management with select menu."""
     
     def __init__(self):
-        super().__init__(timeout=None)  # Persistent view
+        super().__init__(timeout=300)
+        
+        # Create select menu with all admin options
+        options = [
+            SelectOption(
+                label="Setup Homework Channel",
+                description="Configure a channel for homework tracking",
+                value="setup",
+                emoji="⚙️"
+            ),
+            SelectOption(
+                label="Add Assignment",
+                description="Create a new assignment",
+                value="add_assignment",
+                emoji="➕"
+            ),
+            SelectOption(
+                label="Edit Assignment",
+                description="Modify an existing assignment",
+                value="edit_assignment",
+                emoji="✏️"
+            ),
+            SelectOption(
+                label="Delete Assignment",
+                description="Remove an assignment",
+                value="delete_assignment",
+                emoji="🗑️"
+            ),
+            SelectOption(
+                label="Add Course",
+                description="Add a new course",
+                value="add_course",
+                emoji="📘"
+            ),
+            SelectOption(
+                label="Edit Course",
+                description="Modify an existing course",
+                value="edit_course",
+                emoji="📝"
+            ),
+            SelectOption(
+                label="Delete Course",
+                description="Remove a course",
+                value="delete_course",
+                emoji="❌"
+            ),
+            SelectOption(
+                label="Refresh To-Do List",
+                description="Update the homework message",
+                value="refresh",
+                emoji="🔄"
+            ),
+            SelectOption(
+                label="View Statistics",
+                description="Show homework statistics",
+                value="stats",
+                emoji="📊"
+            ),
+        ]
+        
+        select = ui.Select(
+            placeholder="Select an action...",
+            options=options,
+            custom_id="homework_admin_select"
+        )
+        select.callback = self.action_selected
+        self.add_item(select)
     
-    @ui.button(label="➕ Add Assignment", style=ButtonStyle.green, custom_id="hw_add_assignment")
-    async def add_assignment(self, interaction: Interaction, button: ui.Button):
+    async def action_selected(self, interaction: Interaction):
+        """Handle admin action selection."""
         from db import AsyncSessionLocal
         
-        async with AsyncSessionLocal() as session:
-            # Get courses for this channel
-            result = await session.execute(
-                select(Course).where(Course.channel_id == interaction.channel_id)
+        action = self.children[0].values[0]
+        
+        if action == "setup":
+            # Show channel select for setup
+            view = SetupChannelSelectView()
+            embed = Embed(
+                title="⚙️ Setup Homework Channel",
+                description="Select the channel where you want to display the homework to-do list:",
+                color=discord.Color.blue()
             )
-            courses = result.scalars().all()
+            await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+        
+        elif action == "add_assignment":
+            # Show channel select to choose which homework channel
+            view = SelectHomeworkChannelView(action="add_assignment")
+            embed = Embed(
+                title="➕ Add Assignment",
+                description="Select the homework channel:",
+                color=discord.Color.green()
+            )
+            await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+        
+        elif action == "edit_assignment":
+            view = SelectHomeworkChannelView(action="edit_assignment")
+            embed = Embed(
+                title="✏️ Edit Assignment",
+                description="Select the homework channel:",
+                color=discord.Color.orange()
+            )
+            await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+        
+        elif action == "delete_assignment":
+            view = SelectHomeworkChannelView(action="delete_assignment")
+            embed = Embed(
+                title="🗑️ Delete Assignment",
+                description="Select the homework channel:",
+                color=discord.Color.red()
+            )
+            await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+        
+        elif action == "add_course":
+            view = SelectHomeworkChannelView(action="add_course")
+            embed = Embed(
+                title="📘 Add Course",
+                description="Select the homework channel:",
+                color=discord.Color.blurple()
+            )
+            await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+        
+        elif action == "edit_course":
+            view = SelectHomeworkChannelView(action="edit_course")
+            embed = Embed(
+                title="📝 Edit Course",
+                description="Select the homework channel:",
+                color=discord.Color.blue()
+            )
+            await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+        
+        elif action == "delete_course":
+            view = SelectHomeworkChannelView(action="delete_course")
+            embed = Embed(
+                title="❌ Delete Course",
+                description="Select the homework channel:",
+                color=discord.Color.red()
+            )
+            await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+        
+        elif action == "refresh":
+            view = SelectHomeworkChannelView(action="refresh")
+            embed = Embed(
+                title="🔄 Refresh To-Do List",
+                description="Select the homework channel to refresh:",
+                color=discord.Color.grey()
+            )
+            await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+        
+        elif action == "stats":
+            # Show statistics
+            async with AsyncSessionLocal() as session:
+                result = await session.execute(select(GradeChannelConfig))
+                configs = result.scalars().all()
+                
+                if not configs:
+                    await interaction.response.send_message(
+                        "❌ No homework channels configured yet.",
+                        ephemeral=True
+                    )
+                    return
+                
+                embed = Embed(
+                    title="📊 Homework Statistics",
+                    description="Overview of homework channels:",
+                    color=discord.Color.blue()
+                )
+                
+                for config in configs:
+                    channel = interaction.guild.get_channel(config.channel_id)
+                    channel_name = channel.mention if channel else f"Unknown ({config.channel_id})"
+                    
+                    result = await session.execute(
+                        select(Course).where(Course.channel_id == config.channel_id)
+                    )
+                    courses = result.scalars().all()
+                    
+                    total_assignments = 0
+                    active_assignments = 0
+                    for course in courses:
+                        total_assignments += len(course.assignments)
+                        active_assignments += len([a for a in course.assignments if a.status == 'active'])
+                    
+                    embed.add_field(
+                        name=f"{config.grade_level} - {channel_name}",
+                        value=f"📘 {len(courses)} course(s)\n"
+                              f"📝 {active_assignments}/{total_assignments} active assignments",
+                        inline=False
+                    )
+                
+                await interaction.response.send_message(embed=embed, ephemeral=True)
+
+
+class SetupChannelSelectView(ui.View):
+    """View with channel select for homework setup."""
+    
+    def __init__(self):
+        super().__init__(timeout=300)
+        
+        channel_select = ui.ChannelSelect(
+            placeholder="Select a channel...",
+            channel_types=[ChannelType.text],
+            custom_id="setup_channel_select"
+        )
+        channel_select.callback = self.channel_selected
+        self.add_item(channel_select)
+    
+    async def channel_selected(self, interaction: Interaction):
+        """Handle channel selection for setup."""
+        channel_id = self.children[0].values[0].id
+        
+        # Show grade level select
+        view = GradeLevelSelectView(channel_id)
+        embed = Embed(
+            title="⚙️ Select Grade Level",
+            description=f"Channel: <#{channel_id}>\n\nSelect the grade level for this homework channel:",
+            color=discord.Color.blue()
+        )
+        await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+
+
+class GradeLevelSelectView(ui.View):
+    """View for selecting grade level during setup."""
+    
+    def __init__(self, channel_id: int):
+        super().__init__(timeout=300)
+        self.channel_id = channel_id
+        
+        options = [
+            SelectOption(label="M1", value="M1", emoji="1️⃣"),
+            SelectOption(label="M2", value="M2", emoji="2️⃣"),
+        ]
+        
+        select = ui.Select(placeholder="Select grade level...", options=options)
+        select.callback = self.grade_selected
+        self.add_item(select)
+    
+    async def grade_selected(self, interaction: Interaction):
+        """Handle grade level selection."""
+        from db import AsyncSessionLocal
+        grade_level = self.children[0].values[0]
+        
+        async with AsyncSessionLocal() as session:
+            # Check if channel already configured
+            result = await session.execute(
+                select(GradeChannelConfig).where(
+                    GradeChannelConfig.channel_id == self.channel_id
+                )
+            )
+            existing = result.scalar_one_or_none()
             
-            if not courses:
+            if existing:
                 await interaction.response.send_message(
-                    "❌ No courses available. Please add courses first using the 'Manage Courses' button.",
+                    f"❌ This channel is already configured for {existing.grade_level}.",
                     ephemeral=True
                 )
                 return
             
-            view = AddAssignmentCourseSelect(session, courses)
+            # Check if grade level already used
+            result = await session.execute(
+                select(GradeChannelConfig).where(
+                    GradeChannelConfig.grade_level == grade_level
+                )
+            )
+            existing_grade = result.scalar_one_or_none()
+            
+            if existing_grade:
+                await interaction.response.send_message(
+                    f"❌ {grade_level} is already configured in <#{existing_grade.channel_id}>.",
+                    ephemeral=True
+                )
+                return
+            
+            # Create configuration
+            config = GradeChannelConfig(
+                channel_id=self.channel_id,
+                grade_level=grade_level
+            )
+            session.add(config)
+            await session.commit()
+            
+            # Create initial message
+            from cogs.homework import update_homework_message
+            await update_homework_message(interaction.client, session, config)
+            
             embed = Embed(
-                title="➕ Add Assignment",
-                description="Select a course for the new assignment:",
+                title="✅ Homework Channel Configured",
+                description=f"Channel: <#{self.channel_id}>\nGrade Level: **{grade_level}**",
                 color=discord.Color.green()
             )
-            await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+            embed.add_field(
+                name="Next Steps",
+                value="Use `/homework` → Add Course to start adding courses and assignments.",
+                inline=False
+            )
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+
+
+class SelectHomeworkChannelView(ui.View):
+    """View for selecting which homework channel to work with."""
     
-    @ui.button(label="📘 Manage Courses", style=ButtonStyle.blurple, custom_id="hw_manage_courses")
-    async def manage_courses(self, interaction: Interaction, button: ui.Button):
-        view = CourseManagementView(interaction.channel_id)
-        embed = Embed(
-            title="📘 Course Management",
-            description="Choose an action:",
-            color=discord.Color.blurple()
-        )
-        await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+    def __init__(self, action: str):
+        super().__init__(timeout=300)
+        self.action = action
     
-    @ui.button(label="🔄 Refresh", style=ButtonStyle.grey, custom_id="hw_refresh")
-    async def refresh(self, interaction: Interaction, button: ui.Button):
+    async def on_timeout(self):
+        """Clean up on timeout."""
+        pass
+    
+    async def interaction_check(self, interaction: Interaction) -> bool:
+        """Load channels when view is created."""
         from db import AsyncSessionLocal
         
+        # Get all configured homework channels
         async with AsyncSessionLocal() as session:
-            # Get channel config
+            result = await session.execute(select(GradeChannelConfig))
+            configs = result.scalars().all()
+            
+            if not configs:
+                await interaction.response.send_message(
+                    "❌ No homework channels configured. Use Setup first.",
+                    ephemeral=True
+                )
+                return False
+            
+            # Create channel select
+            options = []
+            for config in configs:
+                channel = interaction.guild.get_channel(config.channel_id)
+                if channel:
+                    options.append(
+                        SelectOption(
+                            label=f"{config.grade_level} - {channel.name}",
+                            value=str(config.channel_id),
+                            description=f"Homework channel for {config.grade_level}"
+                        )
+                    )
+            
+            if not options:
+                await interaction.response.send_message(
+                    "❌ No valid homework channels found.",
+                    ephemeral=True
+                )
+                return False
+            
+            select = ui.Select(placeholder="Select homework channel...", options=options)
+            select.callback = self.channel_selected
+            self.add_item(select)
+            
+            return True
+    
+    async def channel_selected(self, interaction: Interaction):
+        """Handle homework channel selection."""
+        from db import AsyncSessionLocal
+        
+        channel_id = int(self.children[0].values[0])
+        
+        async with AsyncSessionLocal() as session:
             result = await session.execute(
-                select(GradeChannelConfig).where(GradeChannelConfig.channel_id == interaction.channel_id)
+                select(GradeChannelConfig).where(
+                    GradeChannelConfig.channel_id == channel_id
+                )
             )
             config = result.scalar_one_or_none()
             
             if not config:
                 await interaction.response.send_message(
-                    "❌ This channel is not configured for homework tracking.",
+                    "❌ Channel configuration not found.",
                     ephemeral=True
                 )
                 return
             
-            # Refresh the to-do list
-            from cogs.homework import update_homework_message
-            await update_homework_message(interaction.client, session, config)
+            # Route to appropriate action
+            if self.action == "add_assignment":
+                # Get courses for this channel
+                result = await session.execute(
+                    select(Course).where(Course.channel_id == channel_id)
+                )
+                courses = result.scalars().all()
+                
+                if not courses:
+                    await interaction.response.send_message(
+                        "❌ No courses available. Add a course first.",
+                        ephemeral=True
+                    )
+                    return
+                
+                view = AddAssignmentCourseSelect(session, courses)
+                embed = Embed(
+                    title="➕ Add Assignment",
+                    description="Select a course for the new assignment:",
+                    color=discord.Color.green()
+                )
+                await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
             
-            await interaction.response.send_message("✅ To-do list refreshed!", ephemeral=True)
+            elif self.action == "edit_assignment":
+                # Get all assignments
+                result = await session.execute(
+                    select(Course).where(Course.channel_id == channel_id)
+                )
+                courses = result.scalars().all()
+                
+                assignments = []
+                for course in courses:
+                    for assignment in course.assignments:
+                        assignments.append((assignment, course))
+                
+                if not assignments:
+                    await interaction.response.send_message(
+                        "❌ No assignments available to edit.",
+                        ephemeral=True
+                    )
+                    return
+                
+                view = EditAssignmentSelect(session, assignments)
+                embed = Embed(
+                    title="✏️ Edit Assignment",
+                    description="Select an assignment to edit:",
+                    color=discord.Color.orange()
+                )
+                await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+            
+            elif self.action == "delete_assignment":
+                # Get all assignments
+                result = await session.execute(
+                    select(Course).where(Course.channel_id == channel_id)
+                )
+                courses = result.scalars().all()
+                
+                assignments = []
+                for course in courses:
+                    for assignment in course.assignments:
+                        assignments.append((assignment, course))
+                
+                if not assignments:
+                    await interaction.response.send_message(
+                        "❌ No assignments available to delete.",
+                        ephemeral=True
+                    )
+                    return
+                
+                view = DeleteAssignmentSelect(session, assignments, channel_id)
+                embed = Embed(
+                    title="🗑️ Delete Assignment",
+                    description="Select an assignment to delete:",
+                    color=discord.Color.red()
+                )
+                await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+            
+            elif self.action == "add_course":
+                modal = AddCourseModal(session, channel_id)
+                await interaction.response.send_modal(modal)
+            
+            elif self.action == "edit_course":
+                # Get courses
+                result = await session.execute(
+                    select(Course).where(Course.channel_id == channel_id)
+                )
+                courses = result.scalars().all()
+                
+                if not courses:
+                    await interaction.response.send_message(
+                        "❌ No courses available to edit.",
+                        ephemeral=True
+                    )
+                    return
+                
+                view = EditCourseSelect(session, courses)
+                embed = Embed(
+                    title="📝 Edit Course",
+                    description="Select a course to edit:",
+                    color=discord.Color.blue()
+                )
+                await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+            
+            elif self.action == "delete_course":
+                # Get courses
+                result = await session.execute(
+                    select(Course).where(Course.channel_id == channel_id)
+                )
+                courses = result.scalars().all()
+                
+                if not courses:
+                    await interaction.response.send_message(
+                        "❌ No courses available to delete.",
+                        ephemeral=True
+                    )
+                    return
+                
+                view = DeleteCourseSelect(session, courses, channel_id)
+                embed = Embed(
+                    title="❌ Delete Course",
+                    description="⚠️ Warning: Deleting a course will also delete all its assignments!\n\nSelect a course to delete:",
+                    color=discord.Color.red()
+                )
+                await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+            
+            elif self.action == "refresh":
+                from cogs.homework import update_homework_message
+                await update_homework_message(interaction.client, session, config)
+                await interaction.response.send_message(
+                    f"✅ To-do list refreshed for <#{channel_id}>!",
+                    ephemeral=True
+                )
 
+
+# ============================================================================
+# Assignment Management
+# ============================================================================
 
 class AddAssignmentCourseSelect(ui.View):
     """View for selecting a course when adding an assignment."""
@@ -155,9 +605,9 @@ class AddAssignmentModal(ui.Modal, title="Add Assignment"):
         # Create assignment
         assignment = Assignment(
             title=self.assignment_title.value,
-            description=self.description.value or None,
+            description=self.description.value if self.description.value else None,
             due_date=due_date,
-            modality=self.modality.value or None,
+            modality=self.modality.value if self.modality.value else None,
             status='active',
             course_id=self.course.id
         )
@@ -165,9 +615,11 @@ class AddAssignmentModal(ui.Modal, title="Add Assignment"):
         self.db_session.add(assignment)
         await self.db_session.commit()
         
-        # Update the main message
+        # Update the to-do list
         result = await self.db_session.execute(
-            select(GradeChannelConfig).where(GradeChannelConfig.channel_id == self.course.channel_id)
+            select(GradeChannelConfig).where(
+                GradeChannelConfig.channel_id == self.course.channel_id
+            )
         )
         config = result.scalar_one_or_none()
         
@@ -176,17 +628,64 @@ class AddAssignmentModal(ui.Modal, title="Add Assignment"):
             await update_homework_message(interaction.client, self.db_session, config)
         
         await interaction.response.send_message(
-            f"✅ Assignment '{self.assignment_title.value}' added to {self.course.name}!",
+            f"✅ Assignment **{self.assignment_title.value}** added to {self.course.name}!",
             ephemeral=True
         )
+
+
+class EditAssignmentSelect(ui.View):
+    """View for selecting an assignment to edit."""
+    
+    def __init__(self, session: AsyncSession, assignments: List[tuple]):
+        super().__init__(timeout=300)
+        self.db_session = session
+        
+        options = []
+        for assignment, course in assignments[:25]:  # Discord limit
+            status_emoji = "📝" if assignment.status == 'active' else "✅" if assignment.status == 'completed' else "⚠️"
+            options.append(
+                SelectOption(
+                    label=f"{assignment.title[:80]}",
+                    value=str(assignment.id),
+                    description=f"{course.name} - Due: {assignment.due_date.strftime('%d/%m/%Y')}",
+                    emoji=status_emoji
+                )
+            )
+        
+        select = ui.Select(placeholder="Select an assignment...", options=options)
+        select.callback = self.assignment_selected
+        self.add_item(select)
+        self.assignments = {a[0].id: a for a in assignments}
+    
+    async def assignment_selected(self, interaction: Interaction):
+        assignment_id = int(self.children[0].values[0])
+        assignment, course = self.assignments[assignment_id]
+        
+        modal = EditAssignmentModal(self.db_session, assignment, course)
+        await interaction.response.send_modal(modal)
 
 
 class EditAssignmentModal(ui.Modal, title="Edit Assignment"):
     """Modal for editing an existing assignment."""
     
-    assignment_title = ui.TextInput(label="Assignment Title", required=True, max_length=200)
-    due_date_input = ui.TextInput(label="Due Date (DD/MM/YYYY HH:MM)", required=True, max_length=16)
-    modality = ui.TextInput(label="Submission Modality", required=False, max_length=100)
+    assignment_title = ui.TextInput(
+        label="Assignment Title",
+        required=True,
+        max_length=200
+    )
+    
+    due_date_input = ui.TextInput(
+        label="Due Date (DD/MM/YYYY HH:MM)",
+        required=True,
+        max_length=16
+    )
+    
+    modality = ui.TextInput(
+        label="Submission Modality",
+        required=False,
+        max_length=100
+    )
+    
     description = ui.TextInput(
         label="Description",
         style=TextStyle.paragraph,
@@ -194,10 +693,11 @@ class EditAssignmentModal(ui.Modal, title="Edit Assignment"):
         max_length=1000
     )
     
-    def __init__(self, session: AsyncSession, assignment: Assignment):
+    def __init__(self, session: AsyncSession, assignment: Assignment, course: Course):
         super().__init__()
         self.db_session = session
         self.assignment = assignment
+        self.course = course
         
         # Pre-fill with existing data
         self.assignment_title.default = assignment.title
@@ -207,7 +707,6 @@ class EditAssignmentModal(ui.Modal, title="Edit Assignment"):
     
     async def on_submit(self, interaction: Interaction):
         try:
-            # Parse date
             due_date = datetime.strptime(self.due_date_input.value, "%d/%m/%Y %H:%M")
         except ValueError:
             await interaction.response.send_message(
@@ -219,233 +718,74 @@ class EditAssignmentModal(ui.Modal, title="Edit Assignment"):
         # Update assignment
         self.assignment.title = self.assignment_title.value
         self.assignment.due_date = due_date
-        self.assignment.modality = self.modality.value or None
-        self.assignment.description = self.description.value or None
+        self.assignment.modality = self.modality.value if self.modality.value else None
+        self.assignment.description = self.description.value if self.description.value else None
+        
         await self.db_session.commit()
         
-        # Update the main message
+        # Update to-do list
         result = await self.db_session.execute(
-            select(Course).where(Course.id == self.assignment.course_id)
-        )
-        course = result.scalar_one_or_none()
-        
-        if course:
-            result = await self.db_session.execute(
-                select(GradeChannelConfig).where(GradeChannelConfig.channel_id == course.channel_id)
+            select(GradeChannelConfig).where(
+                GradeChannelConfig.channel_id == self.course.channel_id
             )
-            config = result.scalar_one_or_none()
-            
-            if config:
-                from cogs.homework import update_homework_message
-                await update_homework_message(interaction.client, self.db_session, config)
+        )
+        config = result.scalar_one_or_none()
+        
+        if config:
+            from cogs.homework import update_homework_message
+            await update_homework_message(interaction.client, self.db_session, config)
         
         await interaction.response.send_message(
-            f"✅ Assignment '{self.assignment_title.value}' has been updated!",
+            f"✅ Assignment **{self.assignment_title.value}** updated!",
             ephemeral=True
         )
 
 
-class AssignmentActionsView(ui.View):
-    """View with Edit and Delete buttons for an assignment."""
+class DeleteAssignmentSelect(ui.View):
+    """View for selecting an assignment to delete."""
     
-    def __init__(self, assignment_id: int):
+    def __init__(self, session: AsyncSession, assignments: List[tuple], channel_id: int):
         super().__init__(timeout=300)
-        self.assignment_id = assignment_id
-    
-    @ui.button(label="Edit", style=ButtonStyle.blurple)
-    async def edit_assignment(self, interaction: Interaction, button: ui.Button):
-        from db import AsyncSessionLocal
-        
-        async with AsyncSessionLocal() as session:
-            result = await session.execute(
-                select(Assignment).where(Assignment.id == self.assignment_id)
-            )
-            assignment = result.scalar_one_or_none()
-            
-            if not assignment:
-                await interaction.response.send_message(
-                    "❌ Assignment not found.",
-                    ephemeral=True
-                )
-                return
-            
-            modal = EditAssignmentModal(session, assignment)
-            await interaction.response.send_modal(modal)
-    
-    @ui.button(label="Delete", style=ButtonStyle.red)
-    async def delete_assignment(self, interaction: Interaction, button: ui.Button):
-        from db import AsyncSessionLocal
-        
-        async with AsyncSessionLocal() as session:
-            result = await session.execute(
-                select(Assignment).where(Assignment.id == self.assignment_id)
-            )
-            assignment = result.scalar_one_or_none()
-            
-            if not assignment:
-                await interaction.response.send_message(
-                    "❌ Assignment not found.",
-                    ephemeral=True
-                )
-                return
-            
-            # Confirmation view
-            confirm_view = ui.View(timeout=60)
-            confirm_button = ui.Button(label="Confirm Delete", style=ButtonStyle.danger)
-            cancel_button = ui.Button(label="Cancel", style=ButtonStyle.secondary)
-            
-            async def confirm_callback(confirm_interaction: Interaction):
-                await session.delete(assignment)
-                await session.commit()
-                
-                # Update the main message
-                result = await session.execute(
-                    select(Course).where(Course.id == assignment.course_id)
-                )
-                course = result.scalar_one_or_none()
-                
-                if course:
-                    result = await session.execute(
-                        select(GradeChannelConfig).where(GradeChannelConfig.channel_id == course.channel_id)
-                    )
-                    config = result.scalar_one_or_none()
-                    
-                    if config:
-                        from cogs.homework import update_homework_message
-                        await update_homework_message(confirm_interaction.client, session, config)
-                
-                await confirm_interaction.response.edit_message(
-                    content=f"✅ Assignment '{assignment.title}' has been deleted.",
-                    embed=None,
-                    view=None
-                )
-            
-            async def cancel_callback(cancel_interaction: Interaction):
-                await cancel_interaction.response.edit_message(
-                    content="Deletion cancelled.",
-                    embed=None,
-                    view=None
-                )
-            
-            confirm_button.callback = confirm_callback
-            cancel_button.callback = cancel_callback
-            confirm_view.add_item(confirm_button)
-            confirm_view.add_item(cancel_button)
-            
-            embed = Embed(
-                title="⚠️ Confirm Deletion",
-                description=f"Are you sure you want to delete the assignment **{assignment.title}**?\n\nThis action cannot be undone.",
-                color=discord.Color.red()
-            )
-            await interaction.response.send_message(embed=embed, view=confirm_view, ephemeral=True)
-    
-    @ui.button(label="Mark Complete", style=ButtonStyle.green)
-    async def mark_complete(self, interaction: Interaction, button: ui.Button):
-        from db import AsyncSessionLocal
-        
-        async with AsyncSessionLocal() as session:
-            result = await session.execute(
-                select(Assignment).where(Assignment.id == self.assignment_id)
-            )
-            assignment = result.scalar_one_or_none()
-            
-            if not assignment:
-                await interaction.response.send_message(
-                    "❌ Assignment not found.",
-                    ephemeral=True
-                )
-                return
-            
-            assignment.status = 'completed'
-            await session.commit()
-            
-            # Update the main message
-            result = await session.execute(
-                select(Course).where(Course.id == assignment.course_id)
-            )
-            course = result.scalar_one_or_none()
-            
-            if course:
-                result = await session.execute(
-                    select(GradeChannelConfig).where(GradeChannelConfig.channel_id == course.channel_id)
-                )
-                config = result.scalar_one_or_none()
-                
-                if config:
-                    from cogs.homework import update_homework_message
-                    await update_homework_message(interaction.client, session, config)
-            
-            await interaction.response.send_message(
-                f"✅ Assignment '{assignment.title}' marked as completed!",
-                ephemeral=True
-            )
-
-
-class CourseManagementView(ui.View):
-    """View for managing courses."""
-    
-    def __init__(self, channel_id: int):
-        super().__init__(timeout=300)
+        self.db_session = session
         self.channel_id = channel_id
-    
-    @ui.button(label="Add Course", style=ButtonStyle.green)
-    async def add_course(self, interaction: Interaction, button: ui.Button):
-        from db import AsyncSessionLocal
         
-        async with AsyncSessionLocal() as session:
-            modal = AddCourseModal(session, self.channel_id)
-            await interaction.response.send_modal(modal)
-    
-    @ui.button(label="Edit Course", style=ButtonStyle.blurple)
-    async def edit_course(self, interaction: Interaction, button: ui.Button):
-        from db import AsyncSessionLocal
-        
-        async with AsyncSessionLocal() as session:
-            result = await session.execute(
-                select(Course).where(Course.channel_id == self.channel_id)
-            )
-            courses = result.scalars().all()
-            
-            if not courses:
-                await interaction.response.send_message(
-                    "❌ No courses available.",
-                    ephemeral=True
+        options = []
+        for assignment, course in assignments[:25]:
+            status_emoji = "📝" if assignment.status == 'active' else "✅" if assignment.status == 'completed' else "⚠️"
+            options.append(
+                SelectOption(
+                    label=f"{assignment.title[:80]}",
+                    value=str(assignment.id),
+                    description=f"{course.name} - Due: {assignment.due_date.strftime('%d/%m/%Y')}",
+                    emoji=status_emoji
                 )
-                return
-            
-            view = EditCourseSelect(session, courses)
-            embed = Embed(
-                title="Edit Course",
-                description="Select a course to edit:",
-                color=discord.Color.blurple()
             )
-            await interaction.response.edit_message(embed=embed, view=view)
-    
-    @ui.button(label="Delete Course", style=ButtonStyle.red)
-    async def delete_course(self, interaction: Interaction, button: ui.Button):
-        from db import AsyncSessionLocal
         
-        async with AsyncSessionLocal() as session:
-            result = await session.execute(
-                select(Course).where(Course.channel_id == self.channel_id)
-            )
-            courses = result.scalars().all()
-            
-            if not courses:
-                await interaction.response.send_message(
-                    "❌ No courses available.",
-                    ephemeral=True
-                )
-                return
-            
-            view = DeleteCourseSelect(session, courses)
-            embed = Embed(
-                title="Delete Course",
-                description="⚠️ Select a course to delete.\n**Warning:** This will also delete all assignments for this course!",
-                color=discord.Color.red()
-            )
-            await interaction.response.edit_message(embed=embed, view=view)
+        select = ui.Select(placeholder="Select an assignment...", options=options)
+        select.callback = self.assignment_selected
+        self.add_item(select)
+        self.assignments = {a[0].id: a for a in assignments}
+    
+    async def assignment_selected(self, interaction: Interaction):
+        assignment_id = int(self.children[0].values[0])
+        assignment, course = self.assignments[assignment_id]
+        
+        # Show confirmation
+        view = ConfirmDeleteView(self.db_session, assignment, course, self.channel_id, "assignment")
+        embed = Embed(
+            title="⚠️ Confirm Deletion",
+            description=f"Are you sure you want to delete this assignment?\n\n"
+                       f"**{assignment.title}**\n"
+                       f"Course: {course.name}\n"
+                       f"Due: {assignment.due_date.strftime('%d/%m/%Y %H:%M')}",
+            color=discord.Color.red()
+        )
+        await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
 
+
+# ============================================================================
+# Course Management
+# ============================================================================
 
 class AddCourseModal(ui.Modal, title="Add Course"):
     """Modal for adding a new course."""
@@ -526,7 +866,7 @@ class AddCourseModal(ui.Modal, title="Add Course"):
             await update_homework_message(interaction.client, self.db_session, config)
         
         await interaction.response.send_message(
-            f"✅ Course '{self.course_name.value}' has been added!",
+            f"✅ Course '{self.course_name.value}' added successfully!",
             ephemeral=True
         )
 
@@ -539,8 +879,13 @@ class EditCourseSelect(ui.View):
         self.db_session = session
         
         options = [
-            SelectOption(label=course.name, value=str(course.id))
-            for course in courses
+            SelectOption(
+                label=course.name,
+                value=str(course.id),
+                description=f"{len(course.assignments)} assignment(s)",
+                emoji="📘"
+            )
+            for course in courses[:25]
         ]
         
         select = ui.Select(placeholder="Select a course...", options=options)
@@ -557,9 +902,13 @@ class EditCourseSelect(ui.View):
 
 
 class EditCourseModal(ui.Modal, title="Edit Course"):
-    """Modal for editing a course."""
+    """Modal for editing an existing course."""
     
-    course_name = ui.TextInput(label="Course Name", required=True, max_length=100)
+    course_name = ui.TextInput(
+        label="Course Name",
+        required=True,
+        max_length=100
+    )
     
     course_channel_id = ui.TextInput(
         label="Course Channel ID (Optional)",
@@ -575,33 +924,14 @@ class EditCourseModal(ui.Modal, title="Edit Course"):
         
         # Pre-fill with existing data
         self.course_name.default = course.name
-        if course.course_channel_id:
-            self.course_channel_id.default = str(course.course_channel_id)
+        self.course_channel_id.default = str(course.course_channel_id) if course.course_channel_id else ""
     
     async def on_submit(self, interaction: Interaction):
-        # Check if new name conflicts
-        if self.course_name.value != self.course.name:
-            result = await self.db_session.execute(
-                select(Course).where(
-                    Course.channel_id == self.course.channel_id,
-                    Course.name == self.course_name.value
-                )
-            )
-            existing = result.scalar_one_or_none()
-            
-            if existing:
-                await interaction.response.send_message(
-                    f"❌ A course named '{self.course_name.value}' already exists.",
-                    ephemeral=True
-                )
-                return
-        
         # Parse course channel ID if provided
         course_channel_id = None
         if self.course_channel_id.value:
             try:
                 course_channel_id = int(self.course_channel_id.value.strip())
-                # Verify the channel exists
                 channel = interaction.guild.get_channel(course_channel_id)
                 if not channel:
                     await interaction.response.send_message(
@@ -611,7 +941,7 @@ class EditCourseModal(ui.Modal, title="Edit Course"):
                     return
             except ValueError:
                 await interaction.response.send_message(
-                    f"❌ Invalid channel ID format. Please enter a valid numeric ID.",
+                    f"❌ Invalid channel ID format.",
                     ephemeral=True
                 )
                 return
@@ -619,11 +949,14 @@ class EditCourseModal(ui.Modal, title="Edit Course"):
         # Update course
         self.course.name = self.course_name.value
         self.course.course_channel_id = course_channel_id
+        
         await self.db_session.commit()
         
-        # Update the main message
+        # Update to-do list
         result = await self.db_session.execute(
-            select(GradeChannelConfig).where(GradeChannelConfig.channel_id == self.course.channel_id)
+            select(GradeChannelConfig).where(
+                GradeChannelConfig.channel_id == self.course.channel_id
+            )
         )
         config = result.scalar_one_or_none()
         
@@ -632,7 +965,7 @@ class EditCourseModal(ui.Modal, title="Edit Course"):
             await update_homework_message(interaction.client, self.db_session, config)
         
         await interaction.response.send_message(
-            f"✅ Course has been renamed to '{self.course_name.value}'!",
+            f"✅ Course '{self.course_name.value}' updated!",
             ephemeral=True
         )
 
@@ -640,13 +973,19 @@ class EditCourseModal(ui.Modal, title="Edit Course"):
 class DeleteCourseSelect(ui.View):
     """View for selecting a course to delete."""
     
-    def __init__(self, session: AsyncSession, courses: List[Course]):
+    def __init__(self, session: AsyncSession, courses: List[Course], channel_id: int):
         super().__init__(timeout=300)
         self.db_session = session
+        self.channel_id = channel_id
         
         options = [
-            SelectOption(label=course.name, value=str(course.id))
-            for course in courses
+            SelectOption(
+                label=course.name,
+                value=str(course.id),
+                description=f"{len(course.assignments)} assignment(s) will be deleted!",
+                emoji="📘"
+            )
+            for course in courses[:25]
         ]
         
         select = ui.Select(placeholder="Select a course...", options=options)
@@ -658,52 +997,57 @@ class DeleteCourseSelect(ui.View):
         course_id = int(self.children[0].values[0])
         course = self.courses[course_id]
         
-        # Count assignments
-        assignment_count = len(course.assignments)
-        
-        # Confirmation view
-        confirm_view = ui.View(timeout=60)
-        confirm_button = ui.Button(label="Confirm Delete", style=ButtonStyle.danger)
-        cancel_button = ui.Button(label="Cancel", style=ButtonStyle.secondary)
-        
-        async def confirm_callback(confirm_interaction: Interaction):
-            await self.db_session.delete(course)
-            await self.db_session.commit()
-            
-            # Update the main message
-            result = await self.db_session.execute(
-                select(GradeChannelConfig).where(GradeChannelConfig.channel_id == course.channel_id)
-            )
-            config = result.scalar_one_or_none()
-            
-            if config:
-                from cogs.homework import update_homework_message
-                await update_homework_message(confirm_interaction.client, self.db_session, config)
-            
-            await confirm_interaction.response.edit_message(
-                content=f"✅ Course '{course.name}' and its {assignment_count} assignment(s) have been deleted.",
-                embed=None,
-                view=None
-            )
-        
-        async def cancel_callback(cancel_interaction: Interaction):
-            await cancel_interaction.response.edit_message(
-                content="Deletion cancelled.",
-                embed=None,
-                view=None
-            )
-        
-        confirm_button.callback = confirm_callback
-        cancel_button.callback = cancel_callback
-        confirm_view.add_item(confirm_button)
-        confirm_view.add_item(cancel_button)
-        
+        # Show confirmation
+        view = ConfirmDeleteView(self.db_session, course, None, self.channel_id, "course")
         embed = Embed(
-            title="⚠️ Confirm Course Deletion",
-            description=f"Are you sure you want to delete the course **{course.name}**?\n\n"
-                       f"This will also delete **{assignment_count} assignment(s)**.\n\n"
-                       f"**This action cannot be undone.**",
+            title="⚠️ Confirm Deletion",
+            description=f"Are you sure you want to delete this course?\n\n"
+                       f"**{course.name}**\n"
+                       f"⚠️ This will also delete **{len(course.assignments)}** assignment(s)!",
             color=discord.Color.red()
         )
-        await interaction.response.send_message(embed=embed, view=confirm_view, ephemeral=True)
+        await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+
+
+class ConfirmDeleteView(ui.View):
+    """Confirmation view for deletions."""
+    
+    def __init__(self, session: AsyncSession, item, course, channel_id: int, item_type: str):
+        super().__init__(timeout=60)
+        self.db_session = session
+        self.item = item
+        self.course = course
+        self.channel_id = channel_id
+        self.item_type = item_type
+    
+    @ui.button(label="Confirm Delete", style=ButtonStyle.danger)
+    async def confirm(self, interaction: Interaction, button: ui.Button):
+        # Delete the item
+        await self.db_session.delete(self.item)
+        await self.db_session.commit()
+        
+        # Update to-do list
+        result = await self.db_session.execute(
+            select(GradeChannelConfig).where(
+                GradeChannelConfig.channel_id == self.channel_id
+            )
+        )
+        config = result.scalar_one_or_none()
+        
+        if config:
+            from cogs.homework import update_homework_message
+            await update_homework_message(interaction.client, self.db_session, config)
+        
+        item_name = self.item.title if self.item_type == "assignment" else self.item.name
+        await interaction.response.send_message(
+            f"✅ {self.item_type.capitalize()} **{item_name}** deleted successfully!",
+            ephemeral=True
+        )
+    
+    @ui.button(label="Cancel", style=ButtonStyle.secondary)
+    async def cancel(self, interaction: Interaction, button: ui.Button):
+        await interaction.response.send_message(
+            "❌ Deletion cancelled.",
+            ephemeral=True
+        )
 
