@@ -493,58 +493,21 @@ class SelectHomeworkChannelView(ui.View):
     def __init__(self, action: str):
         super().__init__(timeout=300)
         self.action = action
-    
-    async def on_timeout(self):
-        """Clean up on timeout."""
-        pass
-    
-    async def interaction_check(self, interaction: Interaction) -> bool:
-        """Load channels when view is created."""
-        from db import AsyncSessionLocal
         
-        # Get all configured homework channels
-        async with AsyncSessionLocal() as session:
-            result = await session.execute(select(GradeChannelConfig))
-            configs = result.scalars().all()
-            
-            if not configs:
-                await interaction.response.send_message(
-                    "❌ No homework channels configured. Use Setup first.",
-                    ephemeral=True
-                )
-                return False
-            
-            # Create channel select
-            options = []
-            for config in configs:
-                channel = interaction.guild.get_channel(config.channel_id)
-                if channel:
-                    options.append(
-                        SelectOption(
-                            label=f"{config.grade_level} - {channel.name}",
-                            value=str(config.channel_id),
-                            description=f"Homework channel for {config.grade_level}"
-                        )
-                    )
-            
-            if not options:
-                await interaction.response.send_message(
-                    "❌ No valid homework channels found.",
-                    ephemeral=True
-                )
-                return False
-            
-            select = ui.Select(placeholder="Select homework channel...", options=options)
-            select.callback = self.channel_selected
-            self.add_item(select)
-            
-            return True
+        # Use channel select - we'll validate it's a homework channel on selection
+        channel_select = ui.ChannelSelect(
+            placeholder="Select homework channel...",
+            channel_types=[ChannelType.text],
+            custom_id=f"select_hw_channel_{action}"
+        )
+        channel_select.callback = self.channel_selected
+        self.add_item(channel_select)
     
     async def channel_selected(self, interaction: Interaction):
         """Handle homework channel selection."""
         from db import AsyncSessionLocal
         
-        channel_id = int(self.children[0].values[0])
+        channel_id = self.children[0].values[0].id
         
         async with AsyncSessionLocal() as session:
             result = await session.execute(
@@ -556,7 +519,7 @@ class SelectHomeworkChannelView(ui.View):
             
             if not config:
                 await interaction.response.send_message(
-                    "❌ Channel configuration not found.",
+                    f"❌ <#{channel_id}> is not configured as a homework channel. Use `/homework` → Setup to configure it first.",
                     ephemeral=True
                 )
                 return
