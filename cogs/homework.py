@@ -206,45 +206,40 @@ async def update_homework_message(bot: commands.Bot, session, config: GradeChann
     # Compute content hash to detect actual changes
     content_hash = hashlib.md5("".join(content_parts).encode()).hexdigest()
     
-    # Check if content actually changed
+    # Check if content actually changed by comparing with stored hash
     content_changed = True
-    if config.message_id:
-        try:
-            message = await channel.fetch_message(config.message_id)
-            # Check if we have stored hash in message footer (if it exists)
-            if message.embeds and len(message.embeds) > 0:
-                last_embed = message.embeds[-1]
-                if last_embed.footer and last_embed.footer.text:
-                    # Extract hash from footer if present
-                    if "#" in last_embed.footer.text:
-                        old_hash = last_embed.footer.text.split("#")[-1]
-                        content_changed = (old_hash != content_hash)
-        except:
-            pass
+    if hasattr(config, 'content_hash') and config.content_hash:
+        content_changed = (config.content_hash != content_hash)
     
-    # Only add timestamp if content changed
+    # Only update the message if content actually changed
     if content_changed:
+        # Update timestamp
         footer_embed.set_footer(text=f"Last updated: {datetime.now().strftime('%d/%m/%Y %H:%M')}")
-    
-    embeds.append(footer_embed)
-    
-    # Update or create message (no view/buttons - display only)
-    try:
-        if config.message_id:
-            try:
-                message = await channel.fetch_message(config.message_id)
-                await message.edit(embeds=embeds)
-            except:
-                # Message was deleted, create new one
+        embeds.append(footer_embed)
+        
+        # Update or create message (no view/buttons - display only)
+        try:
+            if config.message_id:
+                try:
+                    message = await channel.fetch_message(config.message_id)
+                    await message.edit(embeds=embeds)
+                except:
+                    # Message was deleted, create new one
+                    message = await channel.send(embeds=embeds)
+                    config.message_id = message.id
+                    await session.commit()
+            else:
                 message = await channel.send(embeds=embeds)
                 config.message_id = message.id
                 await session.commit()
-        else:
-            message = await channel.send(embeds=embeds)
-            config.message_id = message.id
+            
+            # Store the new content hash
+            config.content_hash = content_hash
             await session.commit()
-    except Exception as e:
-        print(f"Error updating homework message: {e}")
+            
+        except Exception as e:
+            print(f"Error updating homework message: {e}")
+    # If content hasn't changed, don't update the message at all
 
 
 class Homework(commands.Cog):

@@ -110,6 +110,7 @@ class GradeChannelConfig(Base, TimestampMixin):
         index=True
     )
     message_id = Column(BigInteger, nullable=True)
+    content_hash = Column(String, nullable=True)  # Track content changes to avoid unnecessary updates
     
     # Relationships
     courses: Mapped[List["Course"]] = relationship(
