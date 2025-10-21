@@ -3,8 +3,7 @@ Authentication UI components.
 Handles student and professional authentication with database storage.
 """
 import re
-from discord import ui, Interaction, ButtonStyle, Forbidden, Object, Role, Embed, Color
-from discord.ext import commands
+from discord import ui, Interaction, ButtonStyle, Forbidden
 from datetime import datetime, timedelta
 from sqlalchemy import select
 from typing import Optional
@@ -13,7 +12,7 @@ from db import AsyncSessionLocal
 from db.models import AuthenticatedUser, Professional, PendingAuth
 from utils import ROLE_FA, ROLE_FI, ROLE_PRO, ROLE_M1, ROLE_M2, ROLE_STUDENT, send_email, create_jwt, verify_jwt, ConfigManager
 from utils.csv_parser import find_student_by_id
-from api.api import RootMe
+from api import RootMe
 
 COOLDOWN_PERIOD = timedelta(hours=1)
 
