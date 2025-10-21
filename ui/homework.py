@@ -942,19 +942,14 @@ class SelectCourseChannelView(ui.View):
         super().__init__(timeout=300)
         self.homework_channel_id = homework_channel_id
         
-        # Add channel select
+        # Add channel select (mandatory)
         channel_select = ui.ChannelSelect(
-            placeholder="Select course channel...",
+            placeholder="Select course channel (required)...",
             channel_types=[ChannelType.text],
             custom_id="select_course_channel"
         )
         channel_select.callback = self.channel_selected
         self.add_item(channel_select)
-        
-        # Add skip button
-        skip_button = ui.Button(label="Skip (No channel)", style=ButtonStyle.secondary)
-        skip_button.callback = self.skip_channel
-        self.add_item(skip_button)
     
     async def channel_selected(self, interaction: Interaction):
         """Handle course channel selection."""
@@ -965,15 +960,6 @@ class SelectCourseChannelView(ui.View):
         # Show modal for course name
         async with AsyncSessionLocal() as session:
             modal = AddCourseModal(session, self.homework_channel_id, course_channel_id)
-            await interaction.response.send_modal(modal)
-    
-    async def skip_channel(self, interaction: Interaction):
-        """Skip course channel selection."""
-        from db import AsyncSessionLocal
-        
-        # Show modal without course channel
-        async with AsyncSessionLocal() as session:
-            modal = AddCourseModal(session, self.homework_channel_id, None)
             await interaction.response.send_modal(modal)
 
 

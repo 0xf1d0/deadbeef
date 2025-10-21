@@ -1,5 +1,4 @@
 import os
-import logging
 from discord.ext import commands, tasks
 from discord import app_commands, Interaction, Embed, Color, TextChannel
 from sqlalchemy import select
@@ -10,57 +9,11 @@ from db import AsyncSessionLocal, init_db
 from db.models import GradeChannelConfig, Course, Assignment
 from utils import ROLE_NOTABLE, ROLE_MANAGER, ROLE_M1, ROLE_M2, ROLE_FI, ROLE_FA
 
-# Set up logging
-logger = logging.getLogger('homework')
-
-
-def get_roles_with_channel_access(channel: TextChannel) -> List[int]:
-    """
-    Get the list of role IDs that have access to view a channel.
-    
-    Args:
-        channel: The Discord channel to check
-    
-    Returns:
-        List of role IDs that have view_channel permission
-    """
-    roles_with_access = []
-    
-    # Check permission overwrites for specific roles
-    role_ids_to_check = {
-        'M1': ROLE_M1.id,
-        'M2': ROLE_M2.id,
-        'FI': ROLE_FI.id,
-        'FA': ROLE_FA.id,
-    }
-    
-    for role_name, role_id in role_ids_to_check.items():
-        # Get the role object from the guild
-        role = channel.guild.get_role(role_id)
-        if not role:
-            continue
-        
-        # Check if there's an overwrite for this role
-        overwrite = channel.overwrites_for(role)
-        
-        # Check view_channel permission
-        # If explicitly allowed (True), or not explicitly denied (None) and @everyone can see
-        if overwrite.view_channel is True:
-            roles_with_access.append(role_id)
-        elif overwrite.view_channel is None:
-            # Check @everyone permissions
-            everyone_role = channel.guild.default_role
-            everyone_overwrite = channel.overwrites_for(everyone_role)
-            if everyone_overwrite.view_channel is not False:
-                # If @everyone can view or it's not explicitly denied, and the role isn't denied
-                roles_with_access.append(role_id)
-    
-    return roles_with_access
-
 
 def get_role_mentions_for_channel(channel: TextChannel, grade_level: str) -> str:
     """
     Get the appropriate role mentions for a channel based on permissions.
+    Check if FI or FA roles are explicitly DENIED view_channel permission.
     
     Args:
         channel: The Discord channel
@@ -69,31 +22,41 @@ def get_role_mentions_for_channel(channel: TextChannel, grade_level: str) -> str
     Returns:
         String with role mentions (e.g., "<@&M1_ID> <@&FI_ID>")
     """
-    accessible_role_ids = get_roles_with_channel_access(channel)
+    mentions = []
     
-    # Determine which grade role to mention
+    # Always mention the grade level (M1 or M2)
     grade_role_map = {
         'M1': ROLE_M1.id,
         'M2': ROLE_M2.id,
     }
     
-    mentions = []
-    
-    # Add grade level mention if accessible
     grade_role_id = grade_role_map.get(grade_level.upper())
-    if grade_role_id and grade_role_id in accessible_role_ids:
+    if grade_role_id:
         mentions.append(f"<@&{grade_role_id}>")
     
-    # Add formation mentions (FI/FA) if accessible
-    if ROLE_FI.id in accessible_role_ids:
+    # Check if FI role is explicitly DENIED view_channel permission
+    fi_role = channel.guild.get_role(ROLE_FI.id)
+    fi_denied = False
+    if fi_role:
+        fi_overwrite = channel.overwrites_for(fi_role)
+        if fi_overwrite.view_channel is False:
+            fi_denied = True
+    
+    # Check if FA role is explicitly DENIED view_channel permission
+    fa_role = channel.guild.get_role(ROLE_FA.id)
+    fa_denied = False
+    if fa_role:
+        fa_overwrite = channel.overwrites_for(fa_role)
+        if fa_overwrite.view_channel is False:
+            fa_denied = True
+    
+    # Mention FI if not denied
+    if not fi_denied:
         mentions.append(f"<@&{ROLE_FI.id}>")
     
-    if ROLE_FA.id in accessible_role_ids:
+    # Mention FA if not denied
+    if not fa_denied:
         mentions.append(f"<@&{ROLE_FA.id}>")
-    
-    # If no specific roles found, fall back to @everyone
-    if not mentions:
-        return "||@everyone||"
     
     return " ".join(mentions)
 
@@ -117,23 +80,18 @@ async def update_homework_message(bot: commands.Bot, session, config: GradeChann
     content_parts = []  # Track content for change detection
     has_courses_with_assignments = False
     
+    # Get grade level as string
+    grade_level_str = str(config.grade_level.value) if hasattr(config.grade_level, 'value') else str(config.grade_level)
+    
     if not courses:
         embed = Embed(
-            title=f"📚 {config.grade_level} - Homework To-Do List",
+            title=f"📚 {grade_level_str} - Homework To-Do List",
             description="No courses have been added yet.",
             color=Color.blue()
         )
         embeds.append(embed)
         content_parts.append("no_courses")
     else:
-        # Add a header embed
-        header_embed = Embed(
-            title=f"📚 {config.grade_level} - Homework To-Do List",
-            description=f"View all assignments and deadlines for {config.grade_level} courses.\n\u200b",
-            color=Color.blue()
-        )
-        embeds.append(header_embed)
-        
         # Create an embed for each course (only if it has active assignments)
         for course in sorted(courses, key=lambda c: c.name):
             # Get active assignments sorted by due date
@@ -191,15 +149,11 @@ async def update_homework_message(bot: commands.Bot, session, config: GradeChann
                 content_parts.append(f"{course.name}:{assignment.id}:{assignment.title}:{assignment.status}")
             
             embeds.append(course_embed)
-        
-        # If no courses have active assignments, show a message
-        if not has_courses_with_assignments:
-            no_assignments_embed = Embed(
-                description="✨ No active assignments at the moment!",
-                color=Color.green()
-            )
-            embeds.append(no_assignments_embed)
-            content_parts.append("no_active_assignments")
+    
+    # Only add footer if there are course embeds
+    if not embeds:
+        # No assignments at all, don't send anything
+        return
     
     # Add footer embed
     footer_embed = Embed(
@@ -379,17 +333,13 @@ class Homework(commands.Cog):
             )
             assignments = result.scalars().all()
             
-            logger.info(f"[HOMEWORK] Checking {len(assignments)} active assignment(s) for reminders")
-            
             now = datetime.now()
             
             for assignment in assignments:
-                logger.debug(f"[HOMEWORK] Checking assignment '{assignment.title}', due: {assignment.due_date}")
                 time_until_due = assignment.due_date - now
                 
-                # Check if overdue
-                if time_until_due < timedelta(0):
-                    # Mark as past due
+                # Check if overdue by more than 3 hours - delete from display
+                if time_until_due < timedelta(hours=-3):
                     assignment.status = 'past_due'
                     continue
                 
@@ -403,11 +353,8 @@ class Homework(commands.Cog):
                     (timedelta(hours=1), timedelta(hours=1, minutes=30), "1 hour"),
                 ]
                 
-                logger.debug(f"[HOMEWORK] Time until due: {time_until_due}")
-                
                 for threshold, window, label in reminder_windows:
                     if threshold <= time_until_due < window:
-                        logger.info(f"[HOMEWORK] REMINDER TRIGGERED for '{assignment.title}' - Due in {label}")
                         # Send reminder
                         result = await session.execute(
                             select(Course).where(Course.id == assignment.course_id)
@@ -434,13 +381,11 @@ class Homework(commands.Cog):
                                 
                                 if permission_channel:
                                     role_mentions = get_role_mentions_for_channel(permission_channel, grade_level)
-                                    logger.info(f"[HOMEWORK] Assignment '{assignment.title}' - Grade: {grade_level}, Channel: {permission_channel.name}, Roles to mention: {role_mentions}")
                                 else:
                                     # Fall back to mentioning the grade role only
                                     grade_role_map = {'M1': ROLE_M1.id, 'M2': ROLE_M2.id}
                                     grade_role_id = grade_role_map.get(grade_level)
                                     role_mentions = f"<@&{grade_role_id}>" if grade_role_id else "||@everyone||"
-                                    logger.warning(f"[HOMEWORK] Assignment '{assignment.title}' - Grade: {grade_level}, No permission channel found, using fallback: {role_mentions}")
                                 
                                 embed = Embed(
                                     title=f"⏰ Assignment Reminder",
@@ -466,11 +411,7 @@ class Homework(commands.Cog):
                                     )
                                 
                                 # Send to homework to-do channel with role mentions
-                                try:
-                                    await channel.send(role_mentions, embed=embed)
-                                    logger.info(f"[HOMEWORK] ✅ Reminder sent successfully to {channel.name} (ID: {channel.id})")
-                                except Exception as e:
-                                    logger.error(f"[HOMEWORK] ❌ Failed to send reminder: {e}")
+                                await channel.send(role_mentions, embed=embed)
                         break
             
             # Commit status changes

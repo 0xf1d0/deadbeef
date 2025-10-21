@@ -283,11 +283,11 @@ class Schedule(commands.Cog):
         self.update_all_schedules.cancel()
     
     @app_commands.command(
-        name="manage_schedule",
+        name="schedule",
         description="Manage schedule channel configuration (Admin/Manager only)."
     )
     @app_commands.checks.has_any_role(ROLE_MANAGER.id, ROLE_NOTABLE.id)
-    async def manage_schedule(self, interaction: Interaction):
+    async def schedule(self, interaction: Interaction):
         """Open schedule management panel."""
         view = ScheduleManagementView()
         embed = Embed(
