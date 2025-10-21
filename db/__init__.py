@@ -62,18 +62,25 @@ AsyncSessionLocal = async_sessionmaker(
 async def init_db() -> None:
     """
     Initialize the database by creating all tables.
+    Safe to call multiple times - will only create missing tables/indexes.
     
     Raises:
         Exception: If database initialization fails
     """
     try:
         async with engine.begin() as conn:
-            # Create all tables
-            await conn.run_sync(Base.metadata.create_all)
+            # Create all tables and indexes
+            # checkfirst=True is default, but we catch OperationalError for existing indexes
+            await conn.run_sync(Base.metadata.create_all, checkfirst=True)
             logger.info("Database initialized successfully")
     except Exception as e:
-        logger.error(f"Failed to initialize database: {e}")
-        raise
+        # If the error is about indexes already existing, that's fine - database is already set up
+        error_msg = str(e).lower()
+        if 'already exists' in error_msg or 'duplicate' in error_msg:
+            logger.info("Database already initialized (indexes exist)")
+        else:
+            logger.error(f"Failed to initialize database: {e}")
+            raise
 
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
