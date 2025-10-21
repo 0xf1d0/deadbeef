@@ -3,7 +3,7 @@ from discord import Intents, Interaction, app_commands
 from dotenv import load_dotenv
 import os, re
 
-from utils import ConfigManager
+from utils import ConfigManager, CYBER
 
 
 class DeadBeef(commands.Bot):
@@ -21,8 +21,8 @@ class DeadBeef(commands.Bot):
 
             name = file[:-3]
             await self.load_extension(f"cogs.{name}")
-        # self.tree.copy_global_to(guild=CYBER)
-        await self.tree.sync()
+        self.tree.copy_global_to(guild=CYBER)
+        await self.tree.sync(guild=CYBER)
 
 
 if __name__ == '__main__':
