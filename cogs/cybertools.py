@@ -4,13 +4,13 @@ from discord import app_commands, Interaction, Embed, Color
 from sqlalchemy import select
 
 from db import AsyncSessionLocal, init_db
-from db.models import Category, Tool, ToolSuggestion
+from db.models import Category
 from ui.cybertools import (
     ToolExplorerView,
     SearchModal,
-    ToolSuggestionModal,
-    AdminPanelView
+    ToolSuggestionModal
 )
+from utils import ROLE_MANAGER, ROLE_NOTABLE
 
 
 class CyberTools(commands.Cog):
@@ -75,7 +75,7 @@ class CyberTools(commands.Cog):
         name="manage_tools",
         description="Tool management dashboard (Admin only)."
     )
-    @app_commands.checks.has_permissions(administrator=True)
+    @app_commands.checks.has_any_role(ROLE_MANAGER.id, ROLE_NOTABLE.id)
     async def manage_tools(self, interaction: Interaction):
         """Open tool management dashboard."""
         from ui.cybertools import CyberToolsAdminPanel

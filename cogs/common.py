@@ -1,5 +1,4 @@
 import datetime
-import re
 import logging
 from typing import Optional
 from discord import app_commands, Interaction, Member, Embed, File, Color, Activity, ActivityType

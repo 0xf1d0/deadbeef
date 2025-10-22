@@ -13,7 +13,7 @@ from typing import Optional, List, Tuple
 from db import AsyncSessionLocal, init_db
 from db.models import ScheduleChannelConfig
 from ui.schedule import ScheduleManagementView
-from utils import ROLE_NOTABLE, ROLE_MANAGER
+from utils import ROLE_MANAGER
 
 # Set French locale for date formatting
 try:
@@ -318,7 +318,7 @@ class Schedule(commands.Cog):
         name="manage_schedule",
         description="Manage schedule channel configuration (Admin/Manager only)."
     )
-    @app_commands.checks.has_any_role(ROLE_MANAGER.id, ROLE_NOTABLE.id)
+    @app_commands.checks.has_any_role(ROLE_MANAGER.id)
     async def manage_schedule(self, interaction: Interaction):
         """Open schedule management panel."""
         view = ScheduleManagementView()

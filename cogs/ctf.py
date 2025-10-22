@@ -3,13 +3,11 @@ CTF Team Management System
 Provides comprehensive tools for creating, managing, and competing in CTF teams.
 """
 from discord.ext import commands
-from discord import app_commands, Interaction, Embed, Color, PermissionOverwrite
-from sqlalchemy import select, func
-from typing import Optional
+from discord import app_commands, Interaction, Embed, Color
+from sqlalchemy import select
 
 from db import AsyncSessionLocal, init_db
-from db.models import PlayerProfile, Team, TeamInvite, TeamApplication, AuthenticatedUser
-from utils import ROLE_MANAGER, ROLE_NOTABLE, CTF_CATEGORY
+from db.models import PlayerProfile, Team, AuthenticatedUser
 from ui.ctf import (
     CreateTeamModal, TeamManagementPanel, TeamListView,
     SetStatusView, ProfileView

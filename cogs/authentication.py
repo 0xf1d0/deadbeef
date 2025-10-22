@@ -5,11 +5,11 @@ Provides admin commands to register professionals and manage access.
 from discord.ext import commands
 from discord import app_commands, Interaction, Embed, Color, TextChannel, ui, ButtonStyle
 from sqlalchemy import select
-from typing import List, Optional
+from typing import Optional
 
 from db import AsyncSessionLocal, init_db
 from db.models import AuthenticatedUser, Professional, ProfessionalCourseChannel, PendingAuth
-from utils import ROLE_MANAGER, ROLE_NOTABLE, ROLE_M1, ROLE_M2, ROLE_FI, ROLE_FA
+from utils import ROLE_MANAGER, ROLE_M1, ROLE_M2, ROLE_FI, ROLE_FA
 from utils.csv_parser import get_all_students
 from ui.authentication import AuthenticationAdminPanel
 
@@ -28,7 +28,7 @@ class Authentication(commands.Cog):
         name="manage_authentication",
         description="Manage authentication system - users, professionals, and access (Admin only)."
     )
-    @app_commands.checks.has_any_role(ROLE_MANAGER.id, ROLE_NOTABLE.id)
+    @app_commands.checks.has_any_role(ROLE_MANAGER.id)
     async def manage_authentication(self, interaction: Interaction):
         """Open authentication management panel."""
         view = AuthenticationAdminPanel()
@@ -64,7 +64,7 @@ class Authentication(commands.Cog):
         first_name="First name (optional)",
         last_name="Last name (optional)"
     )
-    @app_commands.checks.has_any_role(ROLE_MANAGER.id, ROLE_NOTABLE.id)
+    @app_commands.checks.has_any_role(ROLE_MANAGER.id)
     async def register_professional(
         self,
         interaction: Interaction,
@@ -124,7 +124,7 @@ class Authentication(commands.Cog):
         channel="Course channel to grant access to",
         channel_name="Friendly name for the channel (optional)"
     )
-    @app_commands.checks.has_any_role(ROLE_MANAGER.id, ROLE_NOTABLE.id)
+    @app_commands.checks.has_any_role(ROLE_MANAGER.id)
     async def add_course_access(
         self,
         interaction: Interaction,
@@ -192,7 +192,7 @@ class Authentication(commands.Cog):
         email="Professional's email",
         channel="Course channel to remove access from"
     )
-    @app_commands.checks.has_any_role(ROLE_MANAGER.id, ROLE_NOTABLE.id)
+    @app_commands.checks.has_any_role(ROLE_MANAGER.id)
     async def remove_course_access(
         self,
         interaction: Interaction,
@@ -270,7 +270,7 @@ class Authentication(commands.Cog):
         name="list_professionals",
         description="List all registered professionals (Admin only)."
     )
-    @app_commands.checks.has_any_role(ROLE_MANAGER.id, ROLE_NOTABLE.id)
+    @app_commands.checks.has_any_role(ROLE_MANAGER.id)
     async def list_professionals(self, interaction: Interaction):
         """List all registered professionals."""
         async with AsyncSessionLocal() as session:
@@ -305,7 +305,7 @@ class Authentication(commands.Cog):
         description="View details of a specific professional (Admin only)."
     )
     @app_commands.describe(email="Professional's email")
-    @app_commands.checks.has_any_role(ROLE_MANAGER.id, ROLE_NOTABLE.id)
+    @app_commands.checks.has_any_role(ROLE_MANAGER.id)
     async def view_professional(self, interaction: Interaction, email: str):
         """View professional details and course access."""
         async with AsyncSessionLocal() as session:
@@ -355,7 +355,7 @@ class Authentication(commands.Cog):
         description="Delete a professional from the system (Admin only)."
     )
     @app_commands.describe(email="Professional's email")
-    @app_commands.checks.has_any_role(ROLE_MANAGER.id, ROLE_NOTABLE.id)
+    @app_commands.checks.has_any_role(ROLE_MANAGER.id)
     async def delete_professional(self, interaction: Interaction, email: str):
         """Delete a professional."""
         async with AsyncSessionLocal() as session:
@@ -444,7 +444,7 @@ class Authentication(commands.Cog):
         name="auth_stats",
         description="View authentication statistics (Admin only)."
     )
-    @app_commands.checks.has_any_role(ROLE_MANAGER.id, ROLE_NOTABLE.id)
+    @app_commands.checks.has_any_role(ROLE_MANAGER.id)
     async def auth_stats(self, interaction: Interaction):
         """View authentication statistics."""
         async with AsyncSessionLocal() as session:
@@ -537,7 +537,7 @@ class Authentication(commands.Cog):
         app_commands.Choice(name="FI - Remove from all FI students", value="FI"),
         app_commands.Choice(name="FA - Remove from all FA students", value="FA"),
     ])
-    @app_commands.checks.has_any_role(ROLE_MANAGER.id, ROLE_NOTABLE.id)
+    @app_commands.checks.has_any_role(ROLE_MANAGER.id)
     async def reset_roles(
         self,
         interaction: Interaction,
