@@ -284,7 +284,7 @@ class Common(commands.Cog):
                             # Si on a du cache, on affiche juste le nombre de challenges
                             embed.add_field(
                                 name=f"🚩 __Challenges récents__ ({stats['challenge_count']} validés)",
-                                value="\u200b\nDonnées mises en cache - utilisez `/profile` pour voir les détails",
+                                value="\u200b\n",
                                 inline=False
                             )
                     else:

@@ -340,7 +340,7 @@ class CreateTeamModal(ui.Modal, title="Create CTF Team"):
                 }
                 
                 channel = await category.create_text_channel(
-                    name=f"🏆・team-{self.team_name.value.lower().replace(' ', '-')}",
+                    name=f"🏆・{self.team_name.value.lower().replace(' ', '-')}",
                     overwrites=overwrites,
                     reason=f"CTF team channel for {self.team_name.value}"
                 )
@@ -1111,7 +1111,7 @@ class EditTeamInfoModal(ui.Modal, title="Edit Team Info"):
                 try:
                     channel = interaction.client.get_channel(team.channel_id)
                     if channel:
-                        await channel.edit(name=f"🏆・team-{self.team_name.value.lower().replace(' ', '-')}")
+                        await channel.edit(name=f"🏆・{self.team_name.value.lower().replace(' ', '-')}")
                 except:
                     pass
             
