@@ -1183,9 +1183,8 @@ class SelectCourseChannelView(ui.View):
         course_channel_id = self.children[0].values[0].id
         
         # Show modal for course name
-        async with AsyncSessionLocal() as session:
-            modal = AddCourseModal(session, self.homework_channel_id, course_channel_id)
-            await interaction.response.send_modal(modal)
+        modal = AddCourseModal(self.homework_channel_id, course_channel_id)
+        await interaction.response.send_modal(modal)
 
 
 class AddCourseModal(ui.Modal, title="Add Course"):
@@ -1198,54 +1197,56 @@ class AddCourseModal(ui.Modal, title="Add Course"):
         max_length=100
     )
     
-    def __init__(self, session: AsyncSession, channel_id: int, course_channel_id: int = None):
+    def __init__(self, channel_id: int, course_channel_id: int = None):
         super().__init__()
-        self.db_session = session
         self.channel_id = channel_id
         self.course_channel_id = course_channel_id
     
     async def on_submit(self, interaction: Interaction):
-        # Check if course already exists
-        result = await self.db_session.execute(
-            select(Course).where(
-                Course.channel_id == self.channel_id,
-                Course.name == self.course_name.value
+        from db import AsyncSessionLocal
+        
+        async with AsyncSessionLocal() as session:
+            # Check if course already exists
+            result = await session.execute(
+                select(Course).where(
+                    Course.channel_id == self.channel_id,
+                    Course.name == self.course_name.value
+                )
             )
-        )
-        existing = result.scalar_one_or_none()
-        
-        if existing:
-            await interaction.response.send_message(
-                f"❌ A course named '{self.course_name.value}' already exists in this channel.",
-                ephemeral=True
+            existing = result.scalar_one_or_none()
+            
+            if existing:
+                await interaction.response.send_message(
+                    f"❌ A course named '{self.course_name.value}' already exists in this channel.",
+                    ephemeral=True
+                )
+                return
+            
+            # Create course
+            course = Course(
+                name=self.course_name.value,
+                channel_id=self.channel_id,
+                course_channel_id=self.course_channel_id
             )
-            return
-        
-        # Create course
-        course = Course(
-            name=self.course_name.value,
-            channel_id=self.channel_id,
-            course_channel_id=self.course_channel_id
-        )
-        self.db_session.add(course)
-        await self.db_session.commit()
-        
-        # Update the main message
-        result = await self.db_session.execute(
-            select(GradeChannelConfig).where(GradeChannelConfig.channel_id == self.channel_id)
-        )
-        config = result.scalar_one_or_none()
-        
-        if config:
-            from cogs.homework import update_homework_message
-            await update_homework_message(interaction.client, self.db_session, config)
-        
-        # Build success message
-        message = f"✅ Course **{self.course_name.value}** added successfully!"
-        if self.course_channel_id:
-            message += f"\n📍 Course channel: <#{self.course_channel_id}>"
-        
-        await interaction.response.send_message(message, ephemeral=True)
+            session.add(course)
+            await session.commit()
+            
+            # Update the main message
+            result = await session.execute(
+                select(GradeChannelConfig).where(GradeChannelConfig.channel_id == self.channel_id)
+            )
+            config = result.scalar_one_or_none()
+            
+            if config:
+                from cogs.homework import update_homework_message
+                await update_homework_message(interaction.client, session, config)
+            
+            # Build success message
+            message = f"✅ Course **{self.course_name.value}** added successfully!"
+            if self.course_channel_id:
+                message += f"\n📍 Course channel: <#{self.course_channel_id}>"
+            
+            await interaction.response.send_message(message, ephemeral=True)
 
 
 class EditCourseSelect(ui.View):

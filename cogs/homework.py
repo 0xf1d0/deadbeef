@@ -274,11 +274,11 @@ class Homework(commands.Cog):
         self.check_reminders.cancel()
     
     @app_commands.command(
-        name="homework",
+        name="manage_homework",
         description="Homework management dashboard (Admin/Manager only)."
     )
     @app_commands.checks.has_any_role(ROLE_MANAGER.id, ROLE_NOTABLE.id)
-    async def homework(self, interaction: Interaction):
+    async def manage_homework(self, interaction: Interaction):
         """Open homework management dashboard."""
         from ui.homework import HomeworkAdminPanel
         

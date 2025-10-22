@@ -3,8 +3,7 @@ Authentication cog for managing student and professional authentication.
 Provides admin commands to register professionals and manage access.
 """
 from discord.ext import commands
-from discord import app_commands, Interaction, Embed, Color, TextChannel, SelectOption, Member
-from discord import ui, ButtonStyle
+from discord import app_commands, Interaction, Embed, Color, TextChannel, ui, ButtonStyle
 from sqlalchemy import select
 from typing import List, Optional
 
@@ -12,6 +11,7 @@ from db import AsyncSessionLocal, init_db
 from db.models import AuthenticatedUser, Professional, ProfessionalCourseChannel, PendingAuth
 from utils import ROLE_MANAGER, ROLE_NOTABLE, ROLE_M1, ROLE_M2, ROLE_FI, ROLE_FA
 from utils.csv_parser import get_all_students
+from ui.authentication import AuthenticationAdminPanel
 
 
 class Authentication(commands.Cog):
@@ -25,8 +25,39 @@ class Authentication(commands.Cog):
         await init_db()
     
     @app_commands.command(
+        name="manage_authentication",
+        description="Manage authentication system - users, professionals, and access (Admin only)."
+    )
+    @app_commands.checks.has_any_role(ROLE_MANAGER.id, ROLE_NOTABLE.id)
+    async def manage_authentication(self, interaction: Interaction):
+        """Open authentication management panel."""
+        view = AuthenticationAdminPanel()
+        embed = Embed(
+            title="🔐 Authentication Management",
+            description="Centralized management for the authentication system.\n\n"
+                       "**Features:**\n"
+                       "• View statistics and user lists\n"
+                       "• Search for users by email or ID\n"
+                       "• Register and manage professionals\n"
+                       "• Grant/revoke course access\n"
+                       "• Deauthenticate users\n"
+                       "• Clear expired tokens\n"
+                       "• Reset roles for entire groups",
+            color=Color.blue()
+        )
+        embed.add_field(
+            name="📊 Quick Stats",
+            value="Select 'View Statistics' for detailed information.",
+            inline=False
+        )
+        embed.set_footer(text="Select an action from the menu below")
+        
+        await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+    
+    # Legacy commands kept for backwards compatibility (hidden from autocomplete)
+    @app_commands.command(
         name="register_professional",
-        description="Register a new professional/teacher (Admin only)."
+        description="[DEPRECATED] Use /manage_authentication instead."
     )
     @app_commands.describe(
         email="Professional's email address",
@@ -41,7 +72,7 @@ class Authentication(commands.Cog):
         first_name: Optional[str] = None,
         last_name: Optional[str] = None
     ):
-        """Register a new professional in the system."""
+        """[DEPRECATED] Register a new professional in the system. Use /manage_authentication instead."""
         async with AsyncSessionLocal() as session:
             # Check if professional already exists
             result = await session.execute(
@@ -51,7 +82,8 @@ class Authentication(commands.Cog):
             
             if existing:
                 await interaction.response.send_message(
-                    f"❌ Professional with email {email} already exists.",
+                    f"❌ Professional with email {email} already exists.\n\n"
+                    f"⚠️ **Note:** This command is deprecated. Please use `/manage_authentication` for a better experience.",
                     ephemeral=True
                 )
                 return
@@ -68,6 +100,7 @@ class Authentication(commands.Cog):
             
             embed = Embed(
                 title="✅ Professional Registered",
+                description="⚠️ **Deprecation Notice:** This command will be removed in a future update.\nPlease use `/manage_authentication` instead.",
                 color=Color.green()
             )
             embed.add_field(name="Email", value=email, inline=False)
@@ -76,7 +109,7 @@ class Authentication(commands.Cog):
                 embed.add_field(name="Name", value=name, inline=False)
             embed.add_field(
                 name="Next Steps",
-                value="Use `/add_course_access` to grant access to course channels.",
+                value="Use `/manage_authentication` → 'Manage Course Access' to grant access to course channels.",
                 inline=False
             )
             
@@ -197,6 +230,28 @@ class Authentication(commands.Cog):
                 )
                 return
             
+            # Get the authenticated user to remove their permissions
+            result_user = await session.execute(
+                select(AuthenticatedUser).where(
+                    AuthenticatedUser.email == email,
+                    AuthenticatedUser.user_type == 'professional'
+                )
+            )
+            auth_user = result_user.scalar_one_or_none()
+            
+            # Remove Discord permissions
+            permission_removed = False
+            if auth_user:
+                member = interaction.guild.get_member(auth_user.user_id)
+                if member:
+                    try:
+                        # Remove permission overwrite for this member in this channel
+                        await channel.set_permissions(member, overwrite=None)
+                        permission_removed = True
+                    except Exception as e:
+                        print(f"Error removing permissions for {member} in {channel.name}: {e}")
+            
+            # Delete course access from database
             await session.delete(course_channel)
             await session.commit()
             
@@ -206,6 +261,8 @@ class Authentication(commands.Cog):
             )
             embed.add_field(name="Professional", value=email, inline=False)
             embed.add_field(name="Channel", value=channel.mention, inline=False)
+            if permission_removed:
+                embed.add_field(name="Permissions", value="🔒 Discord permissions removed", inline=False)
             
             await interaction.response.send_message(embed=embed, ephemeral=True)
     
@@ -320,11 +377,41 @@ class Authentication(commands.Cog):
             cancel_button = ui.Button(label="Cancel", style=ButtonStyle.secondary)
             
             async def confirm_callback(confirm_interaction: Interaction):
+                # Get the user who has this email
+                result_user = await session.execute(
+                    select(AuthenticatedUser).where(
+                        AuthenticatedUser.email == email,
+                        AuthenticatedUser.user_type == 'professional'
+                    )
+                )
+                auth_user = result_user.scalar_one_or_none()
+                
+                # Remove permissions from all course channels
+                removed_channels = []
+                if auth_user:
+                    member = confirm_interaction.guild.get_member(auth_user.user_id)
+                    if member:
+                        for course_channel in pro.course_channels:
+                            channel = confirm_interaction.guild.get_channel(course_channel.channel_id)
+                            if channel:
+                                try:
+                                    # Remove permission overwrite for this member
+                                    await channel.set_permissions(member, overwrite=None)
+                                    removed_channels.append(channel.name)
+                                except Exception as e:
+                                    # Log error but continue
+                                    print(f"Error removing permissions for {member} in {channel.name}: {e}")
+                
+                # Delete the professional (cascade will delete course_channels)
                 await session.delete(pro)
                 await session.commit()
                 
+                message = f"✅ Professional {email} has been deleted."
+                if removed_channels:
+                    message += f"\n\n🔒 Removed permissions from {len(removed_channels)} channel(s):\n• " + "\n• ".join(removed_channels)
+                
                 await confirm_interaction.response.edit_message(
-                    content=f"✅ Professional {email} has been deleted.",
+                    content=message,
                     embed=None,
                     view=None
                 )

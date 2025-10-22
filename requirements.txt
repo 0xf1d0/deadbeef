@@ -1,5 +1,5 @@
 # Discord Bot Framework
-discord.py>=2.3.0
+discord.py[voice]>=2.3.0
 
 # Environment Variables
 python-dotenv>=1.0.0

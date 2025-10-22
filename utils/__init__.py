@@ -2,7 +2,7 @@
 Utilities package for DeadBeef Discord bot.
 """
 import yt_dlp, asyncio, re, json, os, functools, smtplib, jwt
-from discord import PCMVolumeTransformer, FFmpegPCMAudio, Object, Guild, Role, Message, TextChannel
+from discord import PCMVolumeTransformer, FFmpegPCMAudio, Object, Guild, Role, Message, TextChannel, CategoryChannel
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from datetime import datetime, timedelta, timezone
@@ -27,6 +27,8 @@ WELCOME_MESSAGE = Object(1314385676107645010, type=Message)
 WELCOME_CHANNEL = Object(1291494038427537559, type=TextChannel)
 CALENDAR_CHANNEL = Object(1293319532361809986, type=TextChannel)
 LOG_CHANNEL = Object(1292059079287504930, type=TextChannel)
+
+CTF_CATEGORY = Object(1365785989095887049, type=CategoryChannel)
 
 CYBER_COLOR = 0x476efc
 

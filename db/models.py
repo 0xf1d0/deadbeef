@@ -8,7 +8,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship, declarative_base, Mapped
 from sqlalchemy.sql import func
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 
 from .constants import UserType, AssignmentStatus, SuggestionStatus, GradeLevel, FormationType
 
@@ -323,6 +323,9 @@ class AuthenticatedUser(Base, TimestampMixin):
     # Timestamps (authenticated_at uses custom name instead of created_at)
     authenticated_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     
+    # Relationships
+    ctf_profile: Mapped[Optional["PlayerProfile"]] = relationship('PlayerProfile', back_populates='user', uselist=False)
+    
     def __repr__(self) -> str:
         return f"<AuthenticatedUser(user_id={self.user_id}, type='{self.user_type.value}')>"
 
@@ -413,4 +416,136 @@ class PendingAuth(Base):
     
     def __repr__(self) -> str:
         return f"<PendingAuth(user_id={self.user_id}, type='{self.user_type.value}')>"
+
+
+# ============================================================================
+# CTF Team Management System Models
+# ============================================================================
+
+class PlayerProfile(Base, TimestampMixin):
+    """CTF player profile for authenticated users."""
+    __tablename__ = 'ctf_player_profiles'
+    __table_args__ = (
+        Index('ix_ctf_players_team', 'team_id'),
+        Index('ix_ctf_players_status', 'status'),
+    )
+    
+    user_id = Column(BigInteger, ForeignKey('authenticated_users.user_id', ondelete='CASCADE'), primary_key=True)
+    team_id = Column(Integer, ForeignKey('ctf_teams.id', ondelete='SET NULL'), nullable=True)
+    status = Column(String(50), default='Idle', nullable=False)  # 'Idle', 'Looking for Team'
+    
+    # Relationships
+    user: Mapped["AuthenticatedUser"] = relationship('AuthenticatedUser', back_populates='ctf_profile')
+    team: Mapped["Team"] = relationship('Team', back_populates='members', foreign_keys=[team_id])
+    owned_team: Mapped["Team"] = relationship('Team', back_populates='owner', foreign_keys='Team.owner_id', uselist=False)
+    sent_invites: Mapped[List["TeamInvite"]] = relationship(
+        'TeamInvite',
+        foreign_keys='TeamInvite.invitee_id',
+        back_populates='invitee',
+        cascade='all, delete-orphan'
+    )
+    applications: Mapped[List["TeamApplication"]] = relationship(
+        'TeamApplication',
+        back_populates='applicant',
+        cascade='all, delete-orphan'
+    )
+    
+    @property
+    def discord_id(self) -> int:
+        """Get Discord ID from associated user."""
+        return self.user.user_id
+    
+    @property
+    def rootme_username(self) -> Optional[str]:
+        """Get Root-Me username from associated user's rootme_id."""
+        return self.user.rootme_id
+    
+    def __repr__(self) -> str:
+        return f"<PlayerProfile(user_id={self.user_id}, team_id={self.team_id}, status='{self.status}')>"
+
+
+class Team(Base, TimestampMixin):
+    """CTF team with associated Discord channel and members."""
+    __tablename__ = 'ctf_teams'
+    __table_args__ = (
+        Index('ix_ctf_teams_owner', 'owner_id'),
+        Index('ix_ctf_teams_recruiting', 'is_recruiting'),
+    )
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(100), unique=True, nullable=False, index=True)
+    description = Column(Text, nullable=True)
+    owner_id = Column(BigInteger, ForeignKey('ctf_player_profiles.user_id', ondelete='CASCADE'), nullable=False)
+    channel_id = Column(BigInteger, unique=True, nullable=False)
+    inbox_thread_id = Column(BigInteger, unique=True, nullable=True)
+    is_recruiting = Column(Boolean, default=True, nullable=False)
+    
+    # Relationships
+    owner: Mapped["PlayerProfile"] = relationship('PlayerProfile', foreign_keys=[owner_id], back_populates='owned_team')
+    members: Mapped[List["PlayerProfile"]] = relationship(
+        'PlayerProfile',
+        foreign_keys='PlayerProfile.team_id',
+        back_populates='team',
+        lazy='selectin'
+    )
+    invites: Mapped[List["TeamInvite"]] = relationship(
+        'TeamInvite',
+        back_populates='team',
+        cascade='all, delete-orphan',
+        lazy='selectin'
+    )
+    applications: Mapped[List["TeamApplication"]] = relationship(
+        'TeamApplication',
+        back_populates='team',
+        cascade='all, delete-orphan',
+        lazy='selectin'
+    )
+    
+    def __repr__(self) -> str:
+        return f"<Team(id={self.id}, name='{self.name}', owner_id={self.owner_id})>"
+
+
+class TeamInvite(Base, TimestampMixin):
+    """Track pending invitations from teams to potential members."""
+    __tablename__ = 'ctf_team_invites'
+    __table_args__ = (
+        UniqueConstraint('team_id', 'invitee_id', name='uq_team_invitee'),
+        Index('ix_ctf_invites_team_status', 'team_id', 'status'),
+        Index('ix_ctf_invites_invitee_status', 'invitee_id', 'status'),
+    )
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    team_id = Column(Integer, ForeignKey('ctf_teams.id', ondelete='CASCADE'), nullable=False)
+    invitee_id = Column(BigInteger, ForeignKey('ctf_player_profiles.user_id', ondelete='CASCADE'), nullable=False)
+    status = Column(String(20), default='pending', nullable=False)  # 'pending', 'accepted', 'declined'
+    
+    # Relationships
+    team: Mapped["Team"] = relationship('Team', back_populates='invites')
+    invitee: Mapped["PlayerProfile"] = relationship('PlayerProfile', foreign_keys=[invitee_id], back_populates='sent_invites')
+    
+    def __repr__(self) -> str:
+        return f"<TeamInvite(id={self.id}, team_id={self.team_id}, invitee_id={self.invitee_id}, status='{self.status}')>"
+
+
+class TeamApplication(Base, TimestampMixin):
+    """Track pending applications from users wishing to join a team."""
+    __tablename__ = 'ctf_team_applications'
+    __table_args__ = (
+        UniqueConstraint('team_id', 'applicant_id', name='uq_team_applicant'),
+        Index('ix_ctf_apps_team_status', 'team_id', 'status'),
+        Index('ix_ctf_apps_applicant_status', 'applicant_id', 'status'),
+    )
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    team_id = Column(Integer, ForeignKey('ctf_teams.id', ondelete='CASCADE'), nullable=False)
+    applicant_id = Column(BigInteger, ForeignKey('ctf_player_profiles.user_id', ondelete='CASCADE'), nullable=False)
+    reason = Column(Text, nullable=False)
+    status = Column(String(20), default='pending', nullable=False)  # 'pending', 'approved', 'denied'
+    
+    # Relationships
+    team: Mapped["Team"] = relationship('Team', back_populates='applications')
+    applicant: Mapped["PlayerProfile"] = relationship('PlayerProfile', back_populates='applications')
+    
+    def __repr__(self) -> str:
+        return f"<TeamApplication(id={self.id}, team_id={self.team_id}, applicant_id={self.applicant_id}, status='{self.status}')>"
 
