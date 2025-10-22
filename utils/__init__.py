@@ -81,9 +81,6 @@ def verify_jwt(token, email):
     except jwt.InvalidTokenError:
         return None
 
-
-yt_dlp.utils.bug_reports_message = lambda: ''
-
 ytdl_format_options = {
     'format': 'bestaudio/best',
     'outtmpl': 'downloads/%(extractor)s-%(id)s-%(title)s.%(ext)s',
