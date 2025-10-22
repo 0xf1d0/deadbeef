@@ -15,8 +15,9 @@ from db.models import GradeChannelConfig, Course, Assignment
 class HomeworkAdminPanel(ui.View):
     """Main admin panel for homework management with select menu."""
     
-    def __init__(self):
+    def __init__(self, channel_id: int):
         super().__init__(timeout=300)
+        self.channel_id = channel_id
         
         # Create select menu with all admin options
         options = [
@@ -107,68 +108,260 @@ class HomeworkAdminPanel(ui.View):
             await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
         
         elif action == "add_assignment":
-            # Show channel select to choose which homework channel
-            view = SelectHomeworkChannelView(action="add_assignment")
-            embed = Embed(
-                title="➕ Add Assignment",
-                description="Select the homework channel:",
-                color=discord.Color.green()
-            )
-            await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+            # Use current channel
+            async with AsyncSessionLocal() as session:
+                result = await session.execute(
+                    select(GradeChannelConfig).where(
+                        GradeChannelConfig.channel_id == self.channel_id
+                    )
+                )
+                config = result.scalar_one_or_none()
+                
+                if not config:
+                    await interaction.response.send_message(
+                        f"❌ This channel is not configured as a homework channel. Use 'Setup Homework Channel' first.",
+                        ephemeral=True
+                    )
+                    return
+                
+                # Get courses for this channel
+                result = await session.execute(
+                    select(Course).where(Course.channel_id == self.channel_id)
+                )
+                courses = result.scalars().all()
+                
+                if not courses:
+                    await interaction.response.send_message(
+                        "❌ No courses available. Add a course first.",
+                        ephemeral=True
+                    )
+                    return
+                
+                view = AddAssignmentCourseSelect(session, courses)
+                embed = Embed(
+                    title="➕ Add Assignment",
+                    description=f"Channel: <#{self.channel_id}>\n\nSelect the course:",
+                    color=discord.Color.green()
+                )
+                await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
         
         elif action == "edit_assignment":
-            view = SelectHomeworkChannelView(action="edit_assignment")
-            embed = Embed(
-                title="✏️ Edit Assignment",
-                description="Select the homework channel:",
-                color=discord.Color.orange()
-            )
-            await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+            # Use current channel
+            async with AsyncSessionLocal() as session:
+                result = await session.execute(
+                    select(GradeChannelConfig).where(
+                        GradeChannelConfig.channel_id == self.channel_id
+                    )
+                )
+                config = result.scalar_one_or_none()
+                
+                if not config:
+                    await interaction.response.send_message(
+                        f"❌ This channel is not configured as a homework channel. Use 'Setup Homework Channel' first.",
+                        ephemeral=True
+                    )
+                    return
+                
+                # Get all assignments
+                result = await session.execute(
+                    select(Course).where(Course.channel_id == self.channel_id)
+                )
+                courses = result.scalars().all()
+                
+                assignments = []
+                for course in courses:
+                    for assignment in course.assignments:
+                        assignments.append((assignment, course))
+                
+                if not assignments:
+                    await interaction.response.send_message(
+                        "❌ No assignments available to edit.",
+                        ephemeral=True
+                    )
+                    return
+                
+                view = EditAssignmentSelect(session, assignments)
+                embed = Embed(
+                    title="✏️ Edit Assignment",
+                    description=f"Channel: <#{self.channel_id}>\n\nSelect an assignment to edit:",
+                    color=discord.Color.orange()
+                )
+                await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
         
         elif action == "delete_assignment":
-            view = SelectHomeworkChannelView(action="delete_assignment")
-            embed = Embed(
-                title="🗑️ Delete Assignment",
-                description="Select the homework channel:",
-                color=discord.Color.red()
-            )
-            await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+            # Use current channel
+            async with AsyncSessionLocal() as session:
+                result = await session.execute(
+                    select(GradeChannelConfig).where(
+                        GradeChannelConfig.channel_id == self.channel_id
+                    )
+                )
+                config = result.scalar_one_or_none()
+                
+                if not config:
+                    await interaction.response.send_message(
+                        f"❌ This channel is not configured as a homework channel. Use 'Setup Homework Channel' first.",
+                        ephemeral=True
+                    )
+                    return
+                
+                # Get all assignments
+                result = await session.execute(
+                    select(Course).where(Course.channel_id == self.channel_id)
+                )
+                courses = result.scalars().all()
+                
+                assignments = []
+                for course in courses:
+                    for assignment in course.assignments:
+                        assignments.append((assignment, course))
+                
+                if not assignments:
+                    await interaction.response.send_message(
+                        "❌ No assignments available to delete.",
+                        ephemeral=True
+                    )
+                    return
+                
+                view = DeleteAssignmentSelect(session, assignments, self.channel_id)
+                embed = Embed(
+                    title="🗑️ Delete Assignment",
+                    description=f"Channel: <#{self.channel_id}>\n\nSelect an assignment to delete:",
+                    color=discord.Color.red()
+                )
+                await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
         
         elif action == "add_course":
-            view = SelectHomeworkChannelView(action="add_course")
-            embed = Embed(
-                title="📘 Add Course",
-                description="Select the homework channel:",
-                color=discord.Color.blurple()
-            )
-            await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+            # Use current channel - show course channel select
+            async with AsyncSessionLocal() as session:
+                result = await session.execute(
+                    select(GradeChannelConfig).where(
+                        GradeChannelConfig.channel_id == self.channel_id
+                    )
+                )
+                config = result.scalar_one_or_none()
+                
+                if not config:
+                    await interaction.response.send_message(
+                        f"❌ This channel is not configured as a homework channel. Use 'Setup Homework Channel' first.",
+                        ephemeral=True
+                    )
+                    return
+                
+                view = SelectCourseChannelView(self.channel_id)
+                embed = Embed(
+                    title="📘 Add Course",
+                    description=f"Homework channel: <#{self.channel_id}>\n\nSelect the course channel (where the course content is):",
+                    color=discord.Color.blurple()
+                )
+                embed.add_field(
+                    name="ℹ️ Why select a course channel?",
+                    value="This helps the bot mention only the right roles (FI/FA) for homework reminders based on channel permissions.",
+                    inline=False
+                )
+                await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
         
         elif action == "edit_course":
-            view = SelectHomeworkChannelView(action="edit_course")
-            embed = Embed(
-                title="📝 Edit Course",
-                description="Select the homework channel:",
-                color=discord.Color.blue()
-            )
-            await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+            # Use current channel
+            async with AsyncSessionLocal() as session:
+                result = await session.execute(
+                    select(GradeChannelConfig).where(
+                        GradeChannelConfig.channel_id == self.channel_id
+                    )
+                )
+                config = result.scalar_one_or_none()
+                
+                if not config:
+                    await interaction.response.send_message(
+                        f"❌ This channel is not configured as a homework channel. Use 'Setup Homework Channel' first.",
+                        ephemeral=True
+                    )
+                    return
+                
+                # Get courses for this channel
+                result = await session.execute(
+                    select(Course).where(Course.channel_id == self.channel_id)
+                )
+                courses = result.scalars().all()
+                
+                if not courses:
+                    await interaction.response.send_message(
+                        "❌ No courses available.",
+                        ephemeral=True
+                    )
+                    return
+                
+                view = EditCourseSelect(session, courses)
+                embed = Embed(
+                    title="📝 Edit Course",
+                    description=f"Channel: <#{self.channel_id}>\n\nSelect the course to edit:",
+                    color=discord.Color.blue()
+                )
+                await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
         
         elif action == "delete_course":
-            view = SelectHomeworkChannelView(action="delete_course")
-            embed = Embed(
-                title="❌ Delete Course",
-                description="Select the homework channel:",
-                color=discord.Color.red()
-            )
-            await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+            # Use current channel
+            async with AsyncSessionLocal() as session:
+                result = await session.execute(
+                    select(GradeChannelConfig).where(
+                        GradeChannelConfig.channel_id == self.channel_id
+                    )
+                )
+                config = result.scalar_one_or_none()
+                
+                if not config:
+                    await interaction.response.send_message(
+                        f"❌ This channel is not configured as a homework channel. Use 'Setup Homework Channel' first.",
+                        ephemeral=True
+                    )
+                    return
+                
+                # Get courses for this channel
+                result = await session.execute(
+                    select(Course).where(Course.channel_id == self.channel_id)
+                )
+                courses = result.scalars().all()
+                
+                if not courses:
+                    await interaction.response.send_message(
+                        "❌ No courses available.",
+                        ephemeral=True
+                    )
+                    return
+                
+                view = DeleteCourseSelect(session, courses, self.channel_id)
+                embed = Embed(
+                    title="❌ Delete Course",
+                    description=f"Channel: <#{self.channel_id}>\n\n⚠️ Warning: Deleting a course will also delete all its assignments!\n\nSelect the course to delete:",
+                    color=discord.Color.red()
+                )
+                await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
         
         elif action == "refresh":
-            view = SelectHomeworkChannelView(action="refresh")
-            embed = Embed(
-                title="🔄 Refresh To-Do List",
-                description="Select the homework channel to refresh:",
-                color=discord.Color.greyple()
-            )
-            await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+            # Use current channel
+            async with AsyncSessionLocal() as session:
+                result = await session.execute(
+                    select(GradeChannelConfig).where(
+                        GradeChannelConfig.channel_id == self.channel_id
+                    )
+                )
+                config = result.scalar_one_or_none()
+                
+                if not config:
+                    await interaction.response.send_message(
+                        f"❌ This channel is not configured as a homework channel. Use 'Setup Homework Channel' first.",
+                        ephemeral=True
+                    )
+                    return
+                
+                # Refresh the homework message
+                from cogs.homework import update_homework_message
+                await update_homework_message(interaction.client, session, config)
+                
+                await interaction.response.send_message(
+                    f"✅ To-do list for <#{self.channel_id}> refreshed!",
+                    ephemeral=True
+                )
         
         elif action == "stats":
             # Show statistics
@@ -214,19 +407,51 @@ class HomeworkAdminPanel(ui.View):
                 await interaction.response.send_message(embed=embed, ephemeral=True)
         
         elif action == "remove_channel":
-            # Show channel select to remove configuration
-            view = RemoveChannelSelectView()
-            embed = Embed(
-                title="🗑️ Remove Channel Configuration",
-                description="Select the homework channel configuration to remove:",
-                color=discord.Color.red()
-            )
-            embed.add_field(
-                name="⚠️ Warning",
-                value="This will remove the channel configuration and all associated courses and assignments from the database.",
-                inline=False
-            )
-            await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+            # Use current channel - confirm removal
+            async with AsyncSessionLocal() as session:
+                result = await session.execute(
+                    select(GradeChannelConfig).where(
+                        GradeChannelConfig.channel_id == self.channel_id
+                    )
+                )
+                config = result.scalar_one_or_none()
+                
+                if not config:
+                    await interaction.response.send_message(
+                        f"❌ This channel is not configured as a homework channel.",
+                        ephemeral=True
+                    )
+                    return
+                
+                # Get course and assignment counts
+                result = await session.execute(
+                    select(Course).where(Course.channel_id == self.channel_id)
+                )
+                courses = result.scalars().all()
+                
+                total_assignments = 0
+                for course in courses:
+                    total_assignments += len(course.assignments)
+                
+                view = ConfirmRemoveChannelView(config, len(courses), total_assignments)
+                embed = Embed(
+                    title="🗑️ Remove Channel Configuration",
+                    description=f"Are you sure you want to remove the homework configuration for **{config.grade_level}** in <#{self.channel_id}>?",
+                    color=discord.Color.red()
+                )
+                embed.add_field(
+                    name="Configuration Details",
+                    value=f"**Grade Level:** {config.grade_level}\n"
+                          f"**Courses:** {len(courses)}\n"
+                          f"**Assignments:** {total_assignments}",
+                    inline=False
+                )
+                embed.add_field(
+                    name="⚠️ Warning",
+                    value="This will remove the channel configuration and all associated courses and assignments from the database.\n\n**This action cannot be undone.**",
+                    inline=False
+                )
+                await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
 
 
 class SetupChannelSelectView(ui.View):

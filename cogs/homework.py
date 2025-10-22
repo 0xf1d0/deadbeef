@@ -265,22 +265,24 @@ class Homework(commands.Cog):
         """Open homework management dashboard."""
         from ui.homework import HomeworkAdminPanel
         
-        view = HomeworkAdminPanel()
+        # Use the channel where the command was typed
+        view = HomeworkAdminPanel(interaction.channel_id)
         embed = Embed(
             title="📚 Homework Management Dashboard",
-            description="Select an action from the menu below to manage homework assignments and courses.",
+            description=f"Managing homework for <#{interaction.channel_id}>\n\nSelect an action from the menu below:",
             color=Color.blue()
         )
         embed.add_field(
             name="Available Actions",
-            value="• Setup new homework channel\n"
+            value="• Setup this channel for homework tracking\n"
                   "• Add/edit/delete assignments\n"
                   "• Add/edit/delete courses\n"
-                  "• Refresh to-do lists\n"
-                  "• View statistics",
+                  "• Refresh to-do list\n"
+                  "• View statistics\n"
+                  "• Remove channel configuration",
             inline=False
         )
-        embed.set_footer(text="Use the select menu below to get started")
+        embed.set_footer(text="All actions apply to this channel")
         
         await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
     
