@@ -1,123 +1,196 @@
-# DeadBeef
+# Deadbeef Bot – Guide complet (FR)
 
-DeadBeef is a `discord.py` bot for M1 Cybersecurity's Discord at Paris Cité University.
+Bot Discord moderne pour la communauté (M1/M2) intégrant : authentification avancée (étudiants et professionnels), gestion CTF avec workflows UI, devoirs, emploi du temps, actualités, outils cyber, musique, et intégration Root-Me avec cache.
 
-This bot embeds all the features to make everyday life easier for students.
+## Sommaire
+- Présentation générale
+- Installation rapide
+- Configuration requise
+- Lancement du bot
+- Système d’authentification (Étudiants/Professionnels)
+- Intégration Root‑Me (+ système de cache)
+- CTF Team Management System
+- Devoirs (Homeworks)
+- Emploi du temps (Schedule)
+- Actualités (News)
+- Outils Cyber / Musique / Divers
+- Commandes d’administration utiles
+- Bonnes pratiques et dépannage
 
-## Features
+---
 
-- 🎓 **Student Authentication** - Verify students and professionals
-- 📅 **Calendar Management** - Schedule and event tracking
-- 🎵 **Music Player** - Play music in voice channels
-- 🤖 **AI Integration** - Mistral AI chat functionality
-- 🔧 **Cybersecurity Tools** - Browse, search, and suggest security tools
-- 📚 **Homework To-Do System** - Track assignments and deadlines by grade level
-- 📊 **Course Schedule System** - Automated weekly schedule from Google Sheets
-- 📰 **RSS News System** - Automated news feeds with custom sources (NEW!)
+## Présentation générale
+Le bot propose une expérience « UI-first »: les actions principales sont pilotées via des boutons, modales et menus déroulants. Les données sont stockées en base SQLAlchemy asynchrone, avec des relations propres et des contraintes (ex: un joueur ne peut appartenir qu’à une seule équipe CTF).
 
-## Installation
+Points clés:
+- Authentification étudiante (M1/M2 + FI/FA) via jeton email, et authentification des professionnels pré-enregistrés.
+- Gestion CTF avancée: création d’équipe, canal privé, invitations, candidatures, panneau de gestion, statistiques Root‑Me.
+- Intégration Root‑Me avec cache en base (limite les appels API et accélère l’affichage).
+- Systèmes devoirs, emploi du temps et actualités orientés UI et base de données.
 
-```sh
-# Clone repository
-git clone https://github.com/0xf1d0/deadbeef
+---
 
-# Get into the project
-cd deadbeef
+## Installation rapide
+Pré-requis:
+- Python 3.11+
+- Un bot Discord (token) et un serveur cible
+- Accès aux fichiers CSV étudiants dans `assets/`
 
-# Consider using a virtual environment
-python3 -m venv .venv
-source .venv/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Execute program
-./start.sh
-```
-
-### Cybersecurity Tools Feature Setup
-
-To use the Cybersecurity Tools Management System:
-
-1. **Add to `.env` file:**
-```env
-ADMIN_CHANNEL_ID=your_admin_channel_id_here
-DATABASE_URL=sqlite+aiosqlite:///db/database.db
-```
-
-2. **Initialize with sample data:**
+Installation:
 ```bash
-python setup_cybertools.py
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
 ```
 
-### Homework To-Do System Setup
+---
 
-To use the Homework Tracking System:
+## Configuration requise
+Variables d’environnement (exemples):
+- `TOKEN`: token du bot Discord
+- `ROOTME`: clé API Root‑Me (facultatif si anonyme, recommandé)
 
-1. **Set up a channel for M1:**
+Configuration interne (voir `utils.__init__`):
+- Canaux/roles constants: `WELCOME_CHANNEL`, `WELCOME_MESSAGE`, `LOG_CHANNEL`, `CTF_CATEGORY`, rôles `ROLE_STUDENT`, `ROLE_M1`, `ROLE_M2`, `ROLE_FI`, `ROLE_FA`, etc.
+- Emails: `ConfigManager` pour objet et contenu des emails (jeton).
+- CSV étudiants: dans `assets/`, utilisés par `utils.csv_parser`.
+
+Base de données:
+- SQLAlchemy asynchrone (sqlite par défaut). Les modèles sont dans `db/models.py`.
+- Les tables sont créées automatiquement au premier lancement si non présentes.
+
+---
+
+## Lancement du bot
+```bash
+source venv/bin/activate
+python main.py
 ```
-/setup_homework_channel grade_level:M1
-```
+Le bot synchronise les commandes slash à la connexion.
 
-2. **Set up a channel for M2:**
-```
-/setup_homework_channel grade_level:M2
-```
+---
 
-3. **Add courses and assignments** using the interactive buttons on the to-do list.
+## Système d’authentification (Étudiants/Professionnels)
+Emplacement: `ui/auth.py`, `cogs/common.py`, modèles `AuthenticatedUser`, `Professional`.
 
-### Course Schedule System Setup
+Flux utilisateur:
+1. Message d’accueil (canal d’accueil) avec boutons.
+2. Bouton « S’authentifier »:
+   - Étudiant (rôle Étudiant requis): modal demandant le numéro étudiant + niveau (M1/M2). Le bot vérifie dans les CSV (FI/FA), envoie un jeton par email et attend la saisie du jeton.
+   - Professionnel (rôle Pro requis): modal email (doit correspondre à un Pro enregistré). Jeton envoyé également.
+3. Bouton « Entrer le jeton »: saisie du JWT → si valide, l’utilisateur est authentifié, reçoit les rôles (M1/M2 + FI/FA) ou accès aux canaux de cours (Pro).
 
-To use the automated schedule system:
+Boutons supplémentaires (authentification requise):
+- « Root‑Me »: lier l’ID Root‑Me (contrôle strict: numérique, unicité, vérification via API). Affiche une erreur si non authentifié.
+- « LinkedIn »: lier/modifier l’URL LinkedIn (erreur si non authentifié).
 
-1. **Make your Google Sheet public** (anyone with link can view)
+---
 
-2. **Get your sheet information:**
-   - Spreadsheet URL
-   - GID (from URL after `#gid=`)
+## Intégration Root‑Me (+ système de cache)
+Emplacement: `api/` (client Root‑Me), `utils/rootme_cache.py` (gestion de cache), modèles `RootMeCache`.
 
-3. **Configure M1 channel:**
-```
-/manage_schedule
-```
-Then click "Setup New Channel" and provide M1 sheet details.
+Fonctionnement:
+- Au premier appel, le bot requête l’API Root‑Me, normalise les données (pseudo, score, rang, position, nombre de challenges) et les stocke dans `rootme_cache`.
+- Les lectures suivantes utilisent le cache pendant la durée configurée (6h par défaut) pour réduire la charge et accélérer l’affichage.
+- Indicateur « (cached) » affiché dans les embeds lorsque les données proviennent du cache.
 
-4. **Configure M2 channel:**
-Repeat in M2 channel with M2 sheet details.
+Commandes utiles:
+- `/refresh_rootme_cache [membre]` (admin): force un rafraîchissement du cache pour un utilisateur.
 
-Schedules will update automatically every 15 minutes!
+Affichage profil (`/profile`):
+- Montre pseudo, score, rang, position, compteur de challenges (sans lister les 10 derniers, volontairement retiré).
 
-### RSS News System Setup
+---
 
-To use the automated news feed system:
+## CTF Team Management System
+Emplacement: `cogs/ctf.py`, `ui/ctf.py`, modèles `PlayerProfile`, `Team`, `TeamInvite`, `TeamApplication`.
 
-1. **Configure news channel:**
-```
-/manage_news
-```
-Then click "Setup Channel" and provide a channel name.
+Principes:
+- Un utilisateur doit être authentifié pour utiliser le système CTF.
+- `PlayerProfile` est lié 1‑à‑1 à `AuthenticatedUser` (pas de doublons d’infos). Un utilisateur ne peut être que dans UNE équipe.
 
-2. **Add RSS feeds:**
-Click "Add Feed" and provide:
-- Feed name (e.g., "CERT-FR")
-- Feed URL (e.g., `https://www.cert.ssi.gouv.fr/feed/`)
-- Color (optional, e.g., "red" or "#FF0000")
+Fonctionnalités clés:
+- Profil CTF `/ctf profile`:
+  - Création automatique du `PlayerProfile` si manquant (auth requis).
+  - Statut (« Looking for Team », etc.).
+  - Vue profil CTF.
+- Création d’équipe `/ctf team create`:
+  - Modal: nom, description, statut de recrutement.
+  - Création d’un canal privé sous la catégorie CTF + thread "📥 Inbox".
+  - Message d’accueil avec bouton « ⚙️ Manage Team » (propriétaire uniquement).
+- Découverte des équipes `/ctf teams`:
+  - Liste paginée des équipes qui recrutent.
+  - Boutons « Voir stats », « Postuler » (modal raison, envoi dans l’Inbox du staff de l’équipe).
+- Panneau de gestion (bouton ⚙️ dans le canal d’équipe):
+  - Modifier infos, inviter membre (sélecteur paginé d’utilisateurs authentifiés), gérer membres (kick), transfert de propriété, dissolution d’équipe.
+- Statistiques d’équipe `/ctf profile team_stats`:
+  - Agrégation des stats Root‑Me des membres avec cache.
+  - Classement interne des membres par score.
 
-3. **Repeat for more feeds:**
-Add as many feeds as you want!
+Notes UI:
+- Sélecteurs paginés pour choisir un utilisateur (affiche pseudo Discord, email, Root‑Me si dispo).
+- Gestion stricte des interactions (une réponse par interaction, suivi via followup si nécessaire).
 
-News will update automatically every 30 minutes!
+---
 
-## Config
+## Devoirs (Homeworks)
+Emplacement: `cogs/homework.py` (+ `ui/` si applicable).
 
-The bot needs a `config.json` file to gather some values to be able to work.
-Here is an example :
+Principes:
+- Les devoirs sont associés à des canaux de cours.
+- Détermination automatique des rôles à mentionner (FI/FA) selon les permissions du canal.
+- Tableau/embeds par cours; gestion via une commande admin centralisée (tableau de bord) plutôt que des boutons visibles par tous.
 
-```json
-{
-    "token": "secret",
-    "welcome_message": "<:upc:1291788754775965819> Bienvenue chez les M1 Cybers\u00e9curit\u00e9 de l'Universit\u00e9 Paris Cit\u00e9 <:upc:1291788754775965819> !\n\n:student: Etudiant(e) en Cybers\u00e9curit\u00e9, tu trouveras ici des informations utiles pour ton ann\u00e9e universitaire. N'h\u00e9site pas \u00e0 poser des questions, \u00e0 partager des informations ou \u00e0 discuter avec les autres \u00e9tudiants ! :smiley:\n\n:warning: Merci de respecter les r\u00e8gles de bonne conduite et de ne pas partager d'informations sensibles. :warning:\n\nInvit\u00e9(e) ou Etudiant(e) ? Choisissez votre identit\u00e9 dans le menu d\u00e9roulant ci-dessous.\n\n:warning: **TOUTE USURPATION D'IDENTITE EST ENREGISTREE ET RAPPORTEE** :warning:\n\n:bug: __Si vous rencontrez un probl\u00e8me lors de cette \u00e9tape, contactez <@253616158895243264>__\n\nBonne ann\u00e9e universitaire \u00e0 tous ! :mortar_board:",
-    "welcome_message_id": 1293963282721407030,
-    "reminders": []
-}
-```
+---
+
+## Emploi du temps (Schedule)
+Emplacement: `cogs/schedule.py`.
+
+Principes:
+- Admin: choisir le(s) canal(aux) de destination (M1, M2) via UI, publier et mettre à jour l’EDT chaque semaine.
+- Source compatible Google Sheets (exemple fourni) avec récupération asynchrone via `aiohttp`.
+- Notifications de changements.
+
+---
+
+## Actualités (News)
+Emplacement: `cogs/news.py`.
+
+Principes:
+- Flux d’actualités administrables; stockage en base (pas de JSON de config).
+- Affichage sous forme d’embeds; pagination si nécessaire.
+
+---
+
+## Outils Cyber / Musique / Divers
+- `cogs/cybertools.py`: catalogues/outils sécurité.
+- `cogs/music.py`: lecture audio via `discord.py[voice]`.
+- `cogs/mistral.py`: intégration Mistral AI (exemples).
+- `cogs/common.py`: utilitaires communs (profil, annonce, purge, ping, refresh cache Root‑Me, etc.).
+
+---
+
+## Commandes d’administration utiles
+- `/announce`: afficher une modale d’annonce (rôles autorisés configurés).
+- `/purge <n>`: supprimer n messages.
+- `/refresh_rootme_cache [membre]`: rafraîchir le cache Root‑Me d’un membre.
+- Gestion CTF: via UI (dans le canal d’équipe) + contraintes en base.
+
+---
+
+## Bonnes pratiques et dépannage
+- Interactions Discord: une seule réponse initiale par interaction; utiliser `interaction.followup.send` pour les réponses supplémentaires.
+- SQLAlchemy async: toujours effectuer les accès aux relations dans une session active; éviter les lazy loads en contexte async (utiliser `join`/`selectinload`).
+- Erreurs de formulaire Discord: les champs d’une modale doivent respecter `min_length`/`max_length` et valeurs par défaut valides.
+- Cache Root‑Me: par défaut 6h. Utilisez `/refresh_rootme_cache` pour forcer une mise à jour en cas de décalage.
+- Rôles FI/FA/M1/M2: s’assurer que les IDs de rôles sont correctement configurés dans `utils`.
+
+---
+
+## Support & contributions
+- Ouvrez des issues/PRs pour bugs et améliorations.
+- Merci de respecter le style de code (typage, early-returns, pas de nesting excessif, commentaires utiles uniquement).
+
+---
+
+Bon usage et GLHF 🚀
