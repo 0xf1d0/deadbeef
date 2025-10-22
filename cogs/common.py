@@ -235,58 +235,12 @@ class Common(commands.Cog):
                                 f"🏆 Score : **{stats['score']:,}** pts - {stats['rank']} - **#{stats['position']}**\n\u200b\n\u200b",
                             inline=False
                         )
-                        
-                        # Pour les challenges récents, on doit encore faire un appel API
-                        # mais seulement si on n'a pas de cache ou si on force le refresh
-                        if not stats.get('cached') or stats.get('api_error'):
-                            try:
-                                RootMe.setup()
-                                rootme_data = await RootMe.get_author(str(user_data.rootme_id))
-                                challenges = rootme_data.get("validations", [])
-                                
-                                if challenges:
-                                    lines = []
-                                    current_len = len("\u200b\n")
-                                    # Add up to 10 items but stop earlier if would exceed 1024
-                                    for c in challenges[:10]:
-                                        title = re.sub(r'&[^;]*;', '', c.get('titre', 'Challenge').strip())
-                                        challenge_url = re.sub(r'[\s-]+', '-', title)
-                                        # Safely parse date
-                                        date_str = c.get('date', '')
-                                        if date_str and isinstance(date_str, str):
-                                            try:
-                                                challenge_dt = datetime.datetime.strptime(date_str, '%Y-%m-%d %H:%M:%S')
-                                                timestamp = int(challenge_dt.timestamp())
-                                            except (ValueError, TypeError):
-                                                timestamp = int(datetime.datetime.now().timestamp())
-                                        else:
-                                            timestamp = int(datetime.datetime.now().timestamp())
-                                        line = f"- [{title}](https://www.root-me.org/{challenge_url}) <t:{timestamp}:R>"
-                                        if current_len + len(line) + 1 > 1000:  # keep margin for safety
-                                            # Indicate there are more items not shown
-                                            lines.append("…")
-                                            break
-                                        lines.append(line)
-                                        current_len += len(line) + 1
-                                    value_text = "\u200b\n" + ("\n".join(lines) if lines else "Aucun défi récent trouvé.")
-                                    embed.add_field(
-                                        name=f"🚩 __Challenges récents__ ({len(challenges)} validés)",
-                                        value=value_text,
-                                        inline=False
-                                    )
-                            except Exception as e:
-                                embed.add_field(
-                                    name="🚩 __Challenges récents__",
-                                    value=f"Impossible de récupérer les challenges: {str(e)[:200]}...",
-                                    inline=False
-                                )
-                        else:
-                            # Si on a du cache, on affiche juste le nombre de challenges
-                            embed.add_field(
-                                name=f"🚩 __Challenges récents__ ({stats['challenge_count']} validés)",
-                                value="\u200b\n",
-                                inline=False
-                            )
+                        # Ne pas afficher la liste des défis; seulement le compteur depuis le cache
+                        embed.add_field(
+                            name="🚩 __Challenges validés__",
+                            value=f"{stats['challenge_count']}",
+                            inline=False
+                        )
                     else:
                         embed.add_field(
                             name="<:rootme:1366510489521356850> __Root-Me__",
