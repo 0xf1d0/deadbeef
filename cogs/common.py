@@ -161,7 +161,13 @@ class Common(commands.Cog):
                         
                         informations += f"\n\n🧑‍🏫 Professionnel authentifié <:upc_black:1367296895717736553>"
                         if channels:
-                            informations += f"\n\n📚 Cours : {', '.join(channels)}"
+                            courses_text = ', '.join(channels)
+                            # Ensure embed field value stays <= 1024 chars
+                            if len(courses_text) > 950:
+                                # Truncate safely and indicate there are more
+                                remaining = len(courses_text) - 950
+                                courses_text = courses_text[:950].rstrip() + f"… (+{remaining} chars)"
+                            informations += f"\n\n📚 Cours : {courses_text}"
             
             informations += "\n\u200b\n\u200b"
 
@@ -211,11 +217,12 @@ class Common(commands.Cog):
                     
                     # Afficher les défis récents
                     if challenges:
-                        challenges_text = []
+                        lines = []
+                        current_len = len("\u200b\n")
+                        # Add up to 10 items but stop earlier if would exceed 1024
                         for c in challenges[:10]:
                             title = re.sub(r'&[^;]*;', '', c.get('titre', 'Challenge').strip())
                             challenge_url = re.sub(r'[\s-]+', '-', title)
-                            
                             # Safely parse date
                             date_str = c.get('date', '')
                             if date_str and isinstance(date_str, str):
@@ -226,12 +233,17 @@ class Common(commands.Cog):
                                     timestamp = int(datetime.datetime.now().timestamp())
                             else:
                                 timestamp = int(datetime.datetime.now().timestamp())
-                            
-                            challenges_text.append(f"- [{title}](https://www.root-me.org/{challenge_url}) <t:{timestamp}:R>")
-                        
+                            line = f"- [{title}](https://www.root-me.org/{challenge_url}) <t:{timestamp}:R>"
+                            if current_len + len(line) + 1 > 1000:  # keep margin for safety
+                                # Indicate there are more items not shown
+                                lines.append("…")
+                                break
+                            lines.append(line)
+                            current_len += len(line) + 1
+                        value_text = "\u200b\n" + ("\n".join(lines) if lines else "Aucun défi récent trouvé.")
                         embed.add_field(
                             name=f"🚩 __Challenges récents__ ({len(challenges)} validés)",
-                            value="\u200b\n" + "\n".join(challenges_text) or "Aucun défi récent trouvé.",
+                            value=value_text,
                             inline=False
                         )
                 except Exception as e:

@@ -87,6 +87,13 @@ class Authentication(ui.View):
             )
             user = result.scalar_one_or_none()
             
+            if not user:
+                await interaction.response.send_message(
+                    "❌ Vous devez d'abord vous authentifier.",
+                    ephemeral=True
+                )
+                return
+            
             modal = LinkedinModal(user)
             await interaction.response.send_modal(modal)
 
