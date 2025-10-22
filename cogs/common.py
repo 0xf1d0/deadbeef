@@ -113,6 +113,38 @@ class Common(commands.Cog):
     async def purge(self, interaction: Interaction, limit: int):
         await interaction.response.send_message(f'{limit} messages ont été effacés.', ephemeral=True)
         await interaction.channel.purge(limit=limit)
+    
+    @app_commands.command(description="Rafraîchir le cache RootMe d'un utilisateur.")
+    @app_commands.checks.has_permissions(administrator=True)
+    @app_commands.describe(member="Le membre dont vous souhaitez rafraîchir le cache RootMe")
+    async def refresh_rootme_cache(self, interaction: Interaction, member: Optional[Member] = None):
+        """Refresh RootMe cache for a specific user."""
+        target_user = member or interaction.user
+        
+        await interaction.response.defer(ephemeral=True)
+        
+        try:
+            from utils.rootme_cache import RootMeCacheManager
+            
+            # Force refresh the cache
+            success = await RootMeCacheManager.refresh_user_cache(target_user.id)
+            
+            if success:
+                await interaction.followup.send(
+                    f"✅ Cache RootMe rafraîchi avec succès pour {target_user.mention}",
+                    ephemeral=True
+                )
+            else:
+                await interaction.followup.send(
+                    f"❌ Impossible de rafraîchir le cache RootMe pour {target_user.mention}",
+                    ephemeral=True
+                )
+                
+        except Exception as e:
+            await interaction.followup.send(
+                f"❌ Erreur lors du rafraîchissement du cache: {str(e)}",
+                ephemeral=True
+            )
 
     @app_commands.command(description="Afficher son profil ou celui d'un autre utilisateur.")
     @app_commands.describe(member="Le membre dont vous souhaitez voir le profil")
@@ -185,65 +217,80 @@ class Common(commands.Cog):
                     value=f"\u200b\n[Voir le profil]({user_data.linkedin_url})\n\u200b\n\u200b",
                 )
             
-            # Gérer le profil Root-Me
-            rootme_id = None
+            # Gérer le profil Root-Me avec cache
             if user_data and user_data.rootme_id:
-                rootme_id = user_data.rootme_id
-            
-            if rootme_id:
                 try:
-                    # Configurer l'API Root-Me
-                    RootMe.setup()
+                    from utils.rootme_cache import RootMeCacheManager
                     
-                    # Récupérer les informations d'utilisateur de l'API Root-Me
-                    rootme_data = await RootMe.get_author(str(rootme_id))
+                    # Récupérer les stats avec cache
+                    stats = await RootMeCacheManager.get_user_stats(target_user.id)
                     
-                    # Extraire les informations
-                    nom = rootme_data.get("nom", rootme_id)
-                    score = rootme_data.get("score", "N/A")
-                    position = rootme_data.get("position", "N/A")
-                    rank = rootme_data.get("rang", "N/A")
-                    
-                    # Ajouter les informations Root-Me à l'embed
-                    embed.add_field(
-                        name="<:rootme:1366510489521356850> __Root-Me__",
-                        value=f"\u200b\n🔗 [Voir le profil](https://www.root-me.org/{nom})\n\n"
-                            f"👤 Pseudo : `{nom}`\n\n"
-                            f"🏆 Score : **{score}** pts - {rank} - **#{position}**\n\u200b\n\u200b",
-                        inline=False
-                    )
-                    
-                    challenges = rootme_data.get("validations", [])
-                    
-                    # Afficher les défis récents
-                    if challenges:
-                        lines = []
-                        current_len = len("\u200b\n")
-                        # Add up to 10 items but stop earlier if would exceed 1024
-                        for c in challenges[:10]:
-                            title = re.sub(r'&[^;]*;', '', c.get('titre', 'Challenge').strip())
-                            challenge_url = re.sub(r'[\s-]+', '-', title)
-                            # Safely parse date
-                            date_str = c.get('date', '')
-                            if date_str and isinstance(date_str, str):
-                                try:
-                                    challenge_dt = datetime.datetime.strptime(date_str, '%Y-%m-%d %H:%M:%S')
-                                    timestamp = int(challenge_dt.timestamp())
-                                except (ValueError, TypeError):
-                                    timestamp = int(datetime.datetime.now().timestamp())
-                            else:
-                                timestamp = int(datetime.datetime.now().timestamp())
-                            line = f"- [{title}](https://www.root-me.org/{challenge_url}) <t:{timestamp}:R>"
-                            if current_len + len(line) + 1 > 1000:  # keep margin for safety
-                                # Indicate there are more items not shown
-                                lines.append("…")
-                                break
-                            lines.append(line)
-                            current_len += len(line) + 1
-                        value_text = "\u200b\n" + ("\n".join(lines) if lines else "Aucun défi récent trouvé.")
+                    if stats:
+                        # Ajouter les informations Root-Me à l'embed
+                        cache_indicator = " (cached)" if stats.get('cached') else ""
                         embed.add_field(
-                            name=f"🚩 __Challenges récents__ ({len(challenges)} validés)",
-                            value=value_text,
+                            name=f"<:rootme:1366510489521356850> __Root-Me__{cache_indicator}",
+                            value=f"\u200b\n🔗 [Voir le profil](https://www.root-me.org/{stats['pseudo']})\n\n"
+                                f"👤 Pseudo : `{stats['pseudo']}`\n\n"
+                                f"🏆 Score : **{stats['score']:,}** pts - {stats['rank']} - **#{stats['position']}**\n\u200b\n\u200b",
+                            inline=False
+                        )
+                        
+                        # Pour les challenges récents, on doit encore faire un appel API
+                        # mais seulement si on n'a pas de cache ou si on force le refresh
+                        if not stats.get('cached') or stats.get('api_error'):
+                            try:
+                                RootMe.setup()
+                                rootme_data = await RootMe.get_author(str(user_data.rootme_id))
+                                challenges = rootme_data.get("validations", [])
+                                
+                                if challenges:
+                                    lines = []
+                                    current_len = len("\u200b\n")
+                                    # Add up to 10 items but stop earlier if would exceed 1024
+                                    for c in challenges[:10]:
+                                        title = re.sub(r'&[^;]*;', '', c.get('titre', 'Challenge').strip())
+                                        challenge_url = re.sub(r'[\s-]+', '-', title)
+                                        # Safely parse date
+                                        date_str = c.get('date', '')
+                                        if date_str and isinstance(date_str, str):
+                                            try:
+                                                challenge_dt = datetime.datetime.strptime(date_str, '%Y-%m-%d %H:%M:%S')
+                                                timestamp = int(challenge_dt.timestamp())
+                                            except (ValueError, TypeError):
+                                                timestamp = int(datetime.datetime.now().timestamp())
+                                        else:
+                                            timestamp = int(datetime.datetime.now().timestamp())
+                                        line = f"- [{title}](https://www.root-me.org/{challenge_url}) <t:{timestamp}:R>"
+                                        if current_len + len(line) + 1 > 1000:  # keep margin for safety
+                                            # Indicate there are more items not shown
+                                            lines.append("…")
+                                            break
+                                        lines.append(line)
+                                        current_len += len(line) + 1
+                                    value_text = "\u200b\n" + ("\n".join(lines) if lines else "Aucun défi récent trouvé.")
+                                    embed.add_field(
+                                        name=f"🚩 __Challenges récents__ ({len(challenges)} validés)",
+                                        value=value_text,
+                                        inline=False
+                                    )
+                            except Exception as e:
+                                embed.add_field(
+                                    name="🚩 __Challenges récents__",
+                                    value=f"Impossible de récupérer les challenges: {str(e)[:200]}...",
+                                    inline=False
+                                )
+                        else:
+                            # Si on a du cache, on affiche juste le nombre de challenges
+                            embed.add_field(
+                                name=f"🚩 __Challenges récents__ ({stats['challenge_count']} validés)",
+                                value="\u200b\nDonnées mises en cache - utilisez `/profile` pour voir les détails",
+                                inline=False
+                            )
+                    else:
+                        embed.add_field(
+                            name="<:rootme:1366510489521356850> __Root-Me__",
+                            value=f"\u200b\nProfil non lié. Rendez vous dans le salon {interaction.guild.get_channel(WELCOME_CHANNEL.id).mention} pour lier votre compte.",
                             inline=False
                         )
                 except Exception as e:

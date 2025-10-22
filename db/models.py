@@ -325,9 +325,47 @@ class AuthenticatedUser(Base, TimestampMixin):
     
     # Relationships
     ctf_profile: Mapped[Optional["PlayerProfile"]] = relationship('PlayerProfile', back_populates='user', uselist=False)
+    rootme_cache: Mapped[Optional["RootMeCache"]] = relationship('RootMeCache', back_populates='user', uselist=False)
     
     def __repr__(self) -> str:
         return f"<AuthenticatedUser(user_id={self.user_id}, type='{self.user_type.value}')>"
+
+
+class RootMeCache(Base, TimestampMixin):
+    """Cache for RootMe user statistics to reduce API calls."""
+    __tablename__ = 'rootme_cache'
+    __table_args__ = (
+        Index('ix_rootme_cache_user_id', 'user_id'),
+        Index('ix_rootme_cache_rootme_id', 'rootme_id'),
+        Index('ix_rootme_cache_last_updated', 'last_updated'),
+    )
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(BigInteger, ForeignKey('authenticated_users.user_id', ondelete='CASCADE'), nullable=False, unique=True)
+    rootme_id = Column(String(10), nullable=False, index=True)
+    
+    # Cached RootMe data
+    pseudo = Column(String(100), nullable=False)
+    score = Column(Integer, nullable=False, default=0)
+    position = Column(Integer, nullable=True)
+    rank = Column(String(50), nullable=True)
+    challenge_count = Column(Integer, nullable=False, default=0)
+    
+    # Cache metadata
+    last_updated = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    cache_duration_hours = Column(Integer, nullable=False, default=6)  # Default 6 hours cache
+    
+    # Relationships
+    user: Mapped["AuthenticatedUser"] = relationship('AuthenticatedUser', back_populates='rootme_cache')
+    
+    @property
+    def is_expired(self) -> bool:
+        """Check if cache is expired based on cache_duration_hours."""
+        from datetime import datetime, timedelta
+        return datetime.now() - self.last_updated > timedelta(hours=self.cache_duration_hours)
+    
+    def __repr__(self) -> str:
+        return f"<RootMeCache(user_id={self.user_id}, rootme_id='{self.rootme_id}', score={self.score})>"
 
 
 class Professional(Base, TimestampMixin):

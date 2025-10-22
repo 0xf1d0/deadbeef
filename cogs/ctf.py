@@ -255,16 +255,15 @@ class CTF(commands.Cog):
                 inline=True
             )
             
-            # RootMe stats collection
-            total_score = 0
-            total_challenges = 0
+            # Get team member user IDs
+            user_ids = [member.user_id for member, auth_user in rows]
+            
+            # Use RootMe cache manager for team stats
+            from utils.rootme_cache import RootMeCacheManager
+            team_stats, member_stats_data = await RootMeCacheManager.get_team_stats(user_ids)
+            
+            # Build member stats with Discord user info
             member_stats = []
-            linked_count = 0
-            
-            # Configure RootMe API
-            from api import RootMe
-            RootMe.setup()
-            
             for member, auth_user in rows:
                 user = interaction.guild.get_member(member.user_id)
                 if not user:
@@ -272,76 +271,49 @@ class CTF(commands.Cog):
                     
                 owner_badge = " 👑" if member.user_id == team.owner_id else ""
                 
-                if auth_user and auth_user.rootme_id:
-                    linked_count += 1
-                    try:
-                        # Get RootMe data
-                        rootme_data = await RootMe.get_author(str(auth_user.rootme_id))
-                        
-                        # Extract and normalize data like profile command
-                        pseudo = rootme_data.get("nom", str(auth_user.rootme_id))
-                        raw_score = rootme_data.get("score", 0)
-                        try:
-                            score = int(raw_score) if isinstance(raw_score, int) else int(str(raw_score).replace(',', '').strip())
-                        except Exception:
-                            score = 0
-                        position = rootme_data.get("position", "N/A")
-                        rank = rootme_data.get("rang", "N/A")
-                        challenges = rootme_data.get("validations", [])
-                        challenge_count = len(challenges) if challenges else 0
-                        
-                        total_score += score
-                        total_challenges += challenge_count
-                        
-                        member_stats.append({
-                            'user': user,
-                            'pseudo': pseudo,
-                            'score': score,
-                            'position': position,
-                            'rank': rank,
-                            'challenges': challenge_count,
-                            'owner_badge': owner_badge,
-                            'rootme_id': auth_user.rootme_id,
-                            'error': None
-                        })
-                        
-                    except Exception as e:
-                        # If RootMe API fails, still show the member
-                        member_stats.append({
-                            'user': user,
-                            'pseudo': str(auth_user.rootme_id),
-                            'score': 0,
-                            'position': "N/A",
-                            'rank': "N/A",
-                            'challenges': 0,
-                            'owner_badge': owner_badge,
-                            'rootme_id': auth_user.rootme_id,
-                            'error': "API error"
-                        })
+                # Find corresponding stats data
+                stats_data = next((s for s in member_stats_data if s['user_id'] == member.user_id), None)
+                
+                if stats_data and stats_data['pseudo']:
+                    member_stats.append({
+                        'user': user,
+                        'pseudo': stats_data['pseudo'],
+                        'score': stats_data['score'],
+                        'position': stats_data['position'],
+                        'rank': stats_data['rank'],
+                        'challenges': stats_data['challenge_count'],
+                        'owner_badge': owner_badge,
+                        'rootme_id': auth_user.rootme_id,
+                        'cached': stats_data.get('cached', False),
+                        'error': stats_data.get('api_error')
+                    })
                 else:
-                    # No RootMe linked
+                    # No RootMe linked or no stats
                     member_stats.append({
                         'user': user,
                         'pseudo': None,
                         'score': 0,
-                        'position': "N/A",
-                        'rank': "N/A",
+                        'position': None,
+                        'rank': None,
                         'challenges': 0,
                         'owner_badge': owner_badge,
-                        'rootme_id': None
+                        'rootme_id': auth_user.rootme_id if auth_user else None,
+                        'cached': False,
+                        'error': None
                     })
             
             # Sort members by score (descending)
             member_stats.sort(key=lambda x: x['score'], reverse=True)
             
             # Add RootMe team stats
-            if linked_count > 0:
+            if team_stats['linked_count'] > 0:
+                cache_indicator = " (cached)" if any(s.get('cached') for s in member_stats if s['pseudo']) else ""
                 embed.add_field(
-                    name="<:rootme:1366510489521356850> Team RootMe Stats",
-                    value=f"**Total Score:** {total_score:,} pts\n"
-                          f"**Total Challenges:** {total_challenges:,}\n"
-                          f"**Average Score:** { (total_score // linked_count) if linked_count else 0:,} pts\n"
-                          f"**Linked Accounts:** {linked_count}/{len(rows)}",
+                    name=f"<:rootme:1366510489521356850> Team RootMe Stats{cache_indicator}",
+                    value=f"**Total Score:** {team_stats['total_score']:,} pts\n"
+                          f"**Total Challenges:** {team_stats['total_challenges']:,}\n"
+                          f"**Average Score:** {team_stats['average_score']:,} pts\n"
+                          f"**Linked Accounts:** {team_stats['linked_count']}/{team_stats['total_members']}",
                     inline=False
                 )
             else:
@@ -355,15 +327,16 @@ class CTF(commands.Cog):
             if member_stats:
                 leaderboard_text = []
                 for i, stats in enumerate(member_stats[:10]):  # Top 10
-                    if stats['rootme_id']:
+                    if stats['rootme_id'] and stats['pseudo']:
                         if stats.get('error'):
                             leaderboard_text.append(
-                                f"**{i+1}.** {stats['user'].mention}{stats['owner_badge']} - `{stats['rootme_id']}` - données indisponibles"
+                                f"**{i+1}.** {stats['user'].mention}{stats['owner_badge']} - `{stats['pseudo']}` - données indisponibles"
                             )
                         else:
+                            position_str = f"#{stats['position']}" if stats['position'] else "N/A"
                             leaderboard_text.append(
                                 f"**{i+1}.** {stats['user'].mention}{stats['owner_badge']} - "
-                                f"`{stats['pseudo']}` • **{stats['score']:,}** pts • #{stats['position']}"
+                                f"`{stats['pseudo']}` • **{stats['score']:,}** pts • {position_str}"
                             )
                     else:
                         leaderboard_text.append(
