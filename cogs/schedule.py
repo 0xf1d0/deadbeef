@@ -176,7 +176,8 @@ def format_schedule(schedule_data: List[List[str]], classes_per_day: int = 2) ->
                 day_classes.append(class_text)
             
             # Combine all classes for this day
-            formatted_parts.append(f"**{day_name}**\n```{'\\n'.join(day_classes)}```")
+            classes_text = '\n'.join(day_classes)
+            formatted_parts.append(f"**{day_name}**\n```{classes_text}```")
         
         except IndexError:
             continue
