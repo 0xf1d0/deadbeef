@@ -209,6 +209,7 @@ class ScheduleChannelConfig(Base, TimestampMixin):
     message_id = Column(BigInteger, nullable=True)
     last_schedule_hash = Column(String(64), nullable=True)  # MD5 hash
     is_active = Column(Boolean, default=True, nullable=False)
+    classes_per_day = Column(Integer, default=2, nullable=False)  # Number of time slots per day (2 for M1, 3 for M2)
     
     def __repr__(self) -> str:
         return f"<ScheduleChannelConfig(channel_id={self.channel_id}, grade_level='{self.grade_level.value}')>"

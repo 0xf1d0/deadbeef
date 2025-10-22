@@ -67,12 +67,13 @@ async def get_schedule_data(spreadsheet_url: str, gid: str) -> List[List[str]]:
         raise Exception(f"Failed to fetch schedule: {str(e)}")
 
 
-def filter_schedule_for_week(schedule_data: List[List[str]]) -> Tuple[List[List[str]], bool]:
+def filter_schedule_for_week(schedule_data: List[List[str]], classes_per_day: int = 2) -> Tuple[List[List[str]], bool]:
     """
     Filter schedule data to get the current or next week.
     
     Args:
         schedule_data: Raw schedule data from spreadsheet
+        classes_per_day: Number of time slots per day (2 for M1, 3 for M2)
     
     Returns:
         Tuple of (filtered schedule for current week, whether week was updated)
@@ -83,15 +84,19 @@ def filter_schedule_for_week(schedule_data: List[List[str]]) -> Tuple[List[List[
     # Calculate start of the week (Monday)
     start_of_week = today - timedelta(days=weekday)
     week_updated = False
-    days = 2  # Default: show 2 days
+    days = 2  # Number of days to show in the week (typically Monday and Tuesday)
     
     # If we're past Wednesday (day 2), show next week
     if weekday > 2:
         start_of_week = start_of_week + timedelta(days=7)
         week_updated = True
     
+    # Calculate number of rows based on classes per day
+    # Each class has 3 rows: course name, teacher, room
+    rows_per_week = 1 + (classes_per_day * 3)  # 1 row for dates + (classes * 3 rows each)
+    
     # Search for the week in the schedule data
-    for i in range(0, len(schedule_data), 7):
+    for i in range(0, len(schedule_data), rows_per_week):
         try:
             # Try to parse the date in the first column (assuming it's in DD/MM format)
             if len(schedule_data[i]) > 1 and schedule_data[i][1]:
@@ -112,8 +117,8 @@ def filter_schedule_for_week(schedule_data: List[List[str]]) -> Tuple[List[List[
                             except:
                                 pass
                     
-                    # Return the 7 rows for this week (date, morning course, teacher, room, afternoon course, teacher, room)
-                    return [row[:days + 2] for row in schedule_data[i:i + 7]], week_updated
+                    # Return the rows for this week
+                    return [row[:days + 2] for row in schedule_data[i:i + rows_per_week]], week_updated
         
         except (ValueError, IndexError):
             continue
@@ -121,17 +126,21 @@ def filter_schedule_for_week(schedule_data: List[List[str]]) -> Tuple[List[List[
     return [], week_updated
 
 
-def format_schedule(schedule_data: List[List[str]]) -> str:
+def format_schedule(schedule_data: List[List[str]], classes_per_day: int = 2) -> str:
     """
     Format schedule data into a nice Discord message.
     
     Args:
         schedule_data: Filtered schedule data for the week
+        classes_per_day: Number of time slots per day (2 for M1, 3 for M2)
     
     Returns:
         Formatted string for Discord message
     """
-    if not schedule_data or len(schedule_data) < 7:
+    # Minimum rows: 1 (dates) + classes_per_day * 3 (course, teacher, room for each class)
+    min_rows = 1 + (classes_per_day * 3)
+    
+    if not schedule_data or len(schedule_data) < min_rows:
         return "❌ Aucun emploi du temps disponible pour cette semaine."
     
     formatted_parts = []
@@ -140,34 +149,34 @@ def format_schedule(schedule_data: List[List[str]]) -> str:
     for j in range(1, len(schedule_data[0])):
         try:
             day_name = schedule_data[0][j]
+            day_classes = []
             
-            # Morning course info (rows 1-3: course name, teacher, room)
-            morning_course = schedule_data[1][j] if len(schedule_data[1]) > j else ""
-            morning_teacher = schedule_data[2][j] if len(schedule_data[2]) > j else ""
-            morning_room = schedule_data[3][j] if len(schedule_data[3]) > j else ""
+            # Process each class time slot
+            for class_idx in range(classes_per_day):
+                # Calculate row indices for this class (each class has 3 rows: course, teacher, room)
+                course_row = 1 + (class_idx * 3)
+                teacher_row = course_row + 1
+                room_row = course_row + 2
+                
+                # Get class info
+                course = schedule_data[course_row][j] if len(schedule_data[course_row]) > j else ""
+                teacher = schedule_data[teacher_row][j] if len(schedule_data[teacher_row]) > j else ""
+                room = schedule_data[room_row][j] if len(schedule_data[room_row]) > j else ""
+                
+                # Get label from first column (e.g., "Matin", "Après-midi", "Soir")
+                label = schedule_data[course_row][0] if len(schedule_data[course_row]) > 0 else f"Cours {class_idx + 1}"
+                
+                # Format class text
+                class_text = f"{label}: {course}" if course else f"{label}: -"
+                if teacher:
+                    class_text += f" ({teacher})"
+                if room:
+                    class_text += f" -> Salle {room}"
+                
+                day_classes.append(class_text)
             
-            # Afternoon course info (rows 4-6: course name, teacher, room)
-            afternoon_course = schedule_data[4][j] if len(schedule_data[4]) > j else ""
-            afternoon_teacher = schedule_data[5][j] if len(schedule_data[5]) > j else ""
-            afternoon_room = schedule_data[6][j] if len(schedule_data[6]) > j else ""
-            
-            # Format morning
-            morning_label = schedule_data[1][0] if len(schedule_data[1]) > 0 else "Matin"
-            morning_text = f"{morning_label}: {morning_course}"
-            if morning_teacher:
-                morning_text += f" ({morning_teacher})"
-            if morning_room:
-                morning_text += f" -> Salle {morning_room}"
-            
-            # Format afternoon
-            afternoon_label = schedule_data[4][0] if len(schedule_data[4]) > 0 else "Après-midi"
-            afternoon_text = f"{afternoon_label}: {afternoon_course}"
-            if afternoon_teacher:
-                afternoon_text += f" ({afternoon_teacher})"
-            if afternoon_room:
-                afternoon_text += f" -> Salle {afternoon_room}"
-            
-            formatted_parts.append(f"**{day_name}**\n```{morning_text}\n{afternoon_text}```")
+            # Combine all classes for this day
+            formatted_parts.append(f"**{day_name}**\n```{'\\n'.join(day_classes)}```")
         
         except IndexError:
             continue
@@ -219,8 +228,11 @@ async def update_schedule_for_channel(bot: commands.Bot, session, config: Schedu
         # Fetch schedule data
         schedule_data = await get_schedule_data(config.spreadsheet_url, config.gid)
         
+        # Get classes per day from config (default to 2 if not set)
+        classes_per_day = getattr(config, 'classes_per_day', 2)
+        
         # Filter for current week
-        filtered_data, week_updated = filter_schedule_for_week(schedule_data)
+        filtered_data, week_updated = filter_schedule_for_week(schedule_data, classes_per_day)
         
         if not filtered_data:
             print(f"No schedule data found for {config.grade_level}")
@@ -230,7 +242,7 @@ async def update_schedule_for_channel(bot: commands.Bot, session, config: Schedu
         changes, current_hash = detect_changes(filtered_data, config.last_schedule_hash)
         
         # Format the schedule
-        schedule_message = format_schedule(filtered_data)
+        schedule_message = format_schedule(filtered_data, classes_per_day)
         
         # Create or update the message
         message_updated = False

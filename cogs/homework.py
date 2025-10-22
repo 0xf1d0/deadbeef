@@ -91,27 +91,62 @@ async def update_homework_message(bot: commands.Bot, session, config: GradeChann
         embeds.append(embed)
         content_parts.append("no_courses")
     else:
-        # Create an embed for each course (only if it has active assignments)
-        for course in sorted(courses, key=lambda c: c.name):
+        # Prepare courses with their assignments and earliest due date
+        courses_with_assignments = []
+        
+        for course in courses:
             # Get active assignments sorted by due date
             active_assignments = [
                 a for a in course.assignments 
                 if a.status == 'active'
             ]
-            active_assignments.sort(key=lambda a: a.due_date)
             
             # Skip courses with no active assignments
             if not active_assignments:
                 continue
             
+            # Sort assignments by due date (earliest first for processing)
+            active_assignments.sort(key=lambda a: a.due_date)
+            
+            # Get earliest assignment for color determination and sorting
+            earliest_assignment = active_assignments[0]
+            
+            courses_with_assignments.append((course, active_assignments, earliest_assignment))
+        
+        # Sort courses by earliest assignment due date (most urgent courses LAST)
+        courses_with_assignments.sort(key=lambda x: x[2].due_date)
+        
+        # Create embeds for each course
+        for course, active_assignments, earliest_assignment in courses_with_assignments:
             has_courses_with_assignments = True
+            
+            # Determine embed color based on earliest (most urgent) assignment
+            now = datetime.now()
+            time_until_earliest = earliest_assignment.due_date - now
+            
+            if time_until_earliest < timedelta(0):
+                # Overdue - red
+                embed_color = Color.red()
+            elif time_until_earliest < timedelta(hours=24):
+                # Due within 24 hours - dark orange/red
+                embed_color = Color.dark_orange()
+            elif time_until_earliest < timedelta(days=3):
+                # Due within 3 days - orange
+                embed_color = Color.orange()
+            elif time_until_earliest < timedelta(days=7):
+                # Due within 7 days - yellow/gold
+                embed_color = Color.gold()
+            else:
+                # More than 7 days - green
+                embed_color = Color.green()
             
             course_embed = Embed(
                 title=f"🎓 {course.name.upper()}",
-                color=Color.green()
+                color=embed_color
             )
             
-            for assignment in active_assignments:
+            # Reverse assignments so most urgent is LAST (bottom)
+            for assignment in reversed(active_assignments):
                 # Format the field value
                 field_value = ""
                 
@@ -156,7 +191,14 @@ async def update_homework_message(bot: commands.Bot, session, config: GradeChann
     
     # Add footer embed
     footer_embed = Embed(
-        description="\u200b\n**Legend:**\n🔴 Due within 24 hours\n🟡 Due within 7 days\n📝 Active assignment\n⚠️ Overdue",
+        description="\u200b\n**Color Legend:**\n"
+                    "🔴 Red = Overdue\n"
+                    "🟠 Dark Orange = Due within 24h\n"
+                    "🟠 Orange = Due within 3 days\n"
+                    "🟡 Gold = Due within 7 days\n"
+                    "🟢 Green = More than 7 days\n\n"
+                    "**Assignment Icons:**\n"
+                    "⚠️ Overdue | 🔴 < 24h | 🟡 < 7d | 📝 Active",
         color=Color.light_gray()
     )
     
@@ -344,76 +386,61 @@ class Homework(commands.Cog):
                 
                 # Check reminder thresholds
                 # Remind at: 7 days, 1 day, 1 hour before, and AT DUE TIME
-                # Windows are 2 minutes to avoid duplicate reminders
+                # Only send one reminder when assignment is due (between -30 sec and +30 sec)
                 
-                reminder_windows = [
-                    (timedelta(days=7), timedelta(days=7, minutes=2), "1 week"),
-                    (timedelta(days=1), timedelta(days=1, minutes=2), "1 day"),
-                    (timedelta(hours=1), timedelta(hours=1, minutes=2), "1 hour"),
-                    (timedelta(minutes=-1), timedelta(minutes=1), "NOW - DUE!"),  # At due time (±1 min)
-                ]
-                
-                for threshold, window, label in reminder_windows:
-                    if threshold <= time_until_due < window:
-                        # Send reminder
-                        result = await session.execute(
-                            select(Course).where(Course.id == assignment.course_id)
-                        )
-                        course = result.scalar_one_or_none()
-                        
-                        if course:
-                            # Send reminder to the homework to-do channel
-                            channel = self.bot.get_channel(course.channel_id)
-                            if channel:
-                                # Get the grade level from the course's grade channel config
-                                result_grade = await session.execute(
-                                    select(GradeChannelConfig).where(
-                                        GradeChannelConfig.channel_id == course.channel_id
-                                    )
+                # Check if assignment is due NOW (within 30 seconds)
+                if timedelta(seconds=-30) <= time_until_due <= timedelta(seconds=30):
+                    # Send reminder
+                    result = await session.execute(
+                        select(Course).where(Course.id == assignment.course_id)
+                    )
+                    course = result.scalar_one_or_none()
+                    
+                    if course:
+                        # Send reminder to the homework to-do channel
+                        channel = self.bot.get_channel(course.channel_id)
+                        if channel:
+                            # Get the grade level from the course's grade channel config
+                            result_grade = await session.execute(
+                                select(GradeChannelConfig).where(
+                                    GradeChannelConfig.channel_id == course.channel_id
                                 )
-                                grade_config = result_grade.scalar_one_or_none()
-                                grade_level = str(grade_config.grade_level.value) if grade_config else "M1"
-                                
-                                # Get appropriate role mentions based on course channel permissions
-                                # Use course_channel_id if set, otherwise fall back to homework channel
-                                permission_channel_id = course.course_channel_id if course.course_channel_id else course.channel_id
-                                permission_channel = self.bot.get_channel(permission_channel_id)
-                                
-                                if permission_channel:
-                                    role_mentions = get_role_mentions_for_channel(permission_channel, grade_level)
-                                else:
-                                    # Fall back to mentioning the grade role only
-                                    grade_role_map = {'M1': ROLE_M1.id, 'M2': ROLE_M2.id}
-                                    grade_role_id = grade_role_map.get(grade_level)
-                                    role_mentions = f"<@&{grade_role_id}>" if grade_role_id else "||@everyone||"
-                                
-                                embed = Embed(
-                                    title=f"⏰ Assignment Reminder",
-                                    description=f"The assignment **{assignment.title}** for {course.name} is due in **{label}**!",
-                                    color=Color.orange()
-                                )
-                                embed.add_field(
-                                    name="Due Date",
-                                    value=f"<t:{int(assignment.due_date.timestamp())}:F>",
-                                    inline=False
-                                )
-                                if assignment.description:
-                                    embed.add_field(
-                                        name="Description",
-                                        value=assignment.description[:500],
-                                        inline=False
-                                    )
-                                if assignment.modality:
-                                    embed.add_field(
-                                        name="Modality",
-                                        value=assignment.modality,
-                                        inline=False
-                                    )
-                                
-                                # Send to homework to-do channel with role mentions
-                                # Delete message after 10 minutes
-                                await channel.send(role_mentions, embed=embed, delete_after=600)
-                        break
+                            )
+                            grade_config = result_grade.scalar_one_or_none()
+                            grade_level = str(grade_config.grade_level.value) if grade_config else "M1"
+                            
+                            # Get appropriate role mentions based on course channel permissions
+                            # Use course_channel_id if set, otherwise fall back to homework channel
+                            permission_channel_id = course.course_channel_id if course.course_channel_id else course.channel_id
+                            permission_channel = self.bot.get_channel(permission_channel_id)
+                            
+                            if permission_channel:
+                                role_mentions = get_role_mentions_for_channel(permission_channel, grade_level)
+                            else:
+                                # Fall back to mentioning the grade role only
+                                grade_role_map = {'M1': ROLE_M1.id, 'M2': ROLE_M2.id}
+                                grade_role_id = grade_role_map.get(grade_level)
+                                role_mentions = f"<@&{grade_role_id}>" if grade_role_id else "||@everyone||"
+                            
+                            # Build plain text message for smartphone notifications
+                            message_content = f"{role_mentions}\n\n"
+                            message_content += f"⏰ **Assignment Due NOW!**\n\n"
+                            message_content += f"📝 **{assignment.title}** for {course.name}\n"
+                            message_content += f"📅 Due: <t:{int(assignment.due_date.timestamp())}:F>\n"
+                            
+                            if assignment.description:
+                                # Limit description to 200 chars for cleaner notification
+                                desc = assignment.description[:200]
+                                if len(assignment.description) > 200:
+                                    desc += "..."
+                                message_content += f"\n{desc}\n"
+                            
+                            if assignment.modality:
+                                message_content += f"\n📝 Modality: {assignment.modality}"
+                            
+                            # Send plain text message (better for smartphone notifications)
+                            # Delete message after 10 minutes
+                            await channel.send(message_content, delete_after=600)
             
             # Commit status changes
             await session.commit()

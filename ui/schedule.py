@@ -31,6 +31,14 @@ class SetupScheduleModal(ui.Modal, title="Setup Schedule Channel"):
         max_length=50
     )
     
+    classes_per_day = ui.TextInput(
+        label="Classes per day",
+        placeholder="2 for M1, 3 for M2",
+        required=True,
+        default="2",
+        max_length=1
+    )
+    
     def __init__(self, session: AsyncSession, channel_id: int):
         super().__init__()
         self.db_session = session
@@ -85,12 +93,29 @@ class SetupScheduleModal(ui.Modal, title="Setup Schedule Channel"):
             )
             return
         
+        # Validate classes_per_day
+        try:
+            classes_per_day_value = int(self.classes_per_day.value)
+            if classes_per_day_value not in [2, 3]:
+                await interaction.response.send_message(
+                    "❌ Classes per day must be 2 or 3.",
+                    ephemeral=True
+                )
+                return
+        except ValueError:
+            await interaction.response.send_message(
+                "❌ Classes per day must be a number (2 or 3).",
+                ephemeral=True
+            )
+            return
+        
         # Create configuration
         config = ScheduleChannelConfig(
             channel_id=self.channel_id,
             grade_level=self.grade_level.value,
             spreadsheet_url=self.spreadsheet_url.value,
-            gid=self.gid.value
+            gid=self.gid.value,
+            classes_per_day=classes_per_day_value
         )
         
         self.db_session.add(config)
@@ -124,6 +149,13 @@ class EditScheduleConfigModal(ui.Modal, title="Edit Schedule Configuration"):
         max_length=50
     )
     
+    classes_per_day = ui.TextInput(
+        label="Classes per day",
+        placeholder="2 for M1, 3 for M2",
+        required=True,
+        max_length=1
+    )
+    
     def __init__(self, session: AsyncSession, config: ScheduleChannelConfig):
         super().__init__()
         self.db_session = session
@@ -132,6 +164,7 @@ class EditScheduleConfigModal(ui.Modal, title="Edit Schedule Configuration"):
         # Pre-fill with existing data
         self.spreadsheet_url.default = config.spreadsheet_url
         self.gid.default = config.gid
+        self.classes_per_day.default = str(getattr(config, 'classes_per_day', 2))
     
     async def on_submit(self, interaction: Interaction):
         # Extract spreadsheet ID from URL
@@ -151,9 +184,26 @@ class EditScheduleConfigModal(ui.Modal, title="Edit Schedule Configuration"):
             )
             return
         
+        # Validate classes_per_day
+        try:
+            classes_per_day_value = int(self.classes_per_day.value)
+            if classes_per_day_value not in [2, 3]:
+                await interaction.response.send_message(
+                    "❌ Classes per day must be 2 or 3.",
+                    ephemeral=True
+                )
+                return
+        except ValueError:
+            await interaction.response.send_message(
+                "❌ Classes per day must be a number (2 or 3).",
+                ephemeral=True
+            )
+            return
+        
         # Update configuration
         self.config.spreadsheet_url = self.spreadsheet_url.value
         self.config.gid = self.gid.value
+        self.config.classes_per_day = classes_per_day_value
         self.config.last_schedule_hash = None  # Reset to force update
         
         await self.db_session.commit()
@@ -266,6 +316,11 @@ class ScheduleManagementView(ui.View):
             embed.add_field(name="Grade Level", value=config.grade_level, inline=False)
             embed.add_field(name="Spreadsheet URL", value=config.spreadsheet_url, inline=False)
             embed.add_field(name="GID", value=config.gid, inline=False)
+            embed.add_field(
+                name="Classes per Day",
+                value=str(getattr(config, 'classes_per_day', 2)),
+                inline=False
+            )
             embed.add_field(
                 name="Message ID",
                 value=str(config.message_id) if config.message_id else "Not set yet",
