@@ -180,10 +180,14 @@ class PaginatedUserSelectView(ui.View):
                 value=str(user.user_id)
             ))
         
-        # Create select menu
-        select = ui.Select(placeholder="Choose a user...", options=options)
-        select.callback = self.user_selected
-        self.add_item(select)
+        # Update existing select menu or create new one
+        if len(self.children) > 2:  # If select menu exists (after buttons)
+            self.children[2].options = options
+        else:
+            # Create select menu
+            select = ui.Select(placeholder="Choose a user...", options=options)
+            select.callback = self.user_selected
+            self.add_item(select)
         
         embed.set_footer(text=f"Total users: {len(self.users)} | Use buttons to navigate")
         
@@ -191,7 +195,21 @@ class PaginatedUserSelectView(ui.View):
     
     async def user_selected(self, interaction: Interaction):
         """Handle user selection."""
-        user_id = int(self.children[0].values[0])
+        # Find the select menu (it's the last child after buttons)
+        select_menu = None
+        for child in self.children:
+            if isinstance(child, ui.Select):
+                select_menu = child
+                break
+        
+        if not select_menu or not select_menu.values:
+            await interaction.response.send_message(
+                "❌ No user selected.",
+                ephemeral=True
+            )
+            return
+        
+        user_id = int(select_menu.values[0])
         
         if self.callback_func:
             await self.callback_func(interaction, user_id, **self.callback_kwargs)
@@ -201,8 +219,13 @@ class PaginatedUserSelectView(ui.View):
         """Go to previous page."""
         if self.page > 0:
             self.page -= 1
-            self.children[0].disabled = (self.page == 0)
-            self.children[1].disabled = False
+            # Update button states
+            for child in self.children:
+                if isinstance(child, ui.Button):
+                    if child.label == "◀️ Previous":
+                        child.disabled = (self.page == 0)
+                    elif child.label == "Next ▶️":
+                        child.disabled = False
             
             embed = self.create_embed(interaction)
             await interaction.response.edit_message(embed=embed, view=self)
@@ -212,8 +235,13 @@ class PaginatedUserSelectView(ui.View):
         """Go to next page."""
         if self.page < self.total_pages - 1:
             self.page += 1
-            self.children[0].disabled = False
-            self.children[1].disabled = (self.page >= self.total_pages - 1)
+            # Update button states
+            for child in self.children:
+                if isinstance(child, ui.Button):
+                    if child.label == "◀️ Previous":
+                        child.disabled = False
+                    elif child.label == "Next ▶️":
+                        child.disabled = (self.page >= self.total_pages - 1)
             
             embed = self.create_embed(interaction)
             await interaction.response.edit_message(embed=embed, view=self)
