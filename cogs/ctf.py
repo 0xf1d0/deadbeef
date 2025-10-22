@@ -202,11 +202,12 @@ class CTF(commands.Cog):
     
     @profile_group.command(name="team_stats", description="View your team's statistics")
     async def team_stats(self, interaction: Interaction):
-        """View team statistics."""
+        """View team statistics with RootMe integration."""
         try:
             await self.ensure_profile(interaction.user.id)
             
             async with AsyncSessionLocal() as session:
+                # Get user's profile
                 result = await session.execute(
                     select(PlayerProfile).where(PlayerProfile.user_id == interaction.user.id)
                 )
@@ -218,20 +219,20 @@ class CTF(commands.Cog):
                         ephemeral=True
                     )
                     return
-            
-            # Get team
-            result = await session.execute(
-                select(Team).where(Team.id == profile.team_id)
-            )
-            team = result.scalar_one()
-            
-            # Get all team members and their auth records (avoid lazy-loads)
-            result = await session.execute(
-                select(PlayerProfile, AuthenticatedUser)
-                .join(AuthenticatedUser, AuthenticatedUser.user_id == PlayerProfile.user_id)
-                .where(PlayerProfile.team_id == team.id)
-            )
-            rows = result.all()
+                
+                # Get team
+                result = await session.execute(
+                    select(Team).where(Team.id == profile.team_id)
+                )
+                team = result.scalar_one()
+                
+                # Get all team members and their auth records (avoid lazy-loads)
+                result = await session.execute(
+                    select(PlayerProfile, AuthenticatedUser)
+                    .join(AuthenticatedUser, AuthenticatedUser.user_id == PlayerProfile.user_id)
+                    .where(PlayerProfile.team_id == team.id)
+                )
+                rows = result.all()
             
             # Build stats embed
             embed = Embed(
@@ -254,32 +255,131 @@ class CTF(commands.Cog):
                 inline=True
             )
             
-            # Member list
-            member_list = []
+            # RootMe stats collection
+            total_score = 0
+            total_challenges = 0
+            member_stats = []
+            linked_count = 0
+            
+            # Configure RootMe API
+            from api import RootMe
+            RootMe.setup()
+            
             for member, auth_user in rows:
                 user = interaction.guild.get_member(member.user_id)
-                if user:
-                    rootme_status = f" (`{auth_user.rootme_id}`)" if auth_user and auth_user.rootme_id else " (No Root-Me)"
-                    owner_badge = " 👑" if member.user_id == team.owner_id else ""
-                    member_list.append(f"• {user.mention}{owner_badge}{rootme_status}")
+                if not user:
+                    continue
+                    
+                owner_badge = " 👑" if member.user_id == team.owner_id else ""
+                
+                if auth_user and auth_user.rootme_id:
+                    linked_count += 1
+                    try:
+                        # Get RootMe data
+                        rootme_data = await RootMe.get_author(str(auth_user.rootme_id))
+                        
+                        score = rootme_data.get("score", 0)
+                        position = rootme_data.get("position", "N/A")
+                        rank = rootme_data.get("rang", "N/A")
+                        challenges = rootme_data.get("validations", [])
+                        challenge_count = len(challenges) if challenges else 0
+                        
+                        total_score += score
+                        total_challenges += challenge_count
+                        
+                        member_stats.append({
+                            'user': user,
+                            'score': score,
+                            'position': position,
+                            'rank': rank,
+                            'challenges': challenge_count,
+                            'owner_badge': owner_badge,
+                            'rootme_id': auth_user.rootme_id
+                        })
+                        
+                    except Exception as e:
+                        # If RootMe API fails, still show the member
+                        member_stats.append({
+                            'user': user,
+                            'score': 0,
+                            'position': "Error",
+                            'rank': "N/A",
+                            'challenges': 0,
+                            'owner_badge': owner_badge,
+                            'rootme_id': auth_user.rootme_id,
+                            'error': str(e)
+                        })
+                else:
+                    # No RootMe linked
+                    member_stats.append({
+                        'user': user,
+                        'score': 0,
+                        'position': "N/A",
+                        'rank': "N/A",
+                        'challenges': 0,
+                        'owner_badge': owner_badge,
+                        'rootme_id': None
+                    })
             
-            if member_list:
+            # Sort members by score (descending)
+            member_stats.sort(key=lambda x: x['score'], reverse=True)
+            
+            # Add RootMe team stats
+            if linked_count > 0:
                 embed.add_field(
-                    name="Team Members",
-                    value="\n".join(member_list),
+                    name="<:rootme:1366510489521356850> Team RootMe Stats",
+                    value=f"**Total Score:** {total_score:,} pts\n"
+                          f"**Total Challenges:** {total_challenges:,}\n"
+                          f"**Average Score:** {total_score // max(linked_count, 1):,} pts\n"
+                          f"**Linked Accounts:** {linked_count}/{len(rows)}",
+                    inline=False
+                )
+            else:
+                embed.add_field(
+                    name="<:rootme:1366510489521356850> RootMe Integration",
+                    value="No team members have linked RootMe accounts yet.",
                     inline=False
                 )
             
-            # Root-Me stats (placeholder for now)
-            linked_count = sum(1 for _m, a in rows if a and a.rootme_id)
-            embed.add_field(name="📊 Root-Me Integration", value=f"{linked_count}/{len(rows)} members have linked Root-Me accounts\n*Full stats integration coming soon!*", inline=False)
+            # Add member leaderboard
+            if member_stats:
+                leaderboard_text = []
+                for i, stats in enumerate(member_stats[:10]):  # Top 10
+                    if stats['rootme_id']:
+                        if 'error' in stats:
+                            leaderboard_text.append(
+                                f"**{i+1}.** {stats['user'].mention}{stats['owner_badge']} - "
+                                f"`{stats['rootme_id']}` - Error: {stats['error'][:50]}..."
+                            )
+                        else:
+                            leaderboard_text.append(
+                                f"**{i+1}.** {stats['user'].mention}{stats['owner_badge']} - "
+                                f"`{stats['rootme_id']}` - **{stats['score']:,}** pts "
+                                f"({stats['challenges']} challenges) - #{stats['position']}"
+                            )
+                    else:
+                        leaderboard_text.append(
+                            f"**{i+1}.** {stats['user'].mention}{stats['owner_badge']} - No RootMe linked"
+                        )
+                
+                embed.add_field(
+                    name="🏆 Member Leaderboard",
+                    value="\n".join(leaderboard_text) or "No members found",
+                    inline=False
+                )
             
             embed.set_footer(text=f"Team ID: {team.id} | Created {team.created_at.strftime('%Y-%m-%d')}")
             
             await interaction.response.send_message(embed=embed)
+            
         except ValueError as e:
             await interaction.response.send_message(
                 f"❌ {str(e)}\n\nYou must be authenticated first. Use the authentication system to get started.",
+                ephemeral=True
+            )
+        except Exception as e:
+            await interaction.response.send_message(
+                f"❌ An error occurred while fetching team statistics: {str(e)}",
                 ephemeral=True
             )
     
