@@ -12,7 +12,7 @@ aiosqlite>=0.19.0
 yt-dlp>=2023.0.0
 
 # Curl
-curl_cffi>=2.0.0
+curl_cffi>=0.13.0
 
 # JWT for Authentication
 PyJWT>=2.8.0
