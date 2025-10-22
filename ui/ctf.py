@@ -8,6 +8,7 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
 from datetime import datetime
+import pytz
 
 from db import AsyncSessionLocal
 from db.models import PlayerProfile, Team, TeamInvite, TeamApplication, AuthenticatedUser
@@ -617,7 +618,10 @@ class ApplicationModal(ui.Modal, title="Apply to Team"):
                         color=Color.green()
                     )
                     app_embed.add_field(name="Applicant", value=interaction.user.mention, inline=True)
-                    app_embed.add_field(name="Date", value=f"<t:{int(datetime.now().timestamp())}:R>", inline=True)
+                    # French timezone
+                    fr_tz = pytz.timezone('Europe/Paris')
+                    fr_time = datetime.now(pytz.UTC).astimezone(fr_tz)
+                    app_embed.add_field(name="Date", value=f"<t:{int(fr_time.timestamp())}:R>", inline=True)
                     app_embed.add_field(name="Reason", value=self.reason.value, inline=False)
                     
                     view = ApplicationResponseView(application.id)
@@ -954,15 +958,19 @@ class TeamManagementPanel(ui.View):
     async def show_invites(self, interaction: Interaction):
         """Show sent invitations."""
         async with AsyncSessionLocal() as session:
+            # Get invites with authenticated user data
             result = await session.execute(
-                select(TeamInvite).where(
+                select(TeamInvite, AuthenticatedUser).join(
+                    AuthenticatedUser, 
+                    AuthenticatedUser.user_id == TeamInvite.invitee_id
+                ).where(
                     TeamInvite.team_id == self.team_id,
                     TeamInvite.status == 'pending'
                 )
             )
-            invites = result.scalars().all()
+            invite_data = result.all()
             
-            if not invites:
+            if not invite_data:
                 await interaction.response.send_message(
                     "ℹ️ No pending invitations.",
                     ephemeral=True
@@ -971,21 +979,39 @@ class TeamManagementPanel(ui.View):
             
             embed = Embed(
                 title="📬 Pending Invitations",
-                description=f"You have {len(invites)} pending invitation(s).",
+                description=f"You have {len(invite_data)} pending invitation(s).",
                 color=Color.blue()
             )
             
-            for invite in invites:
-                user = interaction.guild.get_member(invite.invitee_id)
-                user_name = user.mention if user else f"User ID: {invite.invitee_id}"
+            # French timezone
+            fr_tz = pytz.timezone('Europe/Paris')
+            
+            for invite, auth_user in invite_data:
+                # Get Discord member
+                user = interaction.guild.get_member(auth_user.user_id)
+                user_name = f"{auth_user.email} (ID: {auth_user.user_id})"
+                
+                # Convert to French timezone
+                fr_time = invite.created_at.replace(tzinfo=pytz.UTC).astimezone(fr_tz)
+                timestamp = int(fr_time.timestamp())
                 
                 embed.add_field(
                     name=user_name,
-                    value=f"Sent <t:{int(invite.created_at.timestamp())}:R>",
+                    value=f"Sent <t:{timestamp}:R>",
                     inline=True
                 )
             
-            await interaction.response.send_message(embed=embed, ephemeral=True)
+            # Mention users outside the embed
+            mentions = []
+            for invite, auth_user in invite_data:
+                user = interaction.guild.get_member(auth_user.user_id)
+                if user:
+                    mentions.append(user.mention)
+            
+            mention_text = " ".join(mentions) if mentions else ""
+            content = f"**Invited users:** {mention_text}" if mention_text else ""
+            
+            await interaction.response.send_message(content=content, embed=embed, ephemeral=True)
     
     async def show_transfer_ownership(self, interaction: Interaction):
         """Show ownership transfer dialog."""
