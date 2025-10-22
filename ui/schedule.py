@@ -1,10 +1,14 @@
 import discord
-from discord import ui, ButtonStyle, TextStyle, Interaction, Embed
+from discord import ui, ButtonStyle, TextStyle, Interaction, Embed, SelectOption
 from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.models import ScheduleChannelConfig
+
+# Day names mapping
+DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+DAY_NAMES_FR = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"]
 
 
 class SetupScheduleModal(ui.Modal, title="Setup Schedule Channel"):
@@ -37,6 +41,14 @@ class SetupScheduleModal(ui.Modal, title="Setup Schedule Channel"):
         required=True,
         default="2",
         max_length=1
+    )
+    
+    day_range = ui.TextInput(
+        label="Day range (e.g., Mon-Wed or Wed-Fri)",
+        placeholder="Format: Mon-Tue or Monday-Wednesday",
+        required=True,
+        default="Mon-Tue",
+        max_length=30
     )
     
     def __init__(self, session: AsyncSession, channel_id: int):
@@ -109,13 +121,57 @@ class SetupScheduleModal(ui.Modal, title="Setup Schedule Channel"):
             )
             return
         
+        # Parse day range
+        day_range_input = self.day_range.value.strip()
+        parts = day_range_input.split('-')
+        
+        if len(parts) != 2:
+            await interaction.response.send_message(
+                "❌ Invalid day range format. Use 'Mon-Wed' or 'Monday-Wednesday'.",
+                ephemeral=True
+            )
+            return
+        
+        start_day_str = parts[0].strip().lower()
+        end_day_str = parts[1].strip().lower()
+        
+        # Map day names to indices
+        day_mapping = {
+            'mon': 0, 'monday': 0, 'lundi': 0,
+            'tue': 1, 'tuesday': 1, 'mardi': 1,
+            'wed': 2, 'wednesday': 2, 'mercredi': 2,
+            'thu': 3, 'thursday': 3, 'jeudi': 3,
+            'fri': 4, 'friday': 4, 'vendredi': 4,
+            'sat': 5, 'saturday': 5, 'samedi': 5,
+            'sun': 6, 'sunday': 6, 'dimanche': 6,
+        }
+        
+        start_day_index = day_mapping.get(start_day_str)
+        end_day_index = day_mapping.get(end_day_str)
+        
+        if start_day_index is None or end_day_index is None:
+            await interaction.response.send_message(
+                "❌ Invalid day names. Use day names like 'Mon', 'Monday', or 'Lundi'.",
+                ephemeral=True
+            )
+            return
+        
+        if start_day_index > end_day_index:
+            await interaction.response.send_message(
+                "❌ Start day must be before or equal to end day.",
+                ephemeral=True
+            )
+            return
+        
         # Create configuration
         config = ScheduleChannelConfig(
             channel_id=self.channel_id,
             grade_level=self.grade_level.value,
             spreadsheet_url=self.spreadsheet_url.value,
             gid=self.gid.value,
-            classes_per_day=classes_per_day_value
+            classes_per_day=classes_per_day_value,
+            start_day_index=start_day_index,
+            end_day_index=end_day_index
         )
         
         self.db_session.add(config)
@@ -156,6 +212,13 @@ class EditScheduleConfigModal(ui.Modal, title="Edit Schedule Configuration"):
         max_length=1
     )
     
+    day_range = ui.TextInput(
+        label="Day range (e.g., Mon-Wed or Wed-Fri)",
+        placeholder="Format: Mon-Tue or Monday-Wednesday",
+        required=True,
+        max_length=30
+    )
+    
     def __init__(self, session: AsyncSession, config: ScheduleChannelConfig):
         super().__init__()
         self.db_session = session
@@ -165,6 +228,11 @@ class EditScheduleConfigModal(ui.Modal, title="Edit Schedule Configuration"):
         self.spreadsheet_url.default = config.spreadsheet_url
         self.gid.default = config.gid
         self.classes_per_day.default = str(getattr(config, 'classes_per_day', 2))
+        
+        # Format day range for display
+        start_idx = getattr(config, 'start_day_index', 0)
+        end_idx = getattr(config, 'end_day_index', 1)
+        self.day_range.default = f"{DAY_NAMES[start_idx][:3]}-{DAY_NAMES[end_idx][:3]}"
     
     async def on_submit(self, interaction: Interaction):
         # Extract spreadsheet ID from URL
@@ -200,10 +268,54 @@ class EditScheduleConfigModal(ui.Modal, title="Edit Schedule Configuration"):
             )
             return
         
+        # Parse day range
+        day_range_input = self.day_range.value.strip()
+        parts = day_range_input.split('-')
+        
+        if len(parts) != 2:
+            await interaction.response.send_message(
+                "❌ Invalid day range format. Use 'Mon-Wed' or 'Monday-Wednesday'.",
+                ephemeral=True
+            )
+            return
+        
+        start_day_str = parts[0].strip().lower()
+        end_day_str = parts[1].strip().lower()
+        
+        # Map day names to indices
+        day_mapping = {
+            'mon': 0, 'monday': 0, 'lundi': 0,
+            'tue': 1, 'tuesday': 1, 'mardi': 1,
+            'wed': 2, 'wednesday': 2, 'mercredi': 2,
+            'thu': 3, 'thursday': 3, 'jeudi': 3,
+            'fri': 4, 'friday': 4, 'vendredi': 4,
+            'sat': 5, 'saturday': 5, 'samedi': 5,
+            'sun': 6, 'sunday': 6, 'dimanche': 6,
+        }
+        
+        start_day_index = day_mapping.get(start_day_str)
+        end_day_index = day_mapping.get(end_day_str)
+        
+        if start_day_index is None or end_day_index is None:
+            await interaction.response.send_message(
+                "❌ Invalid day names. Use day names like 'Mon', 'Monday', or 'Lundi'.",
+                ephemeral=True
+            )
+            return
+        
+        if start_day_index > end_day_index:
+            await interaction.response.send_message(
+                "❌ Start day must be before or equal to end day.",
+                ephemeral=True
+            )
+            return
+        
         # Update configuration
         self.config.spreadsheet_url = self.spreadsheet_url.value
         self.config.gid = self.gid.value
         self.config.classes_per_day = classes_per_day_value
+        self.config.start_day_index = start_day_index
+        self.config.end_day_index = end_day_index
         self.config.last_schedule_hash = None  # Reset to force update
         
         await self.db_session.commit()
@@ -308,6 +420,11 @@ class ScheduleManagementView(ui.View):
                 )
                 return
             
+            # Get day range
+            start_idx = getattr(config, 'start_day_index', 0)
+            end_idx = getattr(config, 'end_day_index', 1)
+            day_range_display = f"{DAY_NAMES_FR[start_idx]} - {DAY_NAMES_FR[end_idx]}"
+            
             embed = Embed(
                 title=f"📅 Schedule Configuration for {config.grade_level}",
                 color=discord.Color.blue()
@@ -319,6 +436,11 @@ class ScheduleManagementView(ui.View):
             embed.add_field(
                 name="Classes per Day",
                 value=str(getattr(config, 'classes_per_day', 2)),
+                inline=False
+            )
+            embed.add_field(
+                name="Day Range",
+                value=day_range_display,
                 inline=False
             )
             embed.add_field(

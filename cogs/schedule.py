@@ -67,13 +67,15 @@ async def get_schedule_data(spreadsheet_url: str, gid: str) -> List[List[str]]:
         raise Exception(f"Failed to fetch schedule: {str(e)}")
 
 
-def filter_schedule_for_week(schedule_data: List[List[str]], classes_per_day: int = 2) -> Tuple[List[List[str]], bool]:
+def filter_schedule_for_week(schedule_data: List[List[str]], classes_per_day: int = 2, start_day_index: int = 0, end_day_index: int = 1) -> Tuple[List[List[str]], bool]:
     """
-    Filter schedule data to get the current or next week.
+    Filter schedule data to get the current or next week with selected day range.
     
     Args:
         schedule_data: Raw schedule data from spreadsheet
         classes_per_day: Number of time slots per day (2 for M1, 3 for M2)
+        start_day_index: Start day of week to show (0=Monday, 1=Tuesday, etc.)
+        end_day_index: End day of week to show (inclusive)
     
     Returns:
         Tuple of (filtered schedule for current week, whether week was updated)
@@ -84,7 +86,6 @@ def filter_schedule_for_week(schedule_data: List[List[str]], classes_per_day: in
     # Calculate start of the week (Monday)
     start_of_week = today - timedelta(days=weekday)
     week_updated = False
-    days = 2  # Number of days to show in the week (typically Monday and Tuesday)
     
     # If we're past Wednesday (day 2), show next week
     if weekday > 2:
@@ -105,20 +106,30 @@ def filter_schedule_for_week(schedule_data: List[List[str]], classes_per_day: in
                 
                 # Check if this is the week we're looking for
                 if date.date() == start_of_week.date():
-                    # Format the dates with full day names
-                    schedule_data[i][1] = date.strftime("%A %d %B %Y").capitalize()
+                    # Calculate column indices for selected days
+                    # Column 0 is row labels, column 1 is Monday, column 2 is Tuesday, etc.
+                    start_col = 1 + start_day_index  # +1 because column 0 is labels
+                    end_col = 1 + end_day_index + 1  # +1 for labels, +1 for inclusive end
                     
-                    # Format the next few days
-                    for j in range(2, days + 2):
-                        if j < len(schedule_data[i]) and schedule_data[i][j]:
+                    # Format the dates with full day names for selected range
+                    for j in range(start_col, min(end_col, len(schedule_data[i]))):
+                        if schedule_data[i][j]:
                             try:
                                 day_date = datetime.strptime(schedule_data[i][j], "%d/%m").replace(year=today.year)
                                 schedule_data[i][j] = day_date.strftime("%A %d %B %Y").capitalize()
                             except:
                                 pass
                     
-                    # Return the rows for this week
-                    return [row[:days + 2] for row in schedule_data[i:i + rows_per_week]], week_updated
+                    # Return the rows for this week, filtered to selected columns
+                    # Column 0 (labels) + selected day columns
+                    filtered_rows = []
+                    for row in schedule_data[i:i + rows_per_week]:
+                        # Keep column 0 (labels) + selected day range
+                        filtered_row = [row[0]] if len(row) > 0 else []
+                        filtered_row.extend(row[start_col:end_col] if len(row) >= end_col else row[start_col:])
+                        filtered_rows.append(filtered_row)
+                    
+                    return filtered_rows, week_updated
         
         except (ValueError, IndexError):
             continue
@@ -163,11 +174,15 @@ def format_schedule(schedule_data: List[List[str]], classes_per_day: int = 2) ->
                 teacher = schedule_data[teacher_row][j] if len(schedule_data[teacher_row]) > j else ""
                 room = schedule_data[room_row][j] if len(schedule_data[room_row]) > j else ""
                 
+                # Skip empty classes (don't show anything if course is blank)
+                if not course or not course.strip():
+                    continue
+                
                 # Get label from first column (e.g., "Matin", "Après-midi", "Soir")
                 label = schedule_data[course_row][0] if len(schedule_data[course_row]) > 0 else f"Cours {class_idx + 1}"
                 
-                # Format class text
-                class_text = f"{label}: {course}" if course else f"{label}: -"
+                # Format class text (only if course exists)
+                class_text = f"{label}: {course}"
                 if teacher:
                     class_text += f" ({teacher})"
                 if room:
@@ -175,14 +190,16 @@ def format_schedule(schedule_data: List[List[str]], classes_per_day: int = 2) ->
                 
                 day_classes.append(class_text)
             
-            # Combine all classes for this day
-            classes_text = '\n'.join(day_classes)
-            formatted_parts.append(f"**{day_name}**\n```{classes_text}```")
+            # Only add this day if it has at least one class
+            if day_classes:
+                # Combine all classes for this day
+                classes_text = '\n'.join(day_classes)
+                formatted_parts.append(f"**{day_name}**\n```{classes_text}```")
         
         except IndexError:
             continue
     
-    return '\n'.join(formatted_parts) if formatted_parts else "❌ Erreur de formatage de l'emploi du temps."
+    return '\n'.join(formatted_parts) if formatted_parts else "❌ Aucun emploi du temps disponible pour cette semaine."
 
 
 def detect_changes(current_data: List[List[str]], previous_hash: Optional[str]) -> Tuple[List[str], str]:
@@ -229,11 +246,13 @@ async def update_schedule_for_channel(bot: commands.Bot, session, config: Schedu
         # Fetch schedule data
         schedule_data = await get_schedule_data(config.spreadsheet_url, config.gid)
         
-        # Get classes per day from config (default to 2 if not set)
+        # Get config parameters (with defaults)
         classes_per_day = getattr(config, 'classes_per_day', 2)
+        start_day_index = getattr(config, 'start_day_index', 0)
+        end_day_index = getattr(config, 'end_day_index', 1)
         
-        # Filter for current week
-        filtered_data, week_updated = filter_schedule_for_week(schedule_data, classes_per_day)
+        # Filter for current week with day range
+        filtered_data, week_updated = filter_schedule_for_week(schedule_data, classes_per_day, start_day_index, end_day_index)
         
         if not filtered_data:
             print(f"No schedule data found for {config.grade_level}")

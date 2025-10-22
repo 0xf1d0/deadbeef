@@ -59,7 +59,13 @@ class Mistral(commands.Cog):
                 conversation = conversation[-10:]
             async with message.channel.typing():
                 try:
-                    answer = await MistralAI.chat_completion(messages=conversation, model='codestral-latest')
+                    # Pass messages in JSON body for POST request
+                    answer = await MistralAI.chat_completion(
+                        json={
+                            'messages': conversation,
+                            'model': 'codestral-latest'
+                        }
+                    )
                     conversation.append({
                         'role': 'assistant',
                         'content': answer
