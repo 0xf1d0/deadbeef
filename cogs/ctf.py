@@ -278,7 +278,13 @@ class CTF(commands.Cog):
                         # Get RootMe data
                         rootme_data = await RootMe.get_author(str(auth_user.rootme_id))
                         
-                        score = rootme_data.get("score", 0)
+                        # Extract and normalize data like profile command
+                        pseudo = rootme_data.get("nom", str(auth_user.rootme_id))
+                        raw_score = rootme_data.get("score", 0)
+                        try:
+                            score = int(raw_score) if isinstance(raw_score, int) else int(str(raw_score).replace(',', '').strip())
+                        except Exception:
+                            score = 0
                         position = rootme_data.get("position", "N/A")
                         rank = rootme_data.get("rang", "N/A")
                         challenges = rootme_data.get("validations", [])
@@ -289,30 +295,34 @@ class CTF(commands.Cog):
                         
                         member_stats.append({
                             'user': user,
+                            'pseudo': pseudo,
                             'score': score,
                             'position': position,
                             'rank': rank,
                             'challenges': challenge_count,
                             'owner_badge': owner_badge,
-                            'rootme_id': auth_user.rootme_id
+                            'rootme_id': auth_user.rootme_id,
+                            'error': None
                         })
                         
                     except Exception as e:
                         # If RootMe API fails, still show the member
                         member_stats.append({
                             'user': user,
+                            'pseudo': str(auth_user.rootme_id),
                             'score': 0,
-                            'position': "Error",
+                            'position': "N/A",
                             'rank': "N/A",
                             'challenges': 0,
                             'owner_badge': owner_badge,
                             'rootme_id': auth_user.rootme_id,
-                            'error': str(e)
+                            'error': "API error"
                         })
                 else:
                     # No RootMe linked
                     member_stats.append({
                         'user': user,
+                        'pseudo': None,
                         'score': 0,
                         'position': "N/A",
                         'rank': "N/A",
@@ -330,7 +340,7 @@ class CTF(commands.Cog):
                     name="<:rootme:1366510489521356850> Team RootMe Stats",
                     value=f"**Total Score:** {total_score:,} pts\n"
                           f"**Total Challenges:** {total_challenges:,}\n"
-                          f"**Average Score:** {total_score // max(linked_count, 1):,} pts\n"
+                          f"**Average Score:** { (total_score // linked_count) if linked_count else 0:,} pts\n"
                           f"**Linked Accounts:** {linked_count}/{len(rows)}",
                     inline=False
                 )
@@ -346,16 +356,14 @@ class CTF(commands.Cog):
                 leaderboard_text = []
                 for i, stats in enumerate(member_stats[:10]):  # Top 10
                     if stats['rootme_id']:
-                        if 'error' in stats:
+                        if stats.get('error'):
                             leaderboard_text.append(
-                                f"**{i+1}.** {stats['user'].mention}{stats['owner_badge']} - "
-                                f"`{stats['rootme_id']}` - Error: {stats['error'][:50]}..."
+                                f"**{i+1}.** {stats['user'].mention}{stats['owner_badge']} - `{stats['rootme_id']}` - données indisponibles"
                             )
                         else:
                             leaderboard_text.append(
                                 f"**{i+1}.** {stats['user'].mention}{stats['owner_badge']} - "
-                                f"`{stats['rootme_id']}` - **{stats['score']:,}** pts "
-                                f"({stats['challenges']} challenges) - #{stats['position']}"
+                                f"`{stats['pseudo']}` • **{stats['score']:,}** pts • #{stats['position']}"
                             )
                     else:
                         leaderboard_text.append(
