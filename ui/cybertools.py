@@ -81,21 +81,29 @@ class ToolExplorerView(ui.View):
 class ToolDetailButton(ui.Button):
     """Button to view tool details."""
     
-    def __init__(self, tool: Tool, row: int = 0):
+    def __init__(self, tool: Tool, db_session: AsyncSession, row: int = 0):
         super().__init__(
             label=f"View: {tool.name}",
             style=ButtonStyle.primary,
             row=row
         )
         self.tool = tool
+        self.db_session = db_session
     
     async def callback(self, interaction: Interaction):
+        # Fetch category name within active session to avoid lazy loading
+        result = await self.db_session.execute(
+            select(Category).where(Category.id == self.tool.category_id)
+        )
+        category = result.scalar_one_or_none()
+        category_name = category.name if category else "Unknown"
+        
         embed = Embed(
             title=f"🔧 {self.tool.name}",
             description=self.tool.description,
             color=discord.Color.green()
         )
-        embed.add_field(name="Category", value=self.tool.category.name, inline=True)
+        embed.add_field(name="Category", value=category_name, inline=True)
         
         # Create view with URL button
         view = ui.View()
@@ -124,7 +132,7 @@ class ToolListView(ui.View):
         for idx, tool in enumerate(tools[:20]):
             row = (idx // 4) + 1  # Start from row 1 (row 0 is for category select)
             if row <= 4:  # Discord allows max 5 rows, we use first for select
-                self.add_item(ToolDetailButton(tool, row=row))
+                self.add_item(ToolDetailButton(tool, self.db_session, row=row))
 
 
 class SearchModal(ui.Modal, title="Search for a Tool"):
@@ -169,10 +177,10 @@ class SearchModal(ui.Modal, title="Search for a Tool"):
         for idx, tool in enumerate(tools[:25]):  # Max 25 buttons
             row = idx // 5
             if row < 5:
-                view.add_item(ToolDetailButton(tool, row=row))
+                view.add_item(ToolDetailButton(tool, self.db_session, row=row))
         
-        # Add tool names to embed
-        tool_list = "\n".join([f"• **{tool.name}** ({tool.category.name})" for tool in tools[:25]])
+        # Add tool names to embed (avoid lazy loading by using category_id)
+        tool_list = "\n".join([f"• **{tool.name}** (Category ID: {tool.category_id})" for tool in tools[:25]])
         embed.add_field(name="Tools", value=tool_list, inline=False)
         
         await interaction.response.send_message(embed=embed, view=view, ephemeral=True)

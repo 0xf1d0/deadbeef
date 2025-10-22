@@ -488,15 +488,8 @@ class PlayerProfile(Base, TimestampMixin):
         cascade='all, delete-orphan'
     )
     
-    @property
-    def discord_id(self) -> int:
-        """Get Discord ID from associated user."""
-        return self.user.user_id
-    
-    @property
-    def rootme_username(self) -> Optional[str]:
-        """Get Root-Me username from associated user's rootme_id."""
-        return self.user.rootme_id
+    # Note: discord_id and rootme_username properties removed to avoid MissingGreenlet errors
+    # Use user_id directly and fetch rootme_id from AuthenticatedUser when needed
     
     def __repr__(self) -> str:
         return f"<PlayerProfile(user_id={self.user_id}, team_id={self.team_id}, status='{self.status}')>"

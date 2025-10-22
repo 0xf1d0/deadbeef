@@ -55,7 +55,7 @@ class CyberTools(commands.Cog):
             # Create view with category selector
             view = ToolExplorerView(session, categories)
             
-            await interaction.response.send_message(embed=embed, view=view)
+            await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
     
     @app_commands.command(name="search", description="Search for a cybersecurity tool.")
     async def search(self, interaction: Interaction):
