@@ -442,17 +442,33 @@ class RootMeModal(ui.Modal, title="Lier son compte Root-Me"):
     uuid = ui.TextInput(
         label="Identifiant Root-Me",
         placeholder="123456 (voir https://www.root-me.org/?page=preferences)",
-        min_length=6,
-        max_length=6
+        min_length=1,
+        max_length=10
     )
     
     def __init__(self, user: Optional[AuthenticatedUser]):
         super().__init__()
         if user and user.rootme_id:
-            self.uuid.default = user.rootme_id
+            self.uuid.default = str(user.rootme_id)
     
     async def on_submit(self, interaction: Interaction):
         """Link Root-Me profile."""
+        # Validate RootMe ID format
+        rootme_id = self.uuid.value.strip()
+        if not rootme_id.isdigit():
+            await interaction.response.send_message(
+                "❌ L'identifiant Root-Me doit être un nombre.",
+                ephemeral=True
+            )
+            return
+        
+        if len(rootme_id) < 1 or len(rootme_id) > 10:
+            await interaction.response.send_message(
+                "❌ L'identifiant Root-Me doit contenir entre 1 et 10 chiffres.",
+                ephemeral=True
+            )
+            return
+        
         async with AsyncSessionLocal() as session:
             result = await session.execute(
                 select(AuthenticatedUser).where(AuthenticatedUser.user_id == interaction.user.id)
@@ -466,9 +482,18 @@ class RootMeModal(ui.Modal, title="Lier son compte Root-Me"):
                 )
                 return
             
-            if user.rootme_id:
+            # Check if this RootMe ID is already linked to another user
+            result = await session.execute(
+                select(AuthenticatedUser).where(
+                    AuthenticatedUser.rootme_id == rootme_id,
+                    AuthenticatedUser.user_id != interaction.user.id
+                )
+            )
+            existing_user = result.scalar_one_or_none()
+            
+            if existing_user:
                 await interaction.response.send_message(
-                    "❌ Compte Root-Me déjà lié.",
+                    "❌ Cet identifiant Root-Me est déjà lié à un autre compte.",
                     ephemeral=True
                 )
                 return
@@ -478,10 +503,10 @@ class RootMeModal(ui.Modal, title="Lier son compte Root-Me"):
             try:
                 # Verify Root-Me ID exists
                 RootMe.setup()
-                await RootMe.get_author(self.uuid.value)
+                await RootMe.get_author(rootme_id)
                 
                 # Save Root-Me ID
-                user.rootme_id = self.uuid.value
+                user.rootme_id = rootme_id
                 await session.commit()
                 
                 await interaction.followup.send(
