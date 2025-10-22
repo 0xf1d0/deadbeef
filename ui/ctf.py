@@ -49,8 +49,12 @@ class ProfileView(ui.View):
             if user:
                 embed.set_author(name=user.display_name, icon_url=user.display_avatar.url)
             
-            # Root-Me status
-            rootme_status = f"`{profile.rootme_username}`" if profile.rootme_username else "❌ Not linked"
+            # Root-Me status (fetch directly from AuthenticatedUser to avoid lazy-load)
+            result = await session.execute(
+                select(AuthenticatedUser).where(AuthenticatedUser.user_id == self.user_id)
+            )
+            auth_user = result.scalar_one_or_none()
+            rootme_status = f"`{auth_user.rootme_id}`" if auth_user and auth_user.rootme_id else "❌ Not linked"
             embed.add_field(name="Root-Me Account", value=rootme_status, inline=True)
             
             # Team status
@@ -73,61 +77,19 @@ class ProfileView(ui.View):
             
             # Commands
             commands_text = (
-                "`/ctf set_rootme` - Link Root-Me account\n"
                 "`/ctf set_status` - Change status\n"
                 "`/ctf create_team` - Create a team\n"
                 "`/ctf teams` - Browse teams\n"
+                "`/profile` - Link Root-Me account (in main system)\n"
             )
             embed.add_field(name="Available Commands", value=commands_text, inline=False)
             
-            await interaction.response.send_message(embed=embed, ephemeral=True)
+            if interaction.response.is_done():
+                await interaction.followup.send(embed=embed, ephemeral=True)
+            else:
+                await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
-class SetRootMeModal(ui.Modal, title="Link Root-Me Account"):
-    """Modal for linking Root-Me account."""
-    
-    username = ui.TextInput(
-        label="Root-Me Username",
-        placeholder="your_username",
-        required=True,
-        max_length=100
-    )
-    
-    def __init__(self, user_id: int):
-        super().__init__()
-        self.user_id = user_id
-    
-    async def on_submit(self, interaction: Interaction):
-        async with AsyncSessionLocal() as session:
-            # Check if username is already taken by another authenticated user
-            result = await session.execute(
-                select(AuthenticatedUser).where(
-                    AuthenticatedUser.rootme_id == self.username.value,
-                    AuthenticatedUser.user_id != self.user_id
-                )
-            )
-            existing = result.scalar_one_or_none()
-            
-            if existing:
-                await interaction.response.send_message(
-                    f"❌ Root-Me username `{self.username.value}` is already linked to another user.",
-                    ephemeral=True
-                )
-                return
-            
-            # Update authenticated user's rootme_id
-            result = await session.execute(
-                select(AuthenticatedUser).where(AuthenticatedUser.user_id == self.user_id)
-            )
-            auth_user = result.scalar_one()
-            
-            auth_user.rootme_id = self.username.value
-            await session.commit()
-            
-            await interaction.response.send_message(
-                f"✅ Root-Me account linked to `{self.username.value}`!",
-                ephemeral=True
-            )
 
 
 class SetStatusView(ui.View):
@@ -165,6 +127,96 @@ class SetStatusView(ui.View):
                 f"✅ Status updated to {status_emoji} **{status}**",
                 ephemeral=True
             )
+
+
+# ============================================================================
+# User Selection Components
+# ============================================================================
+
+class PaginatedUserSelectView(ui.View):
+    """Paginated view for selecting authenticated users."""
+    
+    def __init__(self, users: List[AuthenticatedUser], page: int = 0, callback_func=None, **callback_kwargs):
+        super().__init__(timeout=300)
+        self.users = users
+        self.page = page
+        self.callback_func = callback_func
+        self.callback_kwargs = callback_kwargs
+        self.users_per_page = 25  # Discord limit
+        self.total_pages = (len(users) + self.users_per_page - 1) // self.users_per_page
+        
+        # Update button states
+        if hasattr(self, 'children') and len(self.children) > 0:
+            self.children[0].disabled = (page == 0)
+            self.children[1].disabled = (page >= self.total_pages - 1)
+    
+    async def send(self, interaction: Interaction):
+        """Send the user selection view."""
+        embed = self.create_embed(interaction)
+        await interaction.response.send_message(embed=embed, view=self, ephemeral=True)
+    
+    def create_embed(self, interaction: Interaction) -> Embed:
+        """Create embed for current page."""
+        embed = Embed(
+            title="👥 Select User",
+            description=f"Page {self.page + 1}/{self.total_pages}",
+            color=Color.blue()
+        )
+        
+        start_idx = self.page * self.users_per_page
+        end_idx = start_idx + self.users_per_page
+        page_users = self.users[start_idx:end_idx]
+        
+        # Create select menu options
+        options = []
+        for user in page_users:
+            member = interaction.guild.get_member(user.user_id)
+            display_name = member.display_name if member else f"User ID: {user.user_id}"
+            rootme_info = f" ({user.rootme_id})" if user.rootme_id else ""
+            
+            options.append(SelectOption(
+                label=display_name[:100],  # Discord limit
+                description=f"Email: {user.email}{rootme_info}",
+                value=str(user.user_id)
+            ))
+        
+        # Create select menu
+        select = ui.Select(placeholder="Choose a user...", options=options)
+        select.callback = self.user_selected
+        self.add_item(select)
+        
+        embed.set_footer(text=f"Total users: {len(self.users)} | Use buttons to navigate")
+        
+        return embed
+    
+    async def user_selected(self, interaction: Interaction):
+        """Handle user selection."""
+        user_id = int(self.children[0].values[0])
+        
+        if self.callback_func:
+            await self.callback_func(interaction, user_id, **self.callback_kwargs)
+    
+    @ui.button(label="◀️ Previous", style=ButtonStyle.grey)
+    async def previous_page(self, interaction: Interaction, button: ui.Button):
+        """Go to previous page."""
+        if self.page > 0:
+            self.page -= 1
+            self.children[0].disabled = (self.page == 0)
+            self.children[1].disabled = False
+            
+            embed = self.create_embed(interaction)
+            await interaction.response.edit_message(embed=embed, view=self)
+    
+    @ui.button(label="Next ▶️", style=ButtonStyle.grey)
+    async def next_page(self, interaction: Interaction, button: ui.Button):
+        """Go to next page."""
+        if self.page < self.total_pages - 1:
+            self.page += 1
+            self.children[0].disabled = False
+            self.children[1].disabled = (self.page >= self.total_pages - 1)
+            
+            embed = self.create_embed(interaction)
+            await interaction.response.edit_message(embed=embed, view=self)
 
 
 # ============================================================================
@@ -259,7 +311,7 @@ class CreateTeamModal(ui.Modal, title="Create CTF Team"):
                 }
                 
                 channel = await category.create_text_channel(
-                    name=f"🏆-team-{self.team_name.value.lower().replace(' ', '-')}",
+                    name=f"🏆・team-{self.team_name.value.lower().replace(' ', '-')}",
                     overwrites=overwrites,
                     reason=f"CTF team channel for {self.team_name.value}"
                 )
@@ -373,11 +425,7 @@ class TeamListView(ui.View):
             owner = interaction.guild.get_member(team.owner_id)
             owner_name = owner.display_name if owner else f"User ID: {team.owner_id}"
             
-            # Count members
-            member_count = len(team.members)
-            
             team_info = f"**Owner:** {owner_name}\n"
-            team_info += f"**Members:** {member_count}\n"
             team_info += f"**Recruiting:** {'✅ Open' if team.is_recruiting else '❌ Closed'}\n"
             if team.description:
                 team_info += f"\n{team.description[:150]}"
@@ -770,8 +818,8 @@ class TeamManagementPanel(ui.View):
             await interaction.response.send_modal(modal)
         
         elif action == "invite":
-            modal = InviteMemberModal(self.team_id)
-            await interaction.response.send_modal(modal)
+            view = InviteMemberView(self.team_id)
+            await view.send(interaction)
         
         elif action == "members":
             await self.show_members(interaction)
@@ -802,17 +850,25 @@ class TeamManagementPanel(ui.View):
             )
             team = result.scalar_one()
             
+            # Get team members with auth data
+            result = await session.execute(
+                select(PlayerProfile, AuthenticatedUser)
+                .join(AuthenticatedUser, AuthenticatedUser.user_id == PlayerProfile.user_id)
+                .where(PlayerProfile.team_id == team.id)
+            )
+            member_data = result.all()
+            
             embed = Embed(
                 title=f"👥 {team.name} - Members",
                 color=Color.blue()
             )
             
             member_list = []
-            for member_profile in team.members:
-                user = interaction.guild.get_member(member_profile.discord_id)
+            for member_profile, auth_user in member_data:
+                user = interaction.guild.get_member(member_profile.user_id)
                 if user:
-                    owner_badge = " 👑" if member_profile.discord_id == team.owner_id else ""
-                    rootme = f" (`{member_profile.rootme_username}`)" if member_profile.rootme_username else ""
+                    owner_badge = " 👑" if member_profile.user_id == team.owner_id else ""
+                    rootme = f" (`{auth_user.rootme_id}`)" if auth_user and auth_user.rootme_id else ""
                     member_list.append(f"• {user.mention}{owner_badge}{rootme}")
             
             if member_list:
@@ -820,12 +876,13 @@ class TeamManagementPanel(ui.View):
             else:
                 embed.description = "No members"
             
-            embed.set_footer(text=f"Total members: {len(team.members)}")
+            embed.set_footer(text=f"Total members: {len(member_data)}")
             
             # Add kick button if there are members other than owner
-            kickable_members = [m for m in team.members if m.discord_id != team.owner_id]
+            kickable_members = [(m, a) for m, a in member_data if m.user_id != team.owner_id]
             if kickable_members:
                 view = KickMemberView(self.team_id, kickable_members)
+                await view.update_options(interaction)
                 await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
             else:
                 await interaction.response.send_message(embed=embed, ephemeral=True)
@@ -910,8 +967,13 @@ class TeamManagementPanel(ui.View):
             )
             team = result.scalar_one()
             
-            # Get other members
-            other_members = [m for m in team.members if m.discord_id != team.owner_id]
+            # Get other members with auth data
+            result = await session.execute(
+                select(PlayerProfile, AuthenticatedUser)
+                .join(AuthenticatedUser, AuthenticatedUser.user_id == PlayerProfile.user_id)
+                .where(PlayerProfile.team_id == team.id, PlayerProfile.user_id != team.owner_id)
+            )
+            other_members = result.all()
             
             if not other_members:
                 await interaction.response.send_message(
@@ -921,6 +983,7 @@ class TeamManagementPanel(ui.View):
                 return
             
             view = TransferOwnershipView(self.team_id, other_members)
+            await view.update_options(interaction)
             await interaction.response.send_message(
                 "👑 Select the new team owner:",
                 view=view,
@@ -994,7 +1057,7 @@ class EditTeamInfoModal(ui.Modal, title="Edit Team Info"):
                 try:
                     channel = interaction.client.get_channel(team.channel_id)
                     if channel:
-                        await channel.edit(name=f"🏆-team-{self.team_name.value.lower().replace(' ', '-')}")
+                        await channel.edit(name=f"🏆・team-{self.team_name.value.lower().replace(' ', '-')}")
                 except:
                     pass
             
@@ -1017,63 +1080,62 @@ class EditTeamInfoModal(ui.Modal, title="Edit Team Info"):
                 )
 
 
-class InviteMemberModal(ui.Modal, title="Invite Member"):
-    """Modal for inviting a member."""
-    
-    user_id = ui.TextInput(
-        label="User ID or Mention",
-        placeholder="123456789012345678 or @username",
-        required=True,
-        max_length=100
-    )
+class InviteMemberView(ui.View):
+    """View for inviting a member with user selection."""
     
     def __init__(self, team_id: int):
-        super().__init__()
+        super().__init__(timeout=300)
         self.team_id = team_id
     
-    async def on_submit(self, interaction: Interaction):
-        # Parse user ID
-        user_id_str = self.user_id.value.replace('<@', '').replace('>', '').replace('!', '')
-        try:
-            target_user_id = int(user_id_str)
-        except ValueError:
-            await interaction.response.send_message(
-                "❌ Invalid user ID format.",
-                ephemeral=True
+    async def send(self, interaction: Interaction):
+        """Send the invite member view."""
+        async with AsyncSessionLocal() as session:
+            # Get all authenticated users
+            result = await session.execute(
+                select(AuthenticatedUser).order_by(AuthenticatedUser.user_id)
             )
-            return
-        
-        # Check if user exists
-        target_user = interaction.guild.get_member(target_user_id)
-        if not target_user:
-            await interaction.response.send_message(
-                "❌ User not found in this server.",
-                ephemeral=True
+            users = result.scalars().all()
+            
+            if not users:
+                await interaction.response.send_message(
+                    "❌ No authenticated users found.",
+                    ephemeral=True
+                )
+                return
+            
+            view = PaginatedUserSelectView(
+                users=users,
+                callback_func=self.invite_user,
+                team_id=self.team_id
             )
-            return
-        
+            await view.send(interaction)
+    
+    async def invite_user(self, interaction: Interaction, user_id: int, team_id: int):
+        """Handle user invitation."""
         async with AsyncSessionLocal() as session:
             # Get team
             result = await session.execute(
-                select(Team).where(Team.id == self.team_id)
+                select(Team).where(Team.id == team_id)
             )
             team = result.scalar_one()
             
             # Check if user already on a team
             result = await session.execute(
-                select(PlayerProfile).where(PlayerProfile.user_id == target_user_id)
+                select(PlayerProfile).where(PlayerProfile.user_id == user_id)
             )
             profile = result.scalar_one_or_none()
             
             if not profile:
                 # Create profile
-                profile = PlayerProfile(user_id=target_user_id)
+                profile = PlayerProfile(user_id=user_id)
                 session.add(profile)
                 await session.flush()
             
             if profile.team_id:
+                target_user = interaction.guild.get_member(user_id)
+                user_mention = target_user.mention if target_user else f"User ID: {user_id}"
                 await interaction.response.send_message(
-                    f"❌ {target_user.mention} is already on a team.",
+                    f"❌ {user_mention} is already on a team.",
                     ephemeral=True
                 )
                 return
@@ -1081,24 +1143,26 @@ class InviteMemberModal(ui.Modal, title="Invite Member"):
             # Check if already invited
             result = await session.execute(
                 select(TeamInvite).where(
-                    TeamInvite.team_id == self.team_id,
-                    TeamInvite.invitee_id == target_user_id,
+                    TeamInvite.team_id == team_id,
+                    TeamInvite.invitee_id == user_id,
                     TeamInvite.status == 'pending'
                 )
             )
             existing_invite = result.scalar_one_or_none()
             
             if existing_invite:
+                target_user = interaction.guild.get_member(user_id)
+                user_mention = target_user.mention if target_user else f"User ID: {user_id}"
                 await interaction.response.send_message(
-                    f"❌ {target_user.mention} has already been invited.",
+                    f"❌ {user_mention} has already been invited.",
                     ephemeral=True
                 )
                 return
             
             # Create invite
             invite = TeamInvite(
-                team_id=self.team_id,
-                invitee_id=target_user_id,
+                team_id=team_id,
+                invitee_id=user_id,
                 status='pending'
             )
             
@@ -1107,32 +1171,39 @@ class InviteMemberModal(ui.Modal, title="Invite Member"):
             
             # Send DM
             try:
-                dm_embed = Embed(
-                    title="🎉 Team Invitation",
-                    description=f"You've been invited to join **{team.name}**!",
-                    color=Color.green()
-                )
-                if team.description:
-                    dm_embed.add_field(name="About", value=team.description, inline=False)
-                
-                dm_embed.add_field(
-                    name="Team Channel",
-                    value=f"<#{team.channel_id}>",
-                    inline=True
-                )
-                
-                view = InviteResponseView(invite.id)
-                await target_user.send(embed=dm_embed, view=view)
-                
-                await interaction.response.send_message(
-                    f"✅ Invitation sent to {target_user.mention}!",
-                    ephemeral=True
-                )
+                target_user = interaction.guild.get_member(user_id)
+                if target_user:
+                    dm_embed = Embed(
+                        title="🎉 Team Invitation",
+                        description=f"You've been invited to join **{team.name}**!",
+                        color=Color.green()
+                    )
+                    if team.description:
+                        dm_embed.add_field(name="About", value=team.description, inline=False)
+                    
+                    dm_embed.add_field(
+                        name="Team Channel",
+                        value=f"<#{team.channel_id}>",
+                        inline=True
+                    )
+                    
+                    view = InviteResponseView(invite.id)
+                    await target_user.send(embed=dm_embed, view=view)
+                    
+                    await interaction.response.send_message(
+                        f"✅ Invitation sent to {target_user.mention}!",
+                        ephemeral=True
+                    )
+                else:
+                    await interaction.response.send_message(
+                        f"✅ Invitation created for User ID: {user_id}",
+                        ephemeral=True
+                    )
             
             except:
                 await interaction.response.send_message(
-                    f"✅ Invitation created, but couldn't send DM to {target_user.mention}.\n"
-                    f"They may have DMs disabled.",
+                    f"✅ Invitation created, but couldn't send DM to User ID: {user_id}.\n"
+                    f"They may have DMs disabled or left the server.",
                     ephemeral=True
                 )
 
@@ -1253,23 +1324,31 @@ class InviteResponseView(ui.View):
 class KickMemberView(ui.View):
     """View for kicking a member."""
     
-    def __init__(self, team_id: int, members: List[PlayerProfile]):
+    def __init__(self, team_id: int, members: List[tuple]):
         super().__init__(timeout=300)
         self.team_id = team_id
+        self.members = members
         
         # Create select menu
-        options = [
-            SelectOption(
-                label=f"User ID: {member.discord_id}",
-                description=f"Root-Me: {member.rootme_username or 'Not linked'}",
-                value=str(member.discord_id)
-            )
-            for member in members[:25]  # Discord limit
-        ]
-        
-        select = ui.Select(placeholder="Select member to kick...", options=options)
+        select = ui.Select(placeholder="Select member to kick...", options=[])
         select.callback = self.member_selected
         self.add_item(select)
+    
+    async def update_options(self, interaction: Interaction):
+        """Update select menu options with current guild members."""
+        options = []
+        for member_profile, auth_user in self.members[:25]:  # Discord limit
+            user = interaction.guild.get_member(member_profile.user_id)
+            display_name = user.display_name if user else f"User ID: {member_profile.user_id}"
+            rootme_info = f" ({auth_user.rootme_id})" if auth_user and auth_user.rootme_id else " (No Root-Me)"
+            
+            options.append(SelectOption(
+                label=display_name[:100],  # Discord limit
+                description=f"Email: {auth_user.email if auth_user else 'Unknown'}{rootme_info}",
+                value=str(member_profile.user_id)
+            ))
+        
+        self.children[0].options = options
     
     async def member_selected(self, interaction: Interaction):
         """Handle member selection."""
@@ -1364,23 +1443,31 @@ class ConfirmKickView(ui.View):
 class TransferOwnershipView(ui.View):
     """View for transferring team ownership."""
     
-    def __init__(self, team_id: int, members: List[PlayerProfile]):
+    def __init__(self, team_id: int, members: List[tuple]):
         super().__init__(timeout=300)
         self.team_id = team_id
+        self.members = members
         
         # Create select menu
-        options = [
-            SelectOption(
-                label=f"User ID: {member.discord_id}",
-                description=f"Root-Me: {member.rootme_username or 'Not linked'}",
-                value=str(member.discord_id)
-            )
-            for member in members[:25]  # Discord limit
-        ]
-        
-        select = ui.Select(placeholder="Select new owner...", options=options)
+        select = ui.Select(placeholder="Select new owner...", options=[])
         select.callback = self.member_selected
         self.add_item(select)
+    
+    async def update_options(self, interaction: Interaction):
+        """Update select menu options with current guild members."""
+        options = []
+        for member_profile, auth_user in self.members[:25]:  # Discord limit
+            user = interaction.guild.get_member(member_profile.user_id)
+            display_name = user.display_name if user else f"User ID: {member_profile.user_id}"
+            rootme_info = f" ({auth_user.rootme_id})" if auth_user and auth_user.rootme_id else " (No Root-Me)"
+            
+            options.append(SelectOption(
+                label=display_name[:100],  # Discord limit
+                description=f"Email: {auth_user.email if auth_user else 'Unknown'}{rootme_info}",
+                value=str(member_profile.user_id)
+            ))
+        
+        self.children[0].options = options
     
     async def member_selected(self, interaction: Interaction):
         """Handle member selection."""

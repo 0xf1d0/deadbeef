@@ -12,7 +12,7 @@ from db.models import PlayerProfile, Team, TeamInvite, TeamApplication, Authenti
 from utils import ROLE_MANAGER, ROLE_NOTABLE, CTF_CATEGORY
 from ui.ctf import (
     CreateTeamModal, TeamManagementPanel, TeamListView,
-    SetRootMeModal, SetStatusView, ProfileView
+    SetStatusView, ProfileView
 )
 
 
@@ -71,61 +71,6 @@ class CTF(commands.Cog):
                 ephemeral=True
             )
     
-    @profile_group.command(
-        name="set_rootme",
-        description="Link your Root-Me account for stats tracking"
-    )
-    @app_commands.describe(username="Your Root-Me username")
-    async def set_rootme(self, interaction: Interaction, username: str):
-        """Link Root-Me account."""
-        try:
-            await self.ensure_profile(interaction.user.id)
-            
-            async with AsyncSessionLocal() as session:
-                # Check if username is already taken by another authenticated user
-                result = await session.execute(
-                    select(AuthenticatedUser).where(
-                        AuthenticatedUser.rootme_id == username,
-                        AuthenticatedUser.user_id != interaction.user.id
-                    )
-                )
-                existing = result.scalar_one_or_none()
-                
-                if existing:
-                    await interaction.response.send_message(
-                        f"❌ Root-Me username `{username}` is already linked to another user.",
-                        ephemeral=True
-                    )
-                    return
-                
-                # Update authenticated user's rootme_id
-                result = await session.execute(
-                    select(AuthenticatedUser).where(AuthenticatedUser.user_id == interaction.user.id)
-                )
-                auth_user = result.scalar_one()
-                
-                old_username = auth_user.rootme_id
-                auth_user.rootme_id = username
-                await session.commit()
-                
-                embed = Embed(
-                    title="✅ Root-Me Account Linked",
-                    description=f"Your Root-Me profile has been {'updated' if old_username else 'linked'}.",
-                    color=Color.green()
-                )
-                embed.add_field(name="Username", value=f"`{username}`", inline=False)
-                embed.add_field(
-                    name="Next Steps",
-                    value="Your Root-Me stats will now be included in team statistics and leaderboards!",
-                    inline=False
-                )
-                
-                await interaction.response.send_message(embed=embed, ephemeral=True)
-        except ValueError as e:
-            await interaction.response.send_message(
-                f"❌ {str(e)}\n\nYou must be authenticated first. Use the authentication system to get started.",
-                ephemeral=True
-            )
     
     @profile_group.command(
         name="set_status",
@@ -280,11 +225,13 @@ class CTF(commands.Cog):
             )
             team = result.scalar_one()
             
-            # Get all team members with Root-Me profiles
+            # Get all team members and their auth records (avoid lazy-loads)
             result = await session.execute(
-                select(PlayerProfile).where(PlayerProfile.team_id == team.id)
+                select(PlayerProfile, AuthenticatedUser)
+                .join(AuthenticatedUser, AuthenticatedUser.user_id == PlayerProfile.user_id)
+                .where(PlayerProfile.team_id == team.id)
             )
-            members = result.scalars().all()
+            rows = result.all()
             
             # Build stats embed
             embed = Embed(
@@ -300,11 +247,7 @@ class CTF(commands.Cog):
                 value=owner.mention if owner else f"User ID: {team.owner_id}",
                 inline=True
             )
-            embed.add_field(
-                name="Members",
-                value=str(len(members)),
-                inline=True
-            )
+            embed.add_field(name="Members", value=str(len(rows)), inline=True)
             embed.add_field(
                 name="Recruiting",
                 value="✅ Open" if team.is_recruiting else "❌ Closed",
@@ -313,11 +256,11 @@ class CTF(commands.Cog):
             
             # Member list
             member_list = []
-            for member in members:
-                user = interaction.guild.get_member(member.discord_id)
+            for member, auth_user in rows:
+                user = interaction.guild.get_member(member.user_id)
                 if user:
-                    rootme_status = f" (`{member.rootme_username}`)" if member.rootme_username else " (No Root-Me)"
-                    owner_badge = " 👑" if member.discord_id == team.owner_id else ""
+                    rootme_status = f" (`{auth_user.rootme_id}`)" if auth_user and auth_user.rootme_id else " (No Root-Me)"
+                    owner_badge = " 👑" if member.user_id == team.owner_id else ""
                     member_list.append(f"• {user.mention}{owner_badge}{rootme_status}")
             
             if member_list:
@@ -328,13 +271,8 @@ class CTF(commands.Cog):
                 )
             
             # Root-Me stats (placeholder for now)
-            linked_count = sum(1 for m in members if m.rootme_username)
-            embed.add_field(
-                name="📊 Root-Me Integration",
-                value=f"{linked_count}/{len(members)} members have linked Root-Me accounts\n"
-                      f"*Full stats integration coming soon!*",
-                inline=False
-            )
+            linked_count = sum(1 for _m, a in rows if a and a.rootme_id)
+            embed.add_field(name="📊 Root-Me Integration", value=f"{linked_count}/{len(rows)} members have linked Root-Me accounts\n*Full stats integration coming soon!*", inline=False)
             
             embed.set_footer(text=f"Team ID: {team.id} | Created {team.created_at.strftime('%Y-%m-%d')}")
             
