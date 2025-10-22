@@ -174,7 +174,7 @@ class CTF(commands.Cog):
             try:
                 guild = interaction.guild
                 member = guild.get_member(interaction.user.id)
-                team_role = next((r for r in guild.roles if r.name == f"CTF-{team_name}"), None)
+                team_role = next((r for r in guild.roles if r.name == f"TEAM-{team_name}"), None)
                 if team_role and team_role in member.roles:
                     await member.remove_roles(team_role, reason="Left team")
             except Exception as e:

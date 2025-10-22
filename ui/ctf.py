@@ -309,7 +309,7 @@ class CreateTeamModal(ui.Modal, title="Create CTF Team"):
                 # Create team role
                 guild = interaction.guild
                 team_role = await guild.create_role(
-                    name=f"CTF-{self.team_name.value}",
+                    name=f"TEAM-{self.team_name.value}",
                     mentionable=True,
                     reason=f"Team role for {self.team_name.value}"
                 )
@@ -703,7 +703,7 @@ class ApplicationResponseView(ui.View):
             try:
                 guild = interaction.guild
                 member = guild.get_member(application.applicant_id)
-                team_role = next((r for r in guild.roles if r.name == f"CTF-{team.name}"), None)
+                team_role = next((r for r in guild.roles if r.name == f"TEAM-{team.name}"), None)
                 
                 if member and team_role:
                     await member.add_roles(team_role, reason="Joined team")
@@ -1101,9 +1101,9 @@ class EditTeamInfoModal(ui.Modal, title="Edit Team Info"):
                 # Update team role name
                 try:
                     guild = interaction.guild
-                    old_role = next((r for r in guild.roles if r.name == f"CTF-{old_name}"), None)
+                    old_role = next((r for r in guild.roles if r.name == f"TEAM-{old_name}"), None)
                     if old_role:
-                        await old_role.edit(name=f"CTF-{self.team_name.value}")
+                        await old_role.edit(name=f"TEAM-{self.team_name.value}")
                 except:
                     pass
                 
@@ -1321,7 +1321,7 @@ class InviteResponseView(ui.View):
             try:
                 guild = interaction.guild
                 member = guild.get_member(invite.invitee_id)
-                team_role = next((r for r in guild.roles if r.name == f"CTF-{team.name}"), None)
+                team_role = next((r for r in guild.roles if r.name == f"TEAM-{team.name}"), None)
                 
                 if member and team_role:
                     await member.add_roles(team_role, reason="Joined team")
@@ -1458,7 +1458,7 @@ class ConfirmKickView(ui.View):
             try:
                 guild = interaction.guild
                 member = guild.get_member(self.member_id)
-                team_role = next((r for r in guild.roles if r.name == f"CTF-{team.name}"), None)
+                team_role = next((r for r in guild.roles if r.name == f"TEAM-{team.name}"), None)
                 if team_role and member and team_role in member.roles:
                     await member.remove_roles(team_role, reason="Kicked from team")
                 
@@ -1657,7 +1657,7 @@ class ConfirmDisbandView(ui.View):
                 
                 # Delete team role
                 guild = interaction.guild
-                team_role = next((r for r in guild.roles if r.name == f"CTF-{team.name}"), None)
+                team_role = next((r for r in guild.roles if r.name == f"TEAM-{team.name}"), None)
                 if team_role:
                     await team_role.delete(reason="Team disbanded")
                 

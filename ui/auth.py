@@ -220,20 +220,6 @@ class ProfessionalModal(ui.Modal, title="Authentification Professionnel"):
         max_length=100
     )
     
-    first_name = ui.TextInput(
-        label="Prénom",
-        placeholder="Facultatif",
-        required=False,
-        max_length=50
-    )
-    
-    last_name = ui.TextInput(
-        label="Nom",
-        placeholder="Facultatif",
-        required=False,
-        max_length=50
-    )
-    
     async def on_submit(self, interaction: Interaction):
         """Process professional authentication request."""
         await interaction.response.defer(ephemeral=True)
@@ -291,8 +277,8 @@ class ProfessionalModal(ui.Modal, title="Authentification Professionnel"):
                 pending.token = token
                 pending.user_type = 'professional'
                 pending.pro_id = pro.id
-                pending.first_name = self.first_name.value or pro.first_name
-                pending.last_name = self.last_name.value or pro.last_name
+                pending.first_name = pro.first_name
+                pending.last_name = pro.last_name
                 pending.created_at = datetime.now()
                 pending.expires_at = datetime.now() + COOLDOWN_PERIOD
             else:
@@ -303,8 +289,8 @@ class ProfessionalModal(ui.Modal, title="Authentification Professionnel"):
                     token=token,
                     user_type='professional',
                     pro_id=pro.id,
-                    first_name=self.first_name.value or pro.first_name,
-                    last_name=self.last_name.value or pro.last_name,
+                    first_name=pro.first_name,
+                    last_name=pro.last_name,
                     created_at=datetime.now(),
                     expires_at=datetime.now() + COOLDOWN_PERIOD
                 )
