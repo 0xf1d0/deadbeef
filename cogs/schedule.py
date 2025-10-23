@@ -87,8 +87,8 @@ def filter_schedule_for_week(schedule_data: List[List[str]], classes_per_day: in
     start_of_week = today - timedelta(days=weekday)
     week_updated = False
     
-    # If we're past Wednesday (day 2), show next week
-    if weekday > 2:
+    # If we're past Friday (day 4), show next week
+    if weekday > 4:
         start_of_week = start_of_week + timedelta(days=7)
         week_updated = True
     
