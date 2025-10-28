@@ -127,8 +127,16 @@ class AuthenticationAdminPanel(ui.View):
             await interaction.response.send_modal(modal)
         
         elif action == "view_pro":
-            # Open a select-based professional viewer instead of a modal with email
-            view = ViewProfessionalSelectView()
+            # Open a select-based professional viewer with preloaded options
+            from sqlalchemy import select as select_db
+            options = []
+            async with AsyncSessionLocal() as session:
+                result = await session.execute(select_db(Professional))
+                pros = result.scalars().all()[:25]
+                for pro in pros:
+                    label = (f"{pro.first_name or ''} {pro.last_name or ''}".strip() or pro.email)[:100]
+                    options.append(SelectOption(label=label, value=pro.email, description=pro.email[:100]))
+            view = ViewProfessionalSelectView(options)
             embed = Embed(
                 title="👔 View Professional",
                 description="Select a professional to view details.",
@@ -691,9 +699,9 @@ class ViewProfessionalModal(ui.Modal, title="View Professional"):
 class ViewProfessionalSelectView(ui.View):
     """Select-based view to display a professional's details."""
     
-    def __init__(self):
+    def __init__(self, professional_options: list[SelectOption]):
         super().__init__(timeout=300)
-        self.select = ui.Select(placeholder="Select professional...", options=[])
+        self.select = ui.Select(placeholder="Select professional...", options=professional_options)
         self.select.callback = self.professional_selected
         self.add_item(self.select)
     
