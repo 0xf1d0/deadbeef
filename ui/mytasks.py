@@ -106,7 +106,7 @@ class UserTaskListView(ui.View):
         
         description_parts = []
         
-        for assignment in self.all_assignments:
+        for idx, assignment in enumerate(self.all_assignments, start=1):
             is_checked = assignment.id in self.completed_ids
             
             # Format due date
@@ -114,11 +114,11 @@ class UserTaskListView(ui.View):
             
             if is_checked:
                 description_parts.append(
-                    f"~~✓ **{assignment.title}** ({assignment.course.name}) - Due: {due_str}~~"
+                    f"~~**{idx}.** ✓ **{assignment.title}** ({assignment.course.name}) - Due: {due_str}~~"
                 )
             else:
                 description_parts.append(
-                    f"□ **{assignment.title}** ({assignment.course.name}) - Due: {due_str}"
+                    f"**{idx}.** □ **{assignment.title}** ({assignment.course.name}) - Due: {due_str}"
                 )
         
         if not description_parts:
@@ -141,15 +141,15 @@ class UserTaskListView(ui.View):
         # Limit to 25 buttons (5 rows max in Discord)
         tasks_to_show = self.all_assignments[:25]
         
-        for assignment in tasks_to_show:
+        for idx, assignment in enumerate(tasks_to_show, start=1):
             is_checked = assignment.id in self.completed_ids
             
             if is_checked:
-                label = "✓ Mark Incomplete"
+                label = f"{idx}. ✓ Mark Incomplete"
                 style = ButtonStyle.secondary
                 custom_id = f"mytask:uncheck:{assignment.id}"
             else:
-                label = "○ Mark Complete"
+                label = f"{idx}. ○ Mark Complete"
                 style = ButtonStyle.success
                 custom_id = f"mytask:check:{assignment.id}"
             
