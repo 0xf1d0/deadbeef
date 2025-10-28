@@ -169,7 +169,7 @@ async def update_homework_message(bot: commands.Bot, session, config: GradeChann
                 field_value = ""
                 
                 if assignment.description:
-                    field_value += f"\u200b\n{assignment.description}\n"
+                    field_value += f"\u200b\n{assignment.description}\n\u200b\n"
                 
                 # Format due date as Discord timestamp
                 timestamp = int(assignment.due_date.timestamp())
