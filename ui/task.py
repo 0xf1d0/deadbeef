@@ -12,8 +12,8 @@ from db.models import GradeChannelConfig, Course, Assignment
 # Admin Management Interface
 # ============================================================================
 
-class HomeworkAdminPanel(ui.View):
-    """Main admin panel for homework management with select menu."""
+class TaskAdminPanel(ui.View):
+    """Main admin panel for task management with select menu."""
     
     def __init__(self, channel_id: int):
         super().__init__(timeout=300)
@@ -22,8 +22,8 @@ class HomeworkAdminPanel(ui.View):
         # Create select menu with all admin options
         options = [
             SelectOption(
-                label="Setup Homework Channel",
-                description="Configure a channel for homework tracking",
+                label="Setup Task Channel",
+                description="Configure a channel for task tracking",
                 value="setup",
                 emoji="⚙️"
             ),
@@ -65,19 +65,19 @@ class HomeworkAdminPanel(ui.View):
             ),
             SelectOption(
                 label="Refresh To-Do List",
-                description="Update the homework message",
+                description="Update the task message",
                 value="refresh",
                 emoji="🔄"
             ),
             SelectOption(
                 label="View Statistics",
-                description="Show homework statistics",
+                description="Show task statistics",
                 value="stats",
                 emoji="📊"
             ),
             SelectOption(
                 label="Remove Channel Configuration",
-                description="Delete a homework channel configuration",
+                description="Delete a task channel configuration",
                 value="remove_channel",
                 emoji="🗑️"
             ),
@@ -86,7 +86,7 @@ class HomeworkAdminPanel(ui.View):
         select = ui.Select(
             placeholder="Select an action...",
             options=options,
-            custom_id="homework_admin_select"
+            custom_id="task_admin_select"
         )
         select.callback = self.action_selected
         self.add_item(select)
@@ -101,8 +101,8 @@ class HomeworkAdminPanel(ui.View):
             # Show channel select for setup
             view = SetupChannelSelectView()
             embed = Embed(
-                title="⚙️ Setup Homework Channel",
-                description="Select the channel where you want to display the homework to-do list:",
+                title="⚙️ Setup task Channel",
+                description="Select the channel where you want to display the task to-do list:",
                 color=discord.Color.blue()
             )
             await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
@@ -119,7 +119,7 @@ class HomeworkAdminPanel(ui.View):
                 
                 if not config:
                     await interaction.response.send_message(
-                        f"❌ This channel is not configured as a homework channel. Use 'Setup Homework Channel' first.",
+                        f"❌ This channel is not configured as a task channel. Use 'Setup task Channel' first.",
                         ephemeral=True
                     )
                     return
@@ -157,7 +157,7 @@ class HomeworkAdminPanel(ui.View):
                 
                 if not config:
                     await interaction.response.send_message(
-                        f"❌ This channel is not configured as a homework channel. Use 'Setup Homework Channel' first.",
+                        f"❌ This channel is not configured as a task channel. Use 'Setup task Channel' first.",
                         ephemeral=True
                     )
                     return
@@ -195,7 +195,7 @@ class HomeworkAdminPanel(ui.View):
                 
                 if not config:
                     await interaction.response.send_message(
-                        f"❌ This channel is not configured as a homework channel. Use 'Setup Homework Channel' first.",
+                        f"❌ This channel is not configured as a task channel. Use 'Setup task Channel' first.",
                         ephemeral=True
                     )
                     return
@@ -233,7 +233,7 @@ class HomeworkAdminPanel(ui.View):
                 
                 if not config:
                     await interaction.response.send_message(
-                        f"❌ This channel is not configured as a homework channel. Use 'Setup Homework Channel' first.",
+                        f"❌ This channel is not configured as a task channel. Use 'Setup task Channel' first.",
                         ephemeral=True
                     )
                     return
@@ -241,12 +241,12 @@ class HomeworkAdminPanel(ui.View):
                 view = SelectCourseChannelView(self.channel_id)
                 embed = Embed(
                     title="📘 Add Course",
-                    description=f"Homework channel: <#{self.channel_id}>\n\nSelect the course channel (where the course content is):",
+                    description=f"Task channel: <#{self.channel_id}>\n\nSelect the course channel (where the course content is):",
                     color=discord.Color.blurple()
                 )
                 embed.add_field(
                     name="ℹ️ Why select a course channel?",
-                    value="This helps the bot mention only the right roles (FI/FA) for homework reminders based on channel permissions.",
+                    value="This helps the bot mention only the right roles (FI/FA) for task reminders based on channel permissions.",
                     inline=False
                 )
                 await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
@@ -263,7 +263,7 @@ class HomeworkAdminPanel(ui.View):
                 
                 if not config:
                     await interaction.response.send_message(
-                        f"❌ This channel is not configured as a homework channel. Use 'Setup Homework Channel' first.",
+                        f"❌ This channel is not configured as a task channel. Use 'Setup task Channel' first.",
                         ephemeral=True
                     )
                     return
@@ -301,7 +301,7 @@ class HomeworkAdminPanel(ui.View):
                 
                 if not config:
                     await interaction.response.send_message(
-                        f"❌ This channel is not configured as a homework channel. Use 'Setup Homework Channel' first.",
+                        f"❌ This channel is not configured as a task channel. Use 'Setup task Channel' first.",
                         ephemeral=True
                     )
                     return
@@ -339,14 +339,14 @@ class HomeworkAdminPanel(ui.View):
                 
                 if not config:
                     await interaction.response.send_message(
-                        f"❌ This channel is not configured as a homework channel. Use 'Setup Homework Channel' first.",
+                        f"❌ This channel is not configured as a task channel. Use 'Setup task Channel' first.",
                         ephemeral=True
                     )
                     return
                 
-                # Refresh the homework message
-                from cogs.homework import update_homework_message
-                await update_homework_message(interaction.client, session, config)
+                # Refresh the task message
+                from cogs.task import update_task_message
+                await update_task_message(interaction.client, session, config)
                 
                 await interaction.response.send_message(
                     f"✅ To-do list for <#{self.channel_id}> refreshed!",
@@ -361,14 +361,14 @@ class HomeworkAdminPanel(ui.View):
                 
                 if not configs:
                     await interaction.response.send_message(
-                        "❌ No homework channels configured yet.",
+                        "❌ No task channels configured yet.",
                         ephemeral=True
                     )
                     return
                 
                 embed = Embed(
-                    title="📊 Homework Statistics",
-                    description="Overview of homework channels:",
+                    title="📊 Task Statistics",
+                    description="Overview of task channels:",
                     color=discord.Color.blue()
                 )
                 
@@ -408,7 +408,7 @@ class HomeworkAdminPanel(ui.View):
                 
                 if not config:
                     await interaction.response.send_message(
-                        f"❌ This channel is not configured as a homework channel.",
+                        f"❌ This channel is not configured as a task channel.",
                         ephemeral=True
                     )
                     return
@@ -426,7 +426,7 @@ class HomeworkAdminPanel(ui.View):
                 view = ConfirmRemoveChannelView(config, len(courses), total_assignments)
                 embed = Embed(
                     title="🗑️ Remove Channel Configuration",
-                    description=f"Are you sure you want to remove the homework configuration for **{config.grade_level}** in <#{self.channel_id}>?",
+                    description=f"Are you sure you want to remove the task configuration for **{config.grade_level}** in <#{self.channel_id}>?",
                     color=discord.Color.red()
                 )
                 embed.add_field(
@@ -445,7 +445,7 @@ class HomeworkAdminPanel(ui.View):
 
 
 class SetupChannelSelectView(ui.View):
-    """View with channel select for homework setup."""
+    """View with channel select for task setup."""
     
     def __init__(self):
         super().__init__(timeout=300)
@@ -466,7 +466,7 @@ class SetupChannelSelectView(ui.View):
         view = GradeLevelSelectView(channel_id)
         embed = Embed(
             title="⚙️ Select Grade Level",
-            description=f"Channel: <#{channel_id}>\n\nSelect the grade level for this homework channel:",
+            description=f"Channel: <#{channel_id}>\n\nSelect the grade level for this task channel:",
             color=discord.Color.blue()
         )
         await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
@@ -533,24 +533,24 @@ class GradeLevelSelectView(ui.View):
             await session.commit()
             
             # Create initial message
-            from cogs.homework import update_homework_message
-            await update_homework_message(interaction.client, session, config)
+            from cogs.task import update_task_message
+            await update_task_message(interaction.client, session, config)
             
             embed = Embed(
-                title="✅ Homework Channel Configured",
+                title="✅ task Channel Configured",
                 description=f"Channel: <#{self.channel_id}>\nGrade Level: **{grade_level}**",
                 color=discord.Color.green()
             )
             embed.add_field(
                 name="Next Steps",
-                value="Use `/homework` → Add Course to start adding courses and assignments.",
+                value="Use `/task` → Add Course to start adding courses and assignments.",
                 inline=False
             )
             await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
 class RemoveChannelSelectView(ui.View):
-    """View for selecting a homework channel to remove."""
+    """View for selecting a task channel to remove."""
     
     def __init__(self):
         super().__init__(timeout=300)
@@ -580,7 +580,7 @@ class RemoveChannelSelectView(ui.View):
             
             if not config:
                 await interaction.response.send_message(
-                    f"❌ <#{channel_id}> is not configured as a homework channel.",
+                    f"❌ <#{channel_id}> is not configured as a task channel.",
                     ephemeral=True
                 )
                 return
@@ -597,7 +597,7 @@ class RemoveChannelSelectView(ui.View):
             view = ConfirmRemoveChannelView(config, len(courses), total_assignments)
             embed = Embed(
                 title="⚠️ Confirm Removal",
-                description=f"Are you sure you want to remove the homework configuration for <#{channel_id}>?",
+                description=f"Are you sure you want to remove the task configuration for <#{channel_id}>?",
                 color=discord.Color.red()
             )
             embed.add_field(
@@ -621,7 +621,7 @@ class RemoveChannelSelectView(ui.View):
 
 
 class ConfirmRemoveChannelView(ui.View):
-    """Confirmation view for removing a homework channel."""
+    """Confirmation view for removing a task channel."""
     
     def __init__(self, config: GradeChannelConfig, course_count: int, assignment_count: int):
         super().__init__(timeout=60)
@@ -670,7 +670,7 @@ class ConfirmRemoveChannelView(ui.View):
             
             embed = Embed(
                 title="✅ Configuration Removed",
-                description=f"Successfully removed homework configuration for <#{channel_id}>.",
+                description=f"Successfully removed task configuration for <#{channel_id}>.",
                 color=discord.Color.green()
             )
             embed.add_field(
@@ -702,16 +702,16 @@ class ConfirmRemoveChannelView(ui.View):
         await interaction.message.edit(view=self)
 
 
-class SelectHomeworkChannelView(ui.View):
-    """View for selecting which homework channel to work with."""
+class SelectTaskChannelView(ui.View):
+    """View for selecting which task channel to work with."""
     
     def __init__(self, action: str):
         super().__init__(timeout=300)
         self.action = action
         
-        # Use channel select - we'll validate it's a homework channel on selection
+        # Use channel select - we'll validate it's a task channel on selection
         channel_select = ui.ChannelSelect(
-            placeholder="Select homework channel...",
+            placeholder="Select task channel...",
             channel_types=[ChannelType.text],
             custom_id=f"select_hw_channel_{action}"
         )
@@ -719,7 +719,7 @@ class SelectHomeworkChannelView(ui.View):
         self.add_item(channel_select)
     
     async def channel_selected(self, interaction: Interaction):
-        """Handle homework channel selection."""
+        """Handle task channel selection."""
         from db import AsyncSessionLocal
         
         channel_id = self.children[0].values[0].id
@@ -734,7 +734,7 @@ class SelectHomeworkChannelView(ui.View):
             
             if not config:
                 await interaction.response.send_message(
-                    f"❌ <#{channel_id}> is not configured as a homework channel. Use `/homework` → Setup to configure it first.",
+                    f"❌ <#{channel_id}> is not configured as a task channel. Use `/task` → Setup to configure it first.",
                     ephemeral=True
                 )
                 return
@@ -821,12 +821,12 @@ class SelectHomeworkChannelView(ui.View):
                 view = SelectCourseChannelView(channel_id)
                 embed = Embed(
                     title="📘 Add Course",
-                    description=f"Homework channel: <#{channel_id}>\n\nSelect the course channel (where the course content is):",
+                    description=f"task channel: <#{channel_id}>\n\nSelect the course channel (where the course content is):",
                     color=discord.Color.blurple()
                 )
                 embed.add_field(
                     name="ℹ️ Why select a course channel?",
-                    value="This helps the bot mention only the right roles (FI/FA) for homework reminders based on channel permissions.",
+                    value="This helps the bot mention only the right roles (FI/FA) for task reminders based on channel permissions.",
                     inline=False
                 )
                 await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
@@ -876,8 +876,8 @@ class SelectHomeworkChannelView(ui.View):
                 await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
             
             elif self.action == "refresh":
-                from cogs.homework import update_homework_message
-                await update_homework_message(interaction.client, session, config)
+                from cogs.task import update_task_message
+                await update_task_message(interaction.client, session, config)
                 await interaction.response.send_message(
                     f"✅ To-do list refreshed for <#{channel_id}>!",
                     ephemeral=True
@@ -1072,8 +1072,8 @@ class AddAssignmentModal(ui.Modal, title="Add Assignment"):
         config = result.scalar_one_or_none()
         
         if config:
-            from cogs.homework import update_homework_message
-            await update_homework_message(interaction.client, self.db_session, config)
+            from cogs.task import update_task_message
+            await update_task_message(interaction.client, self.db_session, config)
         
         if interaction.response.is_done():
             await interaction.followup.send(
@@ -1186,8 +1186,8 @@ class EditAssignmentModal(ui.Modal, title="Edit Assignment"):
         config = result.scalar_one_or_none()
         
         if config:
-            from cogs.homework import update_homework_message
-            await update_homework_message(interaction.client, self.db_session, config)
+            from cogs.task import update_task_message
+            await update_task_message(interaction.client, self.db_session, config)
         
         # Acknowledge and, if possible, edit the original admin panel message to reflect change
         if interaction.response.is_done():
@@ -1251,9 +1251,9 @@ class DeleteAssignmentSelect(ui.View):
 class SelectCourseChannelView(ui.View):
     """View for selecting the course channel when adding a course."""
     
-    def __init__(self, homework_channel_id: int):
+    def __init__(self, task_channel_id: int):
         super().__init__(timeout=300)
-        self.homework_channel_id = homework_channel_id
+        self.task_channel_id = task_channel_id
         
         # Add channel select (mandatory)
         channel_select = ui.ChannelSelect(
@@ -1271,7 +1271,7 @@ class SelectCourseChannelView(ui.View):
         course_channel_id = self.children[0].values[0].id
         
         # Show modal for course name
-        modal = AddCourseModal(self.homework_channel_id, course_channel_id)
+        modal = AddCourseModal(self.task_channel_id, course_channel_id)
         await interaction.response.send_modal(modal)
 
 
@@ -1326,8 +1326,8 @@ class AddCourseModal(ui.Modal, title="Add Course"):
             config = result.scalar_one_or_none()
             
             if config:
-                from cogs.homework import update_homework_message
-                await update_homework_message(interaction.client, session, config)
+                from cogs.task import update_task_message
+                await update_task_message(interaction.client, session, config)
             
             # Build success message
             message = f"✅ Course **{self.course_name.value}** added successfully!"
@@ -1427,8 +1427,8 @@ class EditCourseModal(ui.Modal, title="Edit Course"):
         config = result.scalar_one_or_none()
         
         if config:
-            from cogs.homework import update_homework_message
-            await update_homework_message(interaction.client, self.db_session, config)
+            from cogs.task import update_task_message
+            await update_task_message(interaction.client, self.db_session, config)
         
         await interaction.response.send_message(
             f"✅ Course '{self.course_name.value}' updated!",
@@ -1501,8 +1501,8 @@ class ConfirmDeleteView(ui.View):
         config = result.scalar_one_or_none()
         
         if config:
-            from cogs.homework import update_homework_message
-            await update_homework_message(interaction.client, self.db_session, config)
+            from cogs.task import update_task_message
+            await update_task_message(interaction.client, self.db_session, config)
         
         item_name = self.item.title if self.item_type == "assignment" else self.item.name
         await interaction.response.send_message(

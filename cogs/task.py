@@ -70,8 +70,8 @@ def strip_emojis(text: str) -> str:
     return cleaned
 
 
-async def update_homework_message(bot: commands.Bot, session, config: GradeChannelConfig):
-    """Update the homework to-do list message in a channel."""
+async def update_task_message(bot: commands.Bot, session, config: GradeChannelConfig):
+    """Update the task to-do list message in a channel."""
     import hashlib
     
     channel = bot.get_channel(config.channel_id)
@@ -94,7 +94,7 @@ async def update_homework_message(bot: commands.Bot, session, config: GradeChann
     
     if not courses:
         embed = Embed(
-            title=f"📚 {grade_level_str} - Homework To-Do List",
+            title=f"📚 {grade_level_str} - task To-Do List",
             description="No courses have been added yet.",
             color=Color.blue()
         )
@@ -262,12 +262,12 @@ async def update_homework_message(bot: commands.Bot, session, config: GradeChann
             await session.commit()
             
         except Exception as e:
-            print(f"Error updating homework message: {e}")
+            print(f"Error updating task message: {e}")
     # If content hasn't changed, don't update the message at all
 
 
-class Homework(commands.Cog):
-    """Cog for managing homework to-do lists."""
+class Task(commands.Cog):
+    """Cog for managing task to-do lists."""
     
     def __init__(self, bot: commands.Bot):
         self.bot = bot
@@ -282,24 +282,24 @@ class Homework(commands.Cog):
         self.check_reminders.cancel()
     
     @app_commands.command(
-        name="manage_homework",
-        description="Homework management dashboard (Admin/Manager only)."
+        name="task",
+        description="Task management dashboard (Admin/Manager only)."
     )
     @app_commands.checks.has_any_role(ROLE_MANAGER.id, ROLE_NOTABLE.id)
-    async def manage_homework(self, interaction: Interaction):
-        """Open homework management dashboard."""
-        from ui.homework import HomeworkAdminPanel
+    async def manage_task(self, interaction: Interaction):
+        """Open task management dashboard."""
+        from ui.task import TaskAdminPanel
         
         # Use the channel where the command was typed
-        view = HomeworkAdminPanel(interaction.channel_id)
+        view = TaskAdminPanel(interaction.channel_id)
         embed = Embed(
-            title="📚 Homework Management Dashboard",
-            description=f"Managing homework for <#{interaction.channel_id}>\n\nSelect an action from the menu below:",
+            title="📚 Task Management Dashboard",
+            description=f"Managing task for <#{interaction.channel_id}>\n\nSelect an action from the menu below:",
             color=Color.blue()
         )
         embed.add_field(
             name="Available Actions",
-            value="• Setup this channel for homework tracking\n"
+            value="• Setup this channel for task tracking\n"
                   "• Add/edit/delete assignments\n"
                   "• Add/edit/delete courses\n"
                   "• Refresh to-do list\n"
@@ -352,7 +352,7 @@ class Homework(commands.Cog):
                         course = result.scalar_one_or_none()
                         
                         if course:
-                            # Send reminder to the homework to-do channel
+                            # Send reminder to the task to-do channel
                             channel = self.bot.get_channel(course.channel_id)
                             if channel:
                                 # Get the grade level from the course's grade channel config
@@ -365,7 +365,7 @@ class Homework(commands.Cog):
                                 grade_level = str(grade_config.grade_level.value) if grade_config else "M1"
                                 
                                 # Get appropriate role mentions based on course channel permissions
-                                # Use course_channel_id if set, otherwise fall back to homework channel
+                                # Use course_channel_id if set, otherwise fall back to task channel
                                 permission_channel_id = course.course_channel_id if course.course_channel_id else course.channel_id
                                 permission_channel = self.bot.get_channel(permission_channel_id)
                                 
@@ -415,12 +415,12 @@ class Homework(commands.Cog):
             # Commit status changes
             await session.commit()
             
-            # Update all homework messages
+            # Update all task messages
             result = await session.execute(select(GradeChannelConfig))
             configs = result.scalars().all()
             
             for config in configs:
-                await update_homework_message(self.bot, session, config)
+                await update_task_message(self.bot, session, config)
     
     @check_reminders.before_loop
     async def before_check_reminders(self):
@@ -429,5 +429,5 @@ class Homework(commands.Cog):
 
 
 async def setup(bot: commands.Bot):
-    await bot.add_cog(Homework(bot))
+    await bot.add_cog(Task(bot))
 

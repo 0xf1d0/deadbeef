@@ -95,7 +95,7 @@ class ToolSuggestion(Base, TimestampMixin):
 
 
 # ============================================================================
-# Homework To-Do System Models
+# Tasks To-Do System Models
 # ============================================================================
 
 class GradeChannelConfig(Base, TimestampMixin):
@@ -139,7 +139,7 @@ class Course(Base, TimestampMixin):
         BigInteger,
         ForeignKey('grade_channels.channel_id', ondelete='CASCADE'),
         nullable=False
-    )  # Homework to-do channel
+    )  # Tasks to-do channel
     course_channel_id = Column(BigInteger, nullable=False)  # Actual course channel (for permissions)
     
     # Relationships
@@ -156,7 +156,7 @@ class Course(Base, TimestampMixin):
 
 
 class Assignment(Base, TimestampMixin):
-    """Assignment model for homework, projects, and exams."""
+    """Assignment model for task, projects, and exams."""
     __tablename__ = 'assignments'
     __table_args__ = (
         Index('ix_assignments_course_status', 'course_id', 'status'),
