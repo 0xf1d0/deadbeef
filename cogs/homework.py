@@ -192,7 +192,7 @@ async def update_homework_message(bot: commands.Bot, session, config: GradeChann
                         field_name = f"📝 {assignment.title}"
                 
                 course_embed.add_field(
-                    name=f"\u200b\n\u200b\n\u200b\n{field_name}",
+                    name=f"\u200b\n\u200b\n{field_name}",
                     value=field_value,
                     inline=False
                 )
