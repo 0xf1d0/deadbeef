@@ -124,7 +124,8 @@ async def update_homework_message(bot: commands.Bot, session, config: GradeChann
             courses_with_assignments.append((course, active_assignments, earliest_assignment))
         
         # Sort courses by earliest assignment due date (most urgent courses LAST)
-        courses_with_assignments.sort(key=lambda x: x[2].due_date)
+        # Put courses with the nearest due dates later in the embeds list
+        courses_with_assignments.sort(key=lambda x: x[2].due_date, reverse=True)
         
         # Create embeds for each course
         for course, active_assignments, earliest_assignment in courses_with_assignments:
@@ -196,8 +197,15 @@ async def update_homework_message(bot: commands.Bot, session, config: GradeChann
                     inline=False
                 )
                 
-                # Track content for change detection (exclude timestamps for relative changes)
-                content_parts.append(f"{course.name}:{assignment.id}:{assignment.title}:{assignment.status}")
+                # Track content for change detection including due date/modality/description
+                # Include stable due_date timestamp to ensure edits trigger updates
+                due_ts = int(assignment.due_date.timestamp()) if assignment.due_date else 0
+                modality_part = assignment.modality or ""
+                # Keep description short in hash to avoid excessive size but still detect changes
+                desc_part = (assignment.description or "")[:100]
+                content_parts.append(
+                    f"{course.name}:{assignment.id}:{assignment.title}:{assignment.status}:{due_ts}:{modality_part}:{desc_part}"
+                )
             
             embeds.append(course_embed)
     

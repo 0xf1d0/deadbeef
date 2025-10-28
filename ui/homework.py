@@ -1075,10 +1075,16 @@ class AddAssignmentModal(ui.Modal, title="Add Assignment"):
             from cogs.homework import update_homework_message
             await update_homework_message(interaction.client, self.db_session, config)
         
-        await interaction.response.send_message(
-            f"✅ Assignment **{self.assignment_title.value}** added to {self.course.name}!",
-            ephemeral=True
-        )
+        if interaction.response.is_done():
+            await interaction.followup.send(
+                f"✅ Assignment **{self.assignment_title.value}** added to {self.course.name}!",
+                ephemeral=True
+            )
+        else:
+            await interaction.response.send_message(
+                f"✅ Assignment **{self.assignment_title.value}** added to {self.course.name}!",
+                ephemeral=True
+            )
 
 
 class EditAssignmentSelect(ui.View):
@@ -1183,10 +1189,17 @@ class EditAssignmentModal(ui.Modal, title="Edit Assignment"):
             from cogs.homework import update_homework_message
             await update_homework_message(interaction.client, self.db_session, config)
         
-        await interaction.response.send_message(
-            f"✅ Assignment **{self.assignment_title.value}** updated!",
-            ephemeral=True
-        )
+        # Acknowledge and, if possible, edit the original admin panel message to reflect change
+        if interaction.response.is_done():
+            await interaction.followup.send(
+                f"✅ Assignment **{self.assignment_title.value}** updated!",
+                ephemeral=True
+            )
+        else:
+            await interaction.response.send_message(
+                f"✅ Assignment **{self.assignment_title.value}** updated!",
+                ephemeral=True
+            )
 
 
 class DeleteAssignmentSelect(ui.View):
