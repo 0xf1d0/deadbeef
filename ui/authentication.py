@@ -127,8 +127,14 @@ class AuthenticationAdminPanel(ui.View):
             await interaction.response.send_modal(modal)
         
         elif action == "view_pro":
-            modal = ViewProfessionalModal()
-            await interaction.response.send_modal(modal)
+            # Open a select-based professional viewer instead of a modal with email
+            view = ViewProfessionalSelectView()
+            embed = Embed(
+                title="👔 View Professional",
+                description="Select a professional to view details.",
+                color=Color.blue()
+            )
+            await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
         
         elif action == "manage_access":
             view = ManageCourseAccessView()
@@ -682,6 +688,74 @@ class ViewProfessionalModal(ui.Modal, title="View Professional"):
             await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
+class ViewProfessionalSelectView(ui.View):
+    """Select-based view to display a professional's details."""
+    
+    def __init__(self):
+        super().__init__(timeout=300)
+        self.select = ui.Select(placeholder="Select professional...", options=[])
+        self.select.callback = self.professional_selected
+        self.add_item(self.select)
+    
+    async def _ensure_options(self, interaction: Interaction):
+        if self.select.options:
+            return
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(select_db(Professional))
+            pros = result.scalars().all()[:25]
+            options = []
+            for pro in pros:
+                label = (f"{pro.first_name or ''} {pro.last_name or ''}".strip() or pro.email)[:100]
+                options.append(SelectOption(label=label, value=pro.email, description=pro.email[:100]))
+            self.select.options = options
+            try:
+                await interaction.edit_original_response(view=self)
+            except Exception:
+                pass
+    
+    async def professional_selected(self, interaction: Interaction):
+        await self._ensure_options(interaction)
+        email = self.select.values[0]
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(select_db(Professional).where(Professional.email == email))
+            pro = result.scalar_one_or_none()
+            if not pro:
+                await interaction.response.send_message("❌ Professional not found.", ephemeral=True)
+                return
+            # Check if authenticated
+            result_user = await session.execute(
+                select_db(AuthenticatedUser).where(
+                    AuthenticatedUser.email == pro.email,
+                    AuthenticatedUser.user_type == 'professional'
+                )
+            )
+            auth_user = result_user.scalar_one_or_none()
+            embed = Embed(title="👔 Professional Details", color=Color.blue())
+            embed.add_field(name="Email", value=pro.email, inline=False)
+            if pro.first_name or pro.last_name:
+                name = f"{pro.first_name or ''} {pro.last_name or ''}".strip()
+                embed.add_field(name="Name", value=name, inline=False)
+            if auth_user:
+                embed.add_field(name="Discord User", value=f"<@{auth_user.user_id}>", inline=False)
+                embed.add_field(name="Authenticated", value=f"<t:{int(auth_user.authenticated_at.timestamp())}:R>", inline=False)
+            else:
+                embed.add_field(name="Status", value="⏳ Not authenticated yet", inline=False)
+            if pro.course_channels:
+                channels_text = ""
+                for cc in pro.course_channels:
+                    channel = interaction.guild.get_channel(cc.channel_id)
+                    if channel:
+                        channel_name = cc.channel_name or channel.name
+                        channels_text += f"• {channel.mention} ({channel_name})\n"
+                    else:
+                        channel_name = cc.channel_name or "Unknown"
+                        channels_text += f"• Channel ID: {cc.channel_id} ({channel_name})\n"
+                embed.add_field(name=f"Course Channels ({len(pro.course_channels)})", value=channels_text or "None", inline=False)
+            else:
+                embed.add_field(name="Course Channels", value="None", inline=False)
+            await interaction.response.edit_message(embed=embed, view=self)
+
+
 class ManageCourseAccessView(ui.View):
     """View for managing course access."""
     
@@ -691,7 +765,16 @@ class ManageCourseAccessView(ui.View):
     @ui.button(label="➕ Add Course Access", style=ButtonStyle.green)
     async def add_access(self, interaction: Interaction, button: ui.Button):
         """Add course access (select professional and channel)."""
-        view = AddCourseAccessView()
+        # Preload professional options (max 25)
+        from sqlalchemy import select as select_db
+        options = []
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(select_db(Professional))
+            pros = result.scalars().all()[:25]
+            for pro in pros:
+                label = (f"{pro.first_name or ''} {pro.last_name or ''}".strip() or pro.email)[:100]
+                options.append(SelectOption(label=label, value=pro.email, description=pro.email[:100]))
+        view = AddCourseAccessView(options)
         embed = Embed(
             title="➕ Add Course Access",
             description="Select a professional and a course channel, then click Confirm.",
@@ -702,7 +785,16 @@ class ManageCourseAccessView(ui.View):
     @ui.button(label="➖ Remove Course Access", style=ButtonStyle.red)
     async def remove_access(self, interaction: Interaction, button: ui.Button):
         """Remove course access (select professional and channel)."""
-        view = RemoveCourseAccessView()
+        # Preload professional options (max 25)
+        from sqlalchemy import select as select_db
+        options = []
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(select_db(Professional))
+            pros = result.scalars().all()[:25]
+            for pro in pros:
+                label = (f"{pro.first_name or ''} {pro.last_name or ''}".strip() or pro.email)[:100]
+                options.append(SelectOption(label=label, value=pro.email, description=pro.email[:100]))
+        view = RemoveCourseAccessView(options)
         embed = Embed(
             title="➖ Remove Course Access",
             description="Select a professional and a course channel, then click Confirm.",
@@ -714,12 +806,12 @@ class ManageCourseAccessView(ui.View):
 class AddCourseAccessView(ui.View):
     """Select-based view to add course access to a professional."""
     
-    def __init__(self):
+    def __init__(self, professional_options: list[SelectOption]):
         super().__init__(timeout=300)
         self.selected_professional_email: Optional[str] = None
         self.selected_channel_id: Optional[int] = None
         
-        professional_select = ui.Select(placeholder="Select professional...", options=[])
+        professional_select = ui.Select(placeholder="Select professional...", options=professional_options)
         professional_select.callback = self.professional_selected
         self.add_item(professional_select)
         
@@ -735,33 +827,16 @@ class AddCourseAccessView(ui.View):
         for item in self.children:
             item.disabled = True
     
-    async def _load_professionals(self, interaction: Interaction):
-        # Populate professional select with up to 25 options
-        select: ui.Select = self.children[0]  # professional select
-        if select.options:
-            return
-        async with AsyncSessionLocal() as session:
-            result = await session.execute(select_db(Professional))
-            pros = result.scalars().all()[:25]
-            options = []
-            for pro in pros:
-                label = (f"{pro.first_name or ''} {pro.last_name or ''}".strip() or pro.email)[:100]
-                options.append(SelectOption(label=label, value=pro.email, description=pro.email[:100]))
-            select.options = options
-            await interaction.edit_original_response(view=self)
-    
     async def professional_selected(self, interaction: Interaction):
         self.selected_professional_email = self.children[0].values[0]
         self._update_confirm_state()
         await interaction.response.edit_message(view=self)
-        await self._load_professionals(interaction)
     
     async def channel_selected(self, interaction: Interaction):
         channel = self.children[1].values[0]
         self.selected_channel_id = channel.id
         self._update_confirm_state()
         await interaction.response.edit_message(view=self)
-        await self._load_professionals(interaction)
     
     def _update_confirm_state(self):
         self.confirm_button.disabled = not (self.selected_professional_email and self.selected_channel_id)
@@ -830,12 +905,12 @@ class AddCourseAccessView(ui.View):
 class RemoveCourseAccessView(ui.View):
     """Select-based view to remove course access from a professional."""
     
-    def __init__(self):
+    def __init__(self, professional_options: list[SelectOption]):
         super().__init__(timeout=300)
         self.selected_professional_email: Optional[str] = None
         self.selected_channel_id: Optional[int] = None
         
-        professional_select = ui.Select(placeholder="Select professional...", options=[])
+        professional_select = ui.Select(placeholder="Select professional...", options=professional_options)
         professional_select.callback = self.professional_selected
         self.add_item(professional_select)
         
@@ -851,32 +926,16 @@ class RemoveCourseAccessView(ui.View):
         for item in self.children:
             item.disabled = True
     
-    async def _load_professionals(self, interaction: Interaction):
-        select: ui.Select = self.children[0]
-        if select.options:
-            return
-        async with AsyncSessionLocal() as session:
-            result = await session.execute(select_db(Professional))
-            pros = result.scalars().all()[:25]
-            options = []
-            for pro in pros:
-                label = (f"{pro.first_name or ''} {pro.last_name or ''}".strip() or pro.email)[:100]
-                options.append(SelectOption(label=label, value=pro.email, description=pro.email[:100]))
-            select.options = options
-            await interaction.edit_original_response(view=self)
-    
     async def professional_selected(self, interaction: Interaction):
         self.selected_professional_email = self.children[0].values[0]
         self._update_confirm_state()
         await interaction.response.edit_message(view=self)
-        await self._load_professionals(interaction)
     
     async def channel_selected(self, interaction: Interaction):
         channel = self.children[1].values[0]
         self.selected_channel_id = channel.id
         self._update_confirm_state()
         await interaction.response.edit_message(view=self)
-        await self._load_professionals(interaction)
     
     def _update_confirm_state(self):
         self.confirm_button.disabled = not (self.selected_professional_email and self.selected_channel_id)
