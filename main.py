@@ -23,7 +23,7 @@ class DeadBeef(commands.Bot):
             await self.load_extension(f"cogs.{name}")
         self.tree.clear_commands(guild=CYBER)
         # self.tree.copy_global_to(guild=CYBER)
-        await self.tree.sync(guild=CYBER)
+        await self.tree.sync()
 
 
 if __name__ == '__main__':
