@@ -9,7 +9,7 @@ from typing import Optional
 
 from db import AsyncSessionLocal, init_db
 from db.models import AuthenticatedUser, Professional, ProfessionalCourseChannel, PendingAuth
-from utils import ROLE_MANAGER, ROLE_M1, ROLE_M2, ROLE_FI, ROLE_FA
+from utils import ROLE_MANAGER, ROLE_M1, ROLE_M2, ROLE_FI, ROLE_FA, ROLE_NOTABLE
 from utils.csv_parser import get_all_students
 from ui.authentication import AuthenticationAdminPanel
 
@@ -442,9 +442,9 @@ class Authentication(commands.Cog):
     
     @app_commands.command(
         name="auth_stats",
-        description="View authentication statistics (Admin only)."
+        description="View authentication statistics."
     )
-    @app_commands.checks.has_any_role(ROLE_MANAGER.id)
+    @app_commands.checks.has_any_role(ROLE_MANAGER.id, ROLE_NOTABLE.id)
     async def auth_stats(self, interaction: Interaction):
         """View authentication statistics."""
         async with AsyncSessionLocal() as session:
