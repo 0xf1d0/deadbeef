@@ -49,8 +49,12 @@ class MyTasksHubView(ui.View):
             grade_level = hub_config.grade_level
             
             # Get all relevant assignments for this grade level
+            # Use selectinload to eagerly load course relationship to avoid lazy loading issues
+            from sqlalchemy.orm import selectinload
+            
             result = await session.execute(
                 select(Assignment)
+                .options(selectinload(Assignment.course))  # Eagerly load course
                 .join(Course, Assignment.course_id == Course.id)
                 .join(GradeChannelConfig, Course.channel_id == GradeChannelConfig.channel_id)
                 .where(
