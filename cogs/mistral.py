@@ -26,7 +26,13 @@ def divide_msg(content):
 class Mistral(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
+        # Conversations are tracked per user to give each user their own context
+        # Values are lists of {role, content}
         self.conversations = defaultdict(list)
+        # Keep a rolling window of messages to bound context size
+        self.MAX_HISTORY_MESSAGES = 20  # ~10 exchanges
+        # Hard reset threshold if a thread grows unusually long
+        self.RESET_THRESHOLD = 60  # messages
 
     @commands.Cog.listener()
     async def on_message(self, message: Message):
@@ -34,6 +40,7 @@ class Mistral(commands.Cog):
             return
         
         channel_id = message.channel.id
+        user_id = message.author.id
         ref = message.reference
         replied_message = None
         if ref and ref.message_id:
@@ -48,28 +55,42 @@ class Mistral(commands.Cog):
                 'role': 'user',
                 'content': re.sub(rf'<@{self.bot.user.id}>|deadbeef', '', message.content, flags=re.IGNORECASE)
             }
-            if channel_id in self.conversations:
-                self.conversations[channel_id].append(new)
-            else:
-                self.conversations[channel_id] = [new]
+            # Append to this user's conversation
+            self.conversations[user_id].append(new)
+            conversation = self.conversations[user_id]
             
-            conversation = self.conversations[channel_id]
-            
-            if len(conversation) > 10:
-                conversation = conversation[-10:]
+            # Trim to rolling window
+            if len(conversation) > self.MAX_HISTORY_MESSAGES:
+                conversation = conversation[-self.MAX_HISTORY_MESSAGES:]
+                self.conversations[user_id] = conversation
+
+            # Hard reset if threshold exceeded (safety)
+            if len(conversation) >= self.RESET_THRESHOLD:
+                self.conversations[user_id] = conversation[-self.MAX_HISTORY_MESSAGES:]
+                try:
+                    await message.channel.send("♻️ Conversation context was getting long; I trimmed it to keep responses sharp.")
+                except Exception:
+                    pass
             async with message.channel.typing():
                 try:
                     # Pass messages in JSON body for POST request
                     answer = await MistralAI.chat_completion(
                         json={
                             'messages': conversation,
-                            'model': 'codestral-latest'
+                            'model': 'devstral-small-2507'
                         }
                     )
                     conversation.append({
                         'role': 'assistant',
                         'content': answer
                     })
+                    # Persist trimmed history
+                    if len(conversation) > self.MAX_HISTORY_MESSAGES:
+                        self.conversations[user_id] = conversation[-self.MAX_HISTORY_MESSAGES:]
+                        conversation = self.conversations[user_id]
+                    else:
+                        self.conversations[user_id] = conversation
+
                     for part in divide_msg(answer):
                         await message.reply(part)
                 except Exception as e:
