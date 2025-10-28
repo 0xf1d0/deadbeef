@@ -24,73 +24,73 @@ class AuthenticationAdminPanel(ui.View):
         # Create select menu with all admin options
         options = [
             SelectOption(
-                label="📊 View Statistics",
+                label="View Statistics",
                 description="Show authentication statistics",
                 value="stats",
                 emoji="📊"
             ),
             SelectOption(
-                label="👥 View All Students",
+                label="View All Students",
                 description="List all authenticated students",
                 value="list_students",
                 emoji="👥"
             ),
             SelectOption(
-                label="👔 View All Professionals",
+                label="View All Professionals",
                 description="List all registered professionals",
                 value="list_professionals",
                 emoji="👔"
             ),
             SelectOption(
-                label="🔍 Search User",
+                label="Search User",
                 description="Search for a user by email or ID",
                 value="search_user",
                 emoji="🔍"
             ),
             SelectOption(
-                label="➕ Register Professional",
+                label="Register Professional",
                 description="Add a new professional to the system",
                 value="register_pro",
                 emoji="➕"
             ),
             SelectOption(
-                label="👁️ View Professional",
+                label="View Professional",
                 description="View details of a specific professional",
                 value="view_pro",
                 emoji="👁️"
             ),
             SelectOption(
-                label="🔑 Manage Course Access",
+                label="Manage Course Access",
                 description="Add/remove course access for a professional",
                 value="manage_access",
                 emoji="🔑"
             ),
             SelectOption(
-                label="🗑️ Delete Professional",
+                label="Delete Professional",
                 description="Remove a professional from the system",
                 value="delete_pro",
                 emoji="🗑️"
             ),
             SelectOption(
-                label="❌ Deauthenticate User",
+                label="Deauthenticate User",
                 description="Remove authentication from a user",
                 value="deauth_user",
                 emoji="❌"
             ),
             SelectOption(
-                label="⏰ View Pending Auths",
+                label="View Pending Auths",
                 description="See pending authentication requests",
                 value="pending_auths",
                 emoji="⏰"
             ),
             SelectOption(
-                label="🧹 Clear Expired Tokens",
+                label="Clear Expired Tokens",
                 description="Remove expired authentication tokens",
                 value="clear_tokens",
                 emoji="🧹"
             ),
             SelectOption(
-                label="🔄 Reset Roles",
+                label="Reset Roles",
                 description="Remove M1/M2/FI/FA roles from all members",
                 value="reset_roles",
                 emoji="🔄"
