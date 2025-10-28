@@ -39,7 +39,7 @@ class SetupNewsChannelModal(ui.Modal, title="Setup News Channel"):
         news_channel = NewsChannel(
             channel_id=self.channel_id,
             name=self.channel_name.value,
-            is_active='true'
+            is_active=True
         )
         
         self.db_session.add(news_channel)
@@ -120,7 +120,7 @@ class AddFeedModal(ui.Modal, title="Add News Feed"):
             name=self.feed_name.value,
             url=self.feed_url.value,
             color=color_value,
-            is_active='true'
+            is_active=True
         )
         
         self.db_session.add(feed)
@@ -239,7 +239,7 @@ class NewsManagementView(ui.View):
             
             feed_list = []
             for feed in channel_config.feeds:
-                status = "✅" if feed.is_active == 'true' else "⏸️"
+                status = "✅" if bool(feed.is_active) else "⏸️"
                 feed_list.append(f"{status} **{feed.name}** - {feed.url[:50]}...")
             
             embed.add_field(name="Feeds", value="\n".join(feed_list), inline=False)
@@ -270,18 +270,18 @@ class NewsManagementView(ui.View):
             embed.add_field(name="Channel ID", value=str(channel_config.channel_id), inline=False)
             embed.add_field(
                 name="Status",
-                value="🟢 Active" if channel_config.is_active == 'true' else "🔴 Inactive",
+                value="🟢 Active" if bool(channel_config.is_active) else "🔴 Inactive",
                 inline=False
             )
             embed.add_field(name="Total Feeds", value=str(len(channel_config.feeds)), inline=True)
             
-            active_feeds = len([f for f in channel_config.feeds if f.is_active == 'true'])
+            active_feeds = len([f for f in channel_config.feeds if bool(f.is_active)])
             embed.add_field(name="Active Feeds", value=str(active_feeds), inline=True)
             
             if channel_config.feeds:
                 feed_info = []
                 for feed in channel_config.feeds:
-                    status = "✅" if feed.is_active == 'true' else "⏸️"
+                    status = "✅" if bool(feed.is_active) else "⏸️"
                     sent_count = len(feed.sent_entries)
                     feed_info.append(f"{status} **{feed.name}** - {sent_count} entries sent")
                 
@@ -406,10 +406,10 @@ class FeedActionsView(ui.View):
     @ui.button(label="Toggle Active", style=ButtonStyle.secondary)
     async def toggle_active(self, interaction: Interaction, button: ui.Button):
         # Toggle active status
-        self.feed.is_active = 'false' if self.feed.is_active == 'true' else 'true'
+        self.feed.is_active = not bool(self.feed.is_active)
         await self.db_session.commit()
         
-        status = "activated" if self.feed.is_active == 'true' else "deactivated"
+        status = "activated" if bool(self.feed.is_active) else "deactivated"
         await interaction.response.send_message(
             f"✅ Feed '{self.feed.name}' has been {status}.",
             ephemeral=True
