@@ -580,3 +580,41 @@ class TeamApplication(Base, TimestampMixin):
     def __repr__(self) -> str:
         return f"<TeamApplication(id={self.id}, team_id={self.team_id}, applicant_id={self.applicant_id}, status='{self.status}')>"
 
+
+# ============================================================================
+# My Tasks System Models
+# ============================================================================
+
+class MyTasksHubConfig(Base, TimestampMixin):
+    """Configuration for a grade-level 'My Tasks' hub channel."""
+    __tablename__ = 'mytasks_hub_config'
+    
+    channel_id = Column(BigInteger, primary_key=True)
+    grade_level = Column(String(10), nullable=False, unique=True, index=True)
+    message_id = Column(BigInteger, nullable=True)
+
+    def __repr__(self) -> str:
+        return f"<MyTasksHubConfig(channel_id={self.channel_id}, grade_level='{self.grade_level}')>"
+
+
+class UserAssignmentProgress(Base):
+    """Tracks which assignments a user has marked as completed."""
+    __tablename__ = 'user_assignment_progress'
+    __table_args__ = (
+        UniqueConstraint('user_id', 'assignment_id', name='uq_user_assignment'),
+        Index('ix_user_assignment_user', 'user_id'),
+    )
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(BigInteger, nullable=False)
+    assignment_id = Column(
+        Integer,
+        ForeignKey('assignments.id', ondelete='CASCADE'),
+        nullable=False
+    )
+    
+    assignment: Mapped["Assignment"] = relationship("Assignment")
+
+    def __repr__(self) -> str:
+        return f"<UserAssignmentProgress(user_id={self.user_id}, assignment_id={self.assignment_id})>"
+
