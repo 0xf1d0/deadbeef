@@ -25,7 +25,6 @@ class MyTasks(commands.Cog):
         
         # Add persistent view to bot
         self.bot.add_view(MyTasksHubView(self.bot))
-        print("MyTasks cog loaded with persistent view")
     
     @app_commands.command(
         name="setup_mytasks",
