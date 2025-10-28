@@ -12,6 +12,7 @@ from datetime import datetime, timedelta
 from db import AsyncSessionLocal
 from db.models import AuthenticatedUser, Professional, ProfessionalCourseChannel, PendingAuth
 from utils import ROLE_M1, ROLE_M2, ROLE_FI, ROLE_FA
+from sqlalchemy import select as select_db
 
 
 class AuthenticationAdminPanel(ui.View):
@@ -689,225 +690,245 @@ class ManageCourseAccessView(ui.View):
     
     @ui.button(label="➕ Add Course Access", style=ButtonStyle.green)
     async def add_access(self, interaction: Interaction, button: ui.Button):
-        """Add course access."""
-        modal = AddCourseAccessModal()
-        await interaction.response.send_modal(modal)
+        """Add course access (select professional and channel)."""
+        view = AddCourseAccessView()
+        embed = Embed(
+            title="➕ Add Course Access",
+            description="Select a professional and a course channel, then click Confirm.",
+            color=Color.green()
+        )
+        await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
     
     @ui.button(label="➖ Remove Course Access", style=ButtonStyle.red)
     async def remove_access(self, interaction: Interaction, button: ui.Button):
-        """Remove course access."""
-        modal = RemoveCourseAccessModal()
-        await interaction.response.send_modal(modal)
+        """Remove course access (select professional and channel)."""
+        view = RemoveCourseAccessView()
+        embed = Embed(
+            title="➖ Remove Course Access",
+            description="Select a professional and a course channel, then click Confirm.",
+            color=Color.red()
+        )
+        await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
 
 
-class AddCourseAccessModal(ui.Modal, title="Add Course Access"):
-    """Modal for adding course access to a professional."""
+class AddCourseAccessView(ui.View):
+    """Select-based view to add course access to a professional."""
     
-    email = ui.TextInput(
-        label="Professional's Email",
-        placeholder="teacher@example.com",
-        required=True,
-        max_length=100
-    )
+    def __init__(self):
+        super().__init__(timeout=300)
+        self.selected_professional_email: Optional[str] = None
+        self.selected_channel_id: Optional[int] = None
+        
+        professional_select = ui.Select(placeholder="Select professional...", options=[])
+        professional_select.callback = self.professional_selected
+        self.add_item(professional_select)
+        
+        channel_select = ui.ChannelSelect(placeholder="Select course channel...", min_values=1, max_values=1)
+        channel_select.callback = self.channel_selected
+        self.add_item(channel_select)
+        
+        self.confirm_button = ui.Button(label="Confirm", style=ButtonStyle.success, disabled=True)
+        self.confirm_button.callback = self.confirm
+        self.add_item(self.confirm_button)
     
-    channel_id = ui.TextInput(
-        label="Course Channel ID",
-        placeholder="Right-click channel → Copy ID",
-        required=True,
-        max_length=20
-    )
+    async def on_timeout(self) -> None:
+        for item in self.children:
+            item.disabled = True
     
-    channel_name = ui.TextInput(
-        label="Channel Name (optional)",
-        placeholder="Advanced Networking",
-        required=False,
-        max_length=100
-    )
+    async def _load_professionals(self, interaction: Interaction):
+        # Populate professional select with up to 25 options
+        select: ui.Select = self.children[0]  # professional select
+        if select.options:
+            return
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(select_db(Professional))
+            pros = result.scalars().all()[:25]
+            options = []
+            for pro in pros:
+                label = (f"{pro.first_name or ''} {pro.last_name or ''}".strip() or pro.email)[:100]
+                options.append(SelectOption(label=label, value=pro.email, description=pro.email[:100]))
+            select.options = options
+            await interaction.edit_original_response(view=self)
     
-    async def on_submit(self, interaction: Interaction):
+    async def professional_selected(self, interaction: Interaction):
+        self.selected_professional_email = self.children[0].values[0]
+        self._update_confirm_state()
+        await interaction.response.edit_message(view=self)
+        await self._load_professionals(interaction)
+    
+    async def channel_selected(self, interaction: Interaction):
+        channel = self.children[1].values[0]
+        self.selected_channel_id = channel.id
+        self._update_confirm_state()
+        await interaction.response.edit_message(view=self)
+        await self._load_professionals(interaction)
+    
+    def _update_confirm_state(self):
+        self.confirm_button.disabled = not (self.selected_professional_email and self.selected_channel_id)
+    
+    async def confirm(self, interaction: Interaction):
+        if not (self.selected_professional_email and self.selected_channel_id):
+            await interaction.response.send_message("❌ Please select a professional and a channel.", ephemeral=True)
+            return
         async with AsyncSessionLocal() as session:
             # Get professional
             result = await session.execute(
-                select(Professional).where(Professional.email == self.email.value)
+                select_db(Professional).where(Professional.email == self.selected_professional_email)
             )
             pro = result.scalar_one_or_none()
-            
             if not pro:
-                await interaction.response.send_message(
-                    f"❌ Professional not found.",
-                    ephemeral=True
-                )
+                await interaction.response.send_message("❌ Professional not found.", ephemeral=True)
                 return
-            
-            # Validate channel ID
-            try:
-                channel_id = int(self.channel_id.value)
-            except ValueError:
-                await interaction.response.send_message(
-                    "❌ Invalid channel ID. Must be a number.",
-                    ephemeral=True
-                )
-                return
-            
-            channel = interaction.guild.get_channel(channel_id)
+            channel = interaction.guild.get_channel(self.selected_channel_id)
             if not channel:
-                await interaction.response.send_message(
-                    "❌ Channel not found in this server.",
-                    ephemeral=True
-                )
+                await interaction.response.send_message("❌ Channel not found in this server.", ephemeral=True)
                 return
-            
-            # Check if access already exists
+            # Check existing
             result = await session.execute(
-                select(ProfessionalCourseChannel).where(
+                select_db(ProfessionalCourseChannel).where(
                     ProfessionalCourseChannel.professional_id == pro.id,
-                    ProfessionalCourseChannel.channel_id == channel_id
+                    ProfessionalCourseChannel.channel_id == self.selected_channel_id
                 )
             )
             existing = result.scalar_one_or_none()
-            
             if existing:
-                await interaction.response.send_message(
-                    f"❌ Professional already has access to {channel.mention}.",
-                    ephemeral=True
-                )
+                await interaction.response.send_message(f"❌ Professional already has access to {channel.mention}.", ephemeral=True)
                 return
-            
-            # Add course access
-            course_channel = ProfessionalCourseChannel(
+            # Create mapping
+            mapping = ProfessionalCourseChannel(
                 professional_id=pro.id,
-                channel_id=channel_id,
-                channel_name=self.channel_name.value or channel.name
+                channel_id=self.selected_channel_id,
+                channel_name=channel.name
             )
-            
-            session.add(course_channel)
+            session.add(mapping)
             await session.commit()
-            
-            # If professional is authenticated, grant Discord permissions
+            # Grant perms if authenticated
             result_user = await session.execute(
-                select(AuthenticatedUser).where(
-                    AuthenticatedUser.email == self.email.value,
+                select_db(AuthenticatedUser).where(
+                    AuthenticatedUser.email == self.selected_professional_email,
                     AuthenticatedUser.user_type == 'professional'
                 )
             )
             auth_user = result_user.scalar_one_or_none()
-            
-            permission_granted = False
+            granted = False
             if auth_user:
                 member = interaction.guild.get_member(auth_user.user_id)
                 if member:
                     try:
                         await channel.set_permissions(member, view_channel=True)
-                        permission_granted = True
+                        granted = True
                     except Exception as e:
                         print(f"Error granting permissions: {e}")
-            
-            embed = Embed(
-                title="✅ Course Access Added",
-                color=Color.green()
-            )
-            embed.add_field(name="Professional", value=self.email.value, inline=False)
+            embed = Embed(title="✅ Course Access Added", color=Color.green())
+            embed.add_field(name="Professional", value=self.selected_professional_email, inline=False)
             embed.add_field(name="Channel", value=channel.mention, inline=False)
-            if permission_granted:
+            if granted:
                 embed.add_field(name="Permissions", value="🔓 Discord permissions granted", inline=False)
-            
-            await interaction.response.send_message(embed=embed, ephemeral=True)
+            await interaction.response.edit_message(content=None, embed=embed, view=None)
 
 
-class RemoveCourseAccessModal(ui.Modal, title="Remove Course Access"):
-    """Modal for removing course access from a professional."""
+class RemoveCourseAccessView(ui.View):
+    """Select-based view to remove course access from a professional."""
     
-    email = ui.TextInput(
-        label="Professional's Email",
-        placeholder="teacher@example.com",
-        required=True,
-        max_length=100
-    )
+    def __init__(self):
+        super().__init__(timeout=300)
+        self.selected_professional_email: Optional[str] = None
+        self.selected_channel_id: Optional[int] = None
+        
+        professional_select = ui.Select(placeholder="Select professional...", options=[])
+        professional_select.callback = self.professional_selected
+        self.add_item(professional_select)
+        
+        channel_select = ui.ChannelSelect(placeholder="Select course channel...", min_values=1, max_values=1)
+        channel_select.callback = self.channel_selected
+        self.add_item(channel_select)
+        
+        self.confirm_button = ui.Button(label="Confirm", style=ButtonStyle.danger, disabled=True)
+        self.confirm_button.callback = self.confirm
+        self.add_item(self.confirm_button)
     
-    channel_id = ui.TextInput(
-        label="Course Channel ID",
-        placeholder="Right-click channel → Copy ID",
-        required=True,
-        max_length=20
-    )
+    async def on_timeout(self) -> None:
+        for item in self.children:
+            item.disabled = True
     
-    async def on_submit(self, interaction: Interaction):
+    async def _load_professionals(self, interaction: Interaction):
+        select: ui.Select = self.children[0]
+        if select.options:
+            return
         async with AsyncSessionLocal() as session:
-            # Get professional
+            result = await session.execute(select_db(Professional))
+            pros = result.scalars().all()[:25]
+            options = []
+            for pro in pros:
+                label = (f"{pro.first_name or ''} {pro.last_name or ''}".strip() or pro.email)[:100]
+                options.append(SelectOption(label=label, value=pro.email, description=pro.email[:100]))
+            select.options = options
+            await interaction.edit_original_response(view=self)
+    
+    async def professional_selected(self, interaction: Interaction):
+        self.selected_professional_email = self.children[0].values[0]
+        self._update_confirm_state()
+        await interaction.response.edit_message(view=self)
+        await self._load_professionals(interaction)
+    
+    async def channel_selected(self, interaction: Interaction):
+        channel = self.children[1].values[0]
+        self.selected_channel_id = channel.id
+        self._update_confirm_state()
+        await interaction.response.edit_message(view=self)
+        await self._load_professionals(interaction)
+    
+    def _update_confirm_state(self):
+        self.confirm_button.disabled = not (self.selected_professional_email and self.selected_channel_id)
+    
+    async def confirm(self, interaction: Interaction):
+        if not (self.selected_professional_email and self.selected_channel_id):
+            await interaction.response.send_message("❌ Please select a professional and a channel.", ephemeral=True)
+            return
+        async with AsyncSessionLocal() as session:
             result = await session.execute(
-                select(Professional).where(Professional.email == self.email.value)
+                select_db(Professional).where(Professional.email == self.selected_professional_email)
             )
             pro = result.scalar_one_or_none()
-            
             if not pro:
-                await interaction.response.send_message(
-                    f"❌ Professional not found.",
-                    ephemeral=True
-                )
+                await interaction.response.send_message("❌ Professional not found.", ephemeral=True)
                 return
-            
-            # Validate channel ID
-            try:
-                channel_id = int(self.channel_id.value)
-            except ValueError:
-                await interaction.response.send_message(
-                    "❌ Invalid channel ID. Must be a number.",
-                    ephemeral=True
-                )
-                return
-            
-            channel = interaction.guild.get_channel(channel_id)
-            
-            # Get course channel mapping
+            channel = interaction.guild.get_channel(self.selected_channel_id)
             result = await session.execute(
-                select(ProfessionalCourseChannel).where(
+                select_db(ProfessionalCourseChannel).where(
                     ProfessionalCourseChannel.professional_id == pro.id,
-                    ProfessionalCourseChannel.channel_id == channel_id
+                    ProfessionalCourseChannel.channel_id == self.selected_channel_id
                 )
             )
             course_channel = result.scalar_one_or_none()
-            
             if not course_channel:
-                await interaction.response.send_message(
-                    f"❌ Professional doesn't have access to this channel.",
-                    ephemeral=True
-                )
+                await interaction.response.send_message("❌ Professional doesn't have access to this channel.", ephemeral=True)
                 return
-            
-            # Get the authenticated user to remove their permissions
+            # Remove permissions if authenticated
             result_user = await session.execute(
-                select(AuthenticatedUser).where(
-                    AuthenticatedUser.email == self.email.value,
+                select_db(AuthenticatedUser).where(
+                    AuthenticatedUser.email == self.selected_professional_email,
                     AuthenticatedUser.user_type == 'professional'
                 )
             )
             auth_user = result_user.scalar_one_or_none()
-            
-            # Remove Discord permissions
-            permission_removed = False
+            removed = False
             if auth_user and channel:
                 member = interaction.guild.get_member(auth_user.user_id)
                 if member:
                     try:
                         await channel.set_permissions(member, overwrite=None)
-                        permission_removed = True
+                        removed = True
                     except Exception as e:
                         print(f"Error removing permissions: {e}")
-            
-            # Delete course access from database
             await session.delete(course_channel)
             await session.commit()
-            
-            embed = Embed(
-                title="✅ Course Access Removed",
-                color=Color.orange()
-            )
-            embed.add_field(name="Professional", value=self.email.value, inline=False)
-            embed.add_field(name="Channel", value=channel.mention if channel else f"ID: {channel_id}", inline=False)
-            if permission_removed:
+            embed = Embed(title="✅ Course Access Removed", color=Color.orange())
+            embed.add_field(name="Professional", value=self.selected_professional_email, inline=False)
+            embed.add_field(name="Channel", value=channel.mention if channel else f"ID: {self.selected_channel_id}", inline=False)
+            if removed:
                 embed.add_field(name="Permissions", value="🔒 Discord permissions removed", inline=False)
-            
-            await interaction.response.send_message(embed=embed, ephemeral=True)
+            await interaction.response.edit_message(content=None, embed=embed, view=None)
 
 
 class DeleteProfessionalModal(ui.Modal, title="Delete Professional"):
