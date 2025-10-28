@@ -162,28 +162,23 @@ class HomeworkAdminPanel(ui.View):
                     )
                     return
                 
-                # Get all assignments
+                # Get courses for this channel
                 result = await session.execute(
                     select(Course).where(Course.channel_id == self.channel_id)
                 )
                 courses = result.scalars().all()
                 
-                assignments = []
-                for course in courses:
-                    for assignment in course.assignments:
-                        assignments.append((assignment, course))
-                
-                if not assignments:
+                if not courses:
                     await interaction.response.send_message(
-                        "❌ No assignments available to edit.",
+                        "❌ No courses available. Add a course first.",
                         ephemeral=True
                     )
                     return
                 
-                view = EditAssignmentSelect(session, assignments)
+                view = EditAssignmentCourseSelect(session, courses)
                 embed = Embed(
                     title="✏️ Edit Assignment",
-                    description=f"Channel: <#{self.channel_id}>\n\nSelect an assignment to edit:",
+                    description=f"Channel: <#{self.channel_id}>\n\nSelect a course to edit its assignments:",
                     color=discord.Color.orange()
                 )
                 await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
@@ -205,28 +200,23 @@ class HomeworkAdminPanel(ui.View):
                     )
                     return
                 
-                # Get all assignments
+                # Get courses for this channel
                 result = await session.execute(
                     select(Course).where(Course.channel_id == self.channel_id)
                 )
                 courses = result.scalars().all()
                 
-                assignments = []
-                for course in courses:
-                    for assignment in course.assignments:
-                        assignments.append((assignment, course))
-                
-                if not assignments:
+                if not courses:
                     await interaction.response.send_message(
-                        "❌ No assignments available to delete.",
+                        "❌ No courses available. Add a course first.",
                         ephemeral=True
                     )
                     return
                 
-                view = DeleteAssignmentSelect(session, assignments, self.channel_id)
+                view = DeleteAssignmentCourseSelect(session, courses, self.channel_id)
                 embed = Embed(
                     title="🗑️ Delete Assignment",
-                    description=f"Channel: <#{self.channel_id}>\n\nSelect an assignment to delete:",
+                    description=f"Channel: <#{self.channel_id}>\n\nSelect a course to delete one of its assignments:",
                     color=discord.Color.red()
                 )
                 await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
@@ -922,6 +912,91 @@ class AddAssignmentCourseSelect(ui.View):
         modal = AddAssignmentModal(self.db_session, course)
         await interaction.response.send_modal(modal)
 
+
+class EditAssignmentCourseSelect(ui.View):
+    """First select a course, then pick an assignment from that course to edit."""
+    
+    def __init__(self, session: AsyncSession, courses: List[Course]):
+        super().__init__(timeout=300)
+        self.db_session = session
+        self.courses = {course.id: course for course in courses}
+        
+        options = [
+            SelectOption(label=course.name, value=str(course.id))
+            for course in courses[:25]
+        ]
+        select = ui.Select(placeholder="Select a course...", options=options)
+        select.callback = self.course_selected
+        self.add_item(select)
+    
+    async def course_selected(self, interaction: Interaction):
+        course_id = int(self.children[0].values[0])
+        
+        # Fetch assignments for this course explicitly (avoid lazy loads)
+        result = await self.db_session.execute(
+            select(Assignment).where(Assignment.course_id == course_id)
+        )
+        assignments = result.scalars().all()
+        if not assignments:
+            await interaction.response.send_message(
+                "❌ This course has no assignments to edit.",
+                ephemeral=True
+            )
+            return
+        
+        # Pair with course for display in EditAssignmentSelect
+        course = self.courses[course_id]
+        pairs = [(a, course) for a in assignments]
+        view = EditAssignmentSelect(self.db_session, pairs)
+        embed = Embed(
+            title="✏️ Edit Assignment",
+            description=f"Course: **{course.name}**\nSelect an assignment to edit:",
+            color=discord.Color.orange()
+        )
+        await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+
+
+class DeleteAssignmentCourseSelect(ui.View):
+    """First select a course, then pick an assignment from that course to delete."""
+    
+    def __init__(self, session: AsyncSession, courses: List[Course], channel_id: int):
+        super().__init__(timeout=300)
+        self.db_session = session
+        self.channel_id = channel_id
+        self.courses = {course.id: course for course in courses}
+        
+        options = [
+            SelectOption(label=course.name, value=str(course.id))
+            for course in courses[:25]
+        ]
+        select = ui.Select(placeholder="Select a course...", options=options)
+        select.callback = self.course_selected
+        self.add_item(select)
+    
+    async def course_selected(self, interaction: Interaction):
+        course_id = int(self.children[0].values[0])
+        
+        # Fetch assignments for this course explicitly
+        result = await self.db_session.execute(
+            select(Assignment).where(Assignment.course_id == course_id)
+        )
+        assignments = result.scalars().all()
+        if not assignments:
+            await interaction.response.send_message(
+                "❌ This course has no assignments to delete.",
+                ephemeral=True
+            )
+            return
+        
+        course = self.courses[course_id]
+        pairs = [(a, course) for a in assignments]
+        view = DeleteAssignmentSelect(self.db_session, pairs, self.channel_id)
+        embed = Embed(
+            title="🗑️ Delete Assignment",
+            description=f"Course: **{course.name}**\nSelect an assignment to delete:",
+            color=discord.Color.red()
+        )
+        await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
 
 class AddAssignmentModal(ui.Modal, title="Add Assignment"):
     """Modal for adding a new assignment."""
