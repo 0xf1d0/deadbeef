@@ -176,7 +176,9 @@ async def update_homework_message(bot: commands.Bot, session, config: GradeChann
                 field_value += f"📅 Due: <t:{timestamp}:F> (<t:{timestamp}:R>)"
                 
                 if assignment.modality:
-                    field_value += f"\n📝 Modality: {assignment.modality}\u200b\n\u200b\n"
+                    field_value += f"\n\u200b\n📝 Modality: {assignment.modality}"
+                
+                field_value += f"\u200b\n\u200b\n\u200b\n"
                 
                 # Check if overdue
                 if assignment.due_date < datetime.now():
