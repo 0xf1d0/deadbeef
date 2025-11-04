@@ -10,7 +10,7 @@ Bot Discord moderne pour la communauté (M1/M2) intégrant : authentification av
 - Système d’authentification (Étudiants/Professionnels)
 - Intégration Root‑Me (+ système de cache)
 - CTF Team Management System
-- Devoirs (Homeworks)
+- Tasks (Tasks)
 - Emploi du temps (Schedule)
 - Actualités (News)
 - Outils Cyber / Musique / Divers
@@ -133,11 +133,11 @@ Notes UI:
 
 ---
 
-## Devoirs (Homeworks)
-Emplacement: `cogs/homework.py` (+ `ui/` si applicable).
+## Tâches (Tasks)
+Emplacement: `cogs/tasks.py` (+ `ui/` si applicable).
 
 Principes:
-- Les devoirs sont associés à des canaux de cours.
+- Les tâches sont associés à des canaux de cours.
 - Détermination automatique des rôles à mentionner (FI/FA) selon les permissions du canal.
 - Tableau/embeds par cours; gestion via une commande admin centralisée (tableau de bord) plutôt que des boutons visibles par tous.
 

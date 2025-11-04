@@ -179,17 +179,21 @@ async def update_task_message(bot: commands.Bot, session, config: GradeChannelCo
                     field_value += f"\n\u200b\n📝 Modality: {assignment.modality}"
                 
                 # Check if overdue
-                if assignment.due_date < datetime.now():
+                time_until_due = assignment.due_date - now
+                if time_until_due < timedelta(0):
                     field_name = f"⚠️ {assignment.title} (OVERDUE)"
+                    urgency_bucket = "overdue"
                 else:
                     # Check if due soon
-                    time_until_due = assignment.due_date - datetime.now()
                     if time_until_due < timedelta(days=1):
                         field_name = f"🔴 {assignment.title}"
+                        urgency_bucket = "lt_24h"
                     elif time_until_due < timedelta(days=7):
                         field_name = f"🟡 {assignment.title}"
+                        urgency_bucket = "lt_7d"
                     else:
                         field_name = f"📝 {assignment.title}"
+                        urgency_bucket = "ge_7d"
                 
                 course_embed.add_field(
                     name=f"\u200b\n\u200b\n__{field_name}__",
@@ -204,7 +208,7 @@ async def update_task_message(bot: commands.Bot, session, config: GradeChannelCo
                 # Keep description short in hash to avoid excessive size but still detect changes
                 desc_part = (assignment.description or "")[:100]
                 content_parts.append(
-                    f"{course.name}:{assignment.id}:{assignment.title}:{assignment.status}:{due_ts}:{modality_part}:{desc_part}"
+                    f"{course.name}:{assignment.id}:{assignment.title}:{assignment.status}:{due_ts}:{urgency_bucket}:{modality_part}:{desc_part}"
                 )
             
             embeds.append(course_embed)
